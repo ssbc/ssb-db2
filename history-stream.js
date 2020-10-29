@@ -1,8 +1,8 @@
-// name is blank as in ssb-db to merge into global namespace
-
 const pull = require('pull-stream')
 const pullCont = require('pull-cont')
 const { originalData } = require('./msg-utils')
+
+// exports.name is blank to merge into global namespace
 
 exports.manifest =  {
   createHistoryStream: 'source'

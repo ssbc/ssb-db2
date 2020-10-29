@@ -83,6 +83,20 @@ exports.init = function (dir, config) {
 
   var state = validate.initial()
   
+  // restore current state
+  fullIndex.getAllLatest((err, last) => {
+    // copy to so we avoid weirdness, because this object
+    // tracks the state coming in to the database.
+    for (var k in last) {
+      state.feeds[k] = {
+        id: last[k].id,
+        timestamp: last[k].timestamp,
+        sequence: last[k].sequence,
+        queue: []
+      }
+    }
+  })
+
   function publish(msg, cb) {
     state.queue = []
     state = validate.appendNew(state, null, config.keys, msg, Date.now())
@@ -240,6 +254,9 @@ exports.init = function (dir, config) {
     jitdb,
     onDrain: log.onDrain,
     getLatest: fullIndex.getLatest,
+
+    // hack
+    state,
 
     // debugging
     clearIndexes,

@@ -15,11 +15,13 @@ module.exports = function (log, dir, feedId) {
   const queueLatest = require('../waiting-queue')()
   const queueKey = require('../waiting-queue')()
   const queueSequence = require('../waiting-queue')()
+
   const queueMentions = require('../waiting-queue')(log, seq)
   const queueRoots = require('../waiting-queue')(log, seq)
   const queueVoteLinks = require('../waiting-queue')(log, seq)
-  const queueContacts = require('../waiting-queue')(log, seq)
   const queueProfiles = require('../waiting-queue')(log, seq)
+
+  const queueContacts = require('../waiting-queue')(log, seq)
 
   var keyToSeq = {}
   var authorSequenceToSeq = {}
