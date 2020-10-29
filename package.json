@@ -1,0 +1,35 @@
+{
+  "name": "ssb-db2",
+  "description": "",
+  "version": "0.0.1",
+  "homepage": "https://github.com/arj03/ssb-db2",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:arj03/ssb-db2.git"
+  },
+  "dependencies": {
+    "async-flumelog": "^1.0.7",
+    "atomic-file": "^2.1.1",
+    "bipf": "^1.3.0",
+    "jitdb": "^0.10.0",
+    "lodash.debounce": "^4.0.8",
+    "obv": "0.0.1",
+    "pull-cont": "^0.1.1",
+    "pull-stream": "^3.6.14",
+    "push-stream": "^11.0.0",
+    "ssb-keys": "^8.0.0",
+    "ssb-ref": "^2.14.2",
+    "ssb-sort": "^1.1.3",
+    "ssb-validate": "^4.1.3"
+  },
+  "devDependencies": {
+    "rimraf": "^3.0.2",
+    "tap-spec": "^5.0.0",
+    "tape": "^5.0.1"
+  },
+  "scripts": {
+    "test": "tape test/*.js | tap-spec"
+  },
+  "author": "arj",
+  "license": "beerware"
+}
