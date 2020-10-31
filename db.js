@@ -6,7 +6,7 @@ const keys = require('ssb-keys')
 const path = require('path')
 
 const Log = require('./log')
-const FullScanIndexes = require('./indexes/full-scan')
+const BaseIndex = require('./indexes/base')
 const Partial = require('./indexes/partial')
 const JITDb = require('jitdb')
 
@@ -17,12 +17,12 @@ function getId(msg) {
 exports.init = function (dir, config) {
   const log = Log(dir, config)
   const jitdb = JITDb(log, path.join(dir, "indexes"))
-  const fullIndex = FullScanIndexes(log, dir, config.keys.public)
-  const contacts = fullIndex.contacts
+  const baseIndex = BaseIndex(log, dir, config.keys.public)
+  //const contacts = fullIndex.contacts
   const partial = Partial(dir)
 
   function get(id, cb) {
-    fullIndex.getDataFromKey(id, (err, data) => {
+    baseIndex.getMessageFromKey(id, (err, data) => {
       if (data)
         cb(null, data.value)
       else
@@ -31,11 +31,11 @@ exports.init = function (dir, config) {
   }
 
   function getSync(id, cb) {
-    if (fullIndex.seq.value === log.since.value) {
+    if (baseIndex.seq.value === log.since.value) {
       get(id, cb)
     } else {
-      var remove = fullIndex.seq(() => {
-        if (fullIndex.seq.value === log.since.value) {
+      var remove = baseIndex.seq(() => {
+        if (baseIndex.seq.value === log.since.value) {
           remove()
           get(id, cb)
         }
@@ -50,12 +50,12 @@ exports.init = function (dir, config) {
       Beware:
 
       There is a race condition here if you add the same message quickly
-      after another because fullIndex is lazy. The default js SSB
+      after another because baseIndex is lazy. The default js SSB
       implementation adds messages in order, so it doesn't really have
       this problem.
     */
 
-    fullIndex.getDataFromKey(id, (err, data) => {
+    baseIndex.getMessageFromKey(id, (err, data) => {
       if (data)
         cb(null, data.value)
       else {
@@ -84,7 +84,7 @@ exports.init = function (dir, config) {
   var state = validate.initial()
   
   // restore current state
-  fullIndex.getAllLatest((err, last) => {
+  baseIndex.getAllLatest((err, last) => {
     // copy to so we avoid weirdness, because this object
     // tracks the state coming in to the database.
     for (var k in last) {
@@ -107,7 +107,7 @@ exports.init = function (dir, config) {
   }
   
   function del(key, cb) {
-    fullIndex.keyToSeq(key, (err, seq) => {
+    baseIndex.keyToSeq(key, (err, seq) => {
       if (err) return cb(err)
       if (seq == null) return cb(new Error('seq is null!'))
 
@@ -133,7 +133,7 @@ exports.init = function (dir, config) {
           push.collect((err) => {
             if (!err) {
               delete state.feeds[feedId]
-              fullIndex.removeFeedFromLatest(feedId)
+              baseIndex.removeFeedFromLatest(feedId)
             }
             cb(err)
           })
@@ -218,7 +218,7 @@ exports.init = function (dir, config) {
 
     return {
       log: log.since.value,
-      indexes: fullIndex.seq.value,
+      baseIndex: baseIndex.seq.value,
       partial: {
         totalPartial,
         profilesSynced,
@@ -231,7 +231,7 @@ exports.init = function (dir, config) {
   }
 
   function clearIndexes() {
-    fullIndex.remove(() => {})
+    baseIndex.remove(() => {})
   }
 
   return {
@@ -244,16 +244,16 @@ exports.init = function (dir, config) {
     validateAndAdd,
     validateAndAddOOO,
     getStatus,
-    getAllLatest: fullIndex.getAllLatest,
-    getDataFromAuthorSequence: fullIndex.getDataFromAuthorSequence,
-    contacts,
-    profiles: fullIndex.profiles,
-    getMessagesByRoot: fullIndex.getMessagesByRoot,
-    getMessagesByMention: fullIndex.getMessagesByMention,
-    getMessagesByVoteLink: fullIndex.getMessagesByVoteLink,
+    getAllLatest: baseIndex.getAllLatest,
+    getMessageFromAuthorSequence: baseIndex.getMessageFromAuthorSequence,
+    //contacts,
+    //profiles: fullIndex.profiles,
+    //getMessagesByRoot: fullIndex.getMessagesByRoot,
+    //getMessagesByMention: fullIndex.getMessagesByMention,
+    //getMessagesByVoteLink: fullIndex.getMessagesByVoteLink,
     jitdb,
     onDrain: log.onDrain,
-    getLatest: fullIndex.getLatest,
+    getLatest: baseIndex.getLatest,
 
     // hack
     state,
