@@ -7,6 +7,7 @@ const path = require('path')
 
 const Log = require('./log')
 const BaseIndex = require('./indexes/base')
+const SocialIndex = require('./indexes/social')
 const Partial = require('./indexes/partial')
 const JITDb = require('jitdb')
 
@@ -18,6 +19,7 @@ exports.init = function (dir, config) {
   const log = Log(dir, config)
   const jitdb = JITDb(log, path.join(dir, "indexes"))
   const baseIndex = BaseIndex(log, dir, config.keys.public)
+  const socialIndex = SocialIndex(log, dir, config.keys.public)
   //const contacts = fullIndex.contacts
   const partial = Partial(dir)
 
@@ -219,6 +221,7 @@ exports.init = function (dir, config) {
     return {
       log: log.since.value,
       baseIndex: baseIndex.seq.value,
+      socialIndex: socialIndex.seq.value,
       partial: {
         totalPartial,
         profilesSynced,
@@ -232,6 +235,7 @@ exports.init = function (dir, config) {
 
   function clearIndexes() {
     baseIndex.remove(() => {})
+    socialIndex.remove(() => {})
   }
 
   return {
@@ -248,9 +252,9 @@ exports.init = function (dir, config) {
     getMessageFromAuthorSequence: baseIndex.getMessageFromAuthorSequence,
     //contacts,
     //profiles: fullIndex.profiles,
-    //getMessagesByRoot: fullIndex.getMessagesByRoot,
-    //getMessagesByMention: fullIndex.getMessagesByMention,
-    //getMessagesByVoteLink: fullIndex.getMessagesByVoteLink,
+    getMessagesByRoot: socialIndex.getMessagesByRoot,
+    getMessagesByMention: socialIndex.getMessagesByMention,
+    getMessagesByVoteLink: socialIndex.getMessagesByVoteLink,
     jitdb,
     onDrain: log.onDrain,
     getLatest: baseIndex.getLatest,

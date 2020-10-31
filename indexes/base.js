@@ -89,7 +89,7 @@ module.exports = function (log, dir, feedId) {
         if (batch.length > 0)
           writeBatch()
         
-        debug(`key index full scan time: ${Date.now()-start}ms, total items: ${messagesProcessed}`)
+        debug(`base index scan time: ${Date.now()-start}ms, items: ${messagesProcessed}`)
 
         log.stream({ gt: seq.value, live: true }).pipe({
           paused: false,
