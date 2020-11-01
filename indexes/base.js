@@ -34,6 +34,7 @@ module.exports = function (log, dir, feedId) {
   var batchJson = []
 
   const chunkSize = 512
+  var isLive = false
   var processed = 0
 
   function writeBatch() {
@@ -81,8 +82,7 @@ module.exports = function (log, dir, feedId) {
     seq.set(data.seq)
     processed++
 
-    // FIXME: live stream
-    if (batchBasic.length > chunkSize)
+    if (batchBasic.length > chunkSize || isLive)
       writeBatch()
   }
 
@@ -100,6 +100,7 @@ module.exports = function (log, dir, feedId) {
 
         debug(`base index scan time: ${Date.now()-start}ms, items: ${processed}`)
 
+        isLive = true
         log.stream({ gt: seq.value, live: true }).pipe({
           paused: false,
           write: handleData
