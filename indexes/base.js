@@ -39,7 +39,7 @@ module.exports = function (log, dir, feedId) {
 
   function writeBatch() {
     level.put(META, { version, seq: seq.value },
-              { valueEncoding: 'json' })
+              { valueEncoding: 'json' }, throwOnError)
 
     level.batch(batchBasic, throwOnError)
     level.batch(batchJsonKey, { keyEncoding: 'json' }, throwOnError)

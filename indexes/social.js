@@ -6,7 +6,7 @@ const push = require('push-stream')
 const Level = require('level')
 const pl = require('pull-level')
 const pull = require('pull-stream')
-const debug = require('debug')
+const debug = require('debug')("social-index")
 
 // 3 indexes:
 // - root => msg seqs
@@ -16,6 +16,8 @@ const debug = require('debug')
 module.exports = function (log, dir, feedId) {
   var seq = Obv()
   seq.set(-1)
+
+  // FIXME: mkdirp
 
   var level = Level(path.join(dir, "indexes", "social"))
   const META = '\x00'
@@ -34,21 +36,25 @@ module.exports = function (log, dir, feedId) {
   
   const throwOnError = function(err) { if (err) throw err }
 
-  var batch = level.batch()
+  var batch = []
   const chunkSize = 512
-  var messagesProcessed = 0
+  var isLive = false
+  var processed = 0
 
   function writeBatch() {
-    batch.put(META, { version, seq: data.seq },
+    level.put(META, { version, seq: seq.value },
               { valueEncoding: 'json' }, throwOnError)
-    batch.write()
+
+    level.batch(batch, { keyEncoding: 'json' }, throwOnError)
+    batch = []
   }
 
   function handleData(data) {
     var p = 0 // note you pass in p!
     p = bipf.seekKey(data.value, p, bKey)
     const key = bipf.decode(data.value, p)
-    
+
+    p = 0
     p = bipf.seekKey(data.value, p, bValue)
     if (~p) {
       // content
@@ -58,21 +64,21 @@ module.exports = function (log, dir, feedId) {
         if (~pRoot) {
           const root = bipf.decode(data.value, pRoot)
           if (root) {
-            batch.put(['root', root, key], data.seq,
-                      { keyEncoding: 'json' }, throwOnError)
+            batch.push({ type: 'put', key: ['r', root, key],
+                         value: data.seq })
           }
         }
 
         var pMentions = bipf.seekKey(data.value, pContent, bMentions)
         if (~pMentions) {
-          const mentionsData = bipf.decode(data.value, pContent)
+          const mentionsData = bipf.decode(data.value, pMentions)
           if (Array.isArray(mentionsData)) {
             mentionsData.forEach(mention => {
               if (mention.link &&
                   typeof mention.link === 'string' &&
                   (mention.link[0] === '@' || mention.link[0] === '%')) {
-                batch.put(['mention', mention.link, key], data.seq,
-                          { keyEncoding: 'json' }, throwOnError)
+                batch.push({ type: 'put', key: ['m', mention.link, key],
+                             value: data.seq })
               }
             })
           }
@@ -86,8 +92,8 @@ module.exports = function (log, dir, feedId) {
               var pLink = bipf.seekKey(data.value, pVote, bLink)
               if (~pLink) {
                 const link = bipf.decode(data.value, pLink)
-                batch.put(['vlink', link, key], data.seq,
-                          { keyEncoding: 'json' }, throwOnError)
+                batch.push({ type: 'put', key: ['v', link, key],
+                             value: data.seq })
               }
             }
           }
@@ -97,9 +103,9 @@ module.exports = function (log, dir, feedId) {
 
     seq.set(data.seq)
 
-    messagesProcessed++
+    processed++
 
-    if (batch.length > chunkSize)
+    if (batch.length > chunkSize || isLive)
       writeBatch()
   }
   
@@ -113,8 +119,9 @@ module.exports = function (log, dir, feedId) {
         if (batch.length > 0)
           writeBatch()
         
-        debug(`social index scan time: ${Date.now()-start}ms, items: ${messagesProcessed}`)
+        debug(`social index scan time: ${Date.now()-start}ms, items: ${processed}`)
 
+        isLive = true
         log.stream({ gt: seq.value, live: true }).pipe({
           paused: false,
           write: handleData
@@ -123,7 +130,9 @@ module.exports = function (log, dir, feedId) {
     })
   }
   
-  level.get(META, (err, data) => {
+  level.get(META, { valueEncoding: 'json' }, (err, data) => {
+    debug("got social index status:", data)
+
     if (data && data.version == version) {
       seq.set(data.seq)
       updateIndexes()
@@ -147,7 +156,11 @@ module.exports = function (log, dir, feedId) {
   var self = {
     getMessagesByMention: function(key, cb) {
       pull(
-        pl.read(level, { gte: '["mention", "' + key }),
+        pl.read(level, {
+          gte: ['m', key, ""],
+          lte: ['m', key, undefined],
+          keyEncoding: 'json'
+        }),
         pull.collect((err, data) => {
           if (err) return cb(err)
 
@@ -157,7 +170,11 @@ module.exports = function (log, dir, feedId) {
     },
     getMessagesByRoot: function(rootId, cb) {
       pull(
-        pl.read(level, { gte: '["root", "' + rootId }),
+        pl.read(level, {
+          gte: ['r', rootId, ""],
+          lte: ['r', rootId, undefined],
+          keyEncoding: 'json'
+        }),
         pull.collect((err, data) => {
           if (err) return cb(err)
 
@@ -167,7 +184,11 @@ module.exports = function (log, dir, feedId) {
     },
     getMessagesByVoteLink: function(linkId, cb) {
       pull(
-        pl.read(level, { gte: '["vlink", "' + linkId }),
+        pl.read(level, {
+          gte: ['v', linkId, ""],
+          lte: ['v', linkId, undefined],
+          keyEncoding: 'json'
+        }),
         pull.collect((err, data) => {
           if (err) return cb(err)
 
