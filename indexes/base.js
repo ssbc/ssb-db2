@@ -4,7 +4,7 @@ const path = require('path')
 const Level = require('level')
 const pl = require('pull-level')
 const pull = require('pull-stream')
-const debug = require('debug')
+const debug = require('debug')("base-index")
 
 // 3 indexes:
 // - msg key => seq
@@ -14,6 +14,8 @@ const debug = require('debug')
 module.exports = function (log, dir, feedId) {
   var seq = Obv()
   seq.set(-1)
+
+  // FIXME: mkdirp
 
   var level = Level(path.join(dir, "indexes", "base"))
   const META = '\x00'
@@ -27,23 +29,33 @@ module.exports = function (log, dir, feedId) {
 
   const throwOnError = function(err) { if (err) throw err }
 
-  var batch = level.batch()
+  var batchBasic = []
+  var batchJsonKey = []
+  var batchJson = []
+
   const chunkSize = 512
-  var messagesProcessed = 0
+  var processed = 0
 
   function writeBatch() {
-    batch.put(META, { version, seq: data.seq },
-              { valueEncoding: 'json' }, throwOnError)
-    batch.write()
+    level.put(META, { version, seq: seq.value },
+              { valueEncoding: 'json' })
+
+    level.batch(batchBasic, throwOnError)
+    level.batch(batchJsonKey, { keyEncoding: 'json' }, throwOnError)
+    level.batch(batchJson, { keyEncoding: 'json', valueEncoding: 'json' }, throwOnError)
+
+    batchBasic = []
+    batchJsonKey = []
+    batchJson = []
   }
 
   let authorLatest = {}
-  
+
   function handleData(data) {
     var p = 0 // note you pass in p!
     p = bipf.seekKey(data.value, p, bKey)
     const key = bipf.decode(data.value, p)
-    batch.put(key, data.seq, throwOnError)
+    batchBasic.push({ type: 'put', key, value: data.seq })
 
     p = 0
     p = bipf.seekKey(data.value, p, bValue)
@@ -55,25 +67,22 @@ module.exports = function (log, dir, feedId) {
       var p4 = bipf.seekKey(data.value, p, bTimestamp)
       const timestamp = bipf.decode(data.value, p4)
 
-      batch.put([author, sequence], data.seq,
-                { keyEncoding: 'json' }, throwOnError)
+      batchJsonKey.push({ type: 'put', key: [author, sequence], value: data.seq })
       
       var latestSequence = 0
       if (authorLatest[author])
         latestSequence = authorLatest[author].sequence
       if (sequence > latestSequence) {
         authorLatest[author] = { id: key, sequence, timestamp }
-        batch.put(['author', author],
-                  authorLatest[author],
-                  { keyEncoding: 'json', valueEncoding: 'json' },
-                  throwOnError)
+        batchJson.push({ type: 'put', key: ['a', author], value: authorLatest[author] })
       }
     }
 
     seq.set(data.seq)
-    messagesProcessed++
+    processed++
 
-    if (batch.length > chunkSize)
+    // FIXME: live stream
+    if (batchBasic.length > chunkSize)
       writeBatch()
   }
 
@@ -86,10 +95,10 @@ module.exports = function (log, dir, feedId) {
       paused: false,
       write: handleData,
       end: () => {
-        if (batch.length > 0)
+        if (batchBasic.length > 0)
           writeBatch()
-        
-        debug(`base index scan time: ${Date.now()-start}ms, items: ${messagesProcessed}`)
+
+        debug(`base index scan time: ${Date.now()-start}ms, items: ${processed}`)
 
         log.stream({ gt: seq.value, live: true }).pipe({
           paused: false,
@@ -98,8 +107,10 @@ module.exports = function (log, dir, feedId) {
       }
     })
   }
-  
-  level.get(META, (err, data) => {
+
+  level.get(META, { valueEncoding: 'json' }, (err, data) => {
+    debug("got base index status:", data)
+
     if (data && data.version == version) {
       seq.set(data.seq)
       getAllLatest((err, latest) => {
@@ -111,9 +122,10 @@ module.exports = function (log, dir, feedId) {
   })
 
   function getAllLatest(cb) {
+    console.time("get all latest")
     pull(
       pl.read(level, {
-        gte: '["author',
+        gte: '["a",',
         valueEncoding: 'json'
       }),
       pull.collect((err, data) => {
@@ -122,6 +134,8 @@ module.exports = function (log, dir, feedId) {
         data.forEach(d => {
           result[JSON.parse(d.key)[1]] = d.value
         })
+        console.log(Object.keys(result).length)
+        console.timeEnd("get all latest")
         cb(null, result)
       })
     )
@@ -144,7 +158,7 @@ module.exports = function (log, dir, feedId) {
 
     // returns { id (msg key), sequence, timestamp }
     getLatest: function(feedId, cb) {
-      level.get(['author', feedId],
+      level.get(['a', feedId],
                 { keyEncoding: 'json', valueEncoding: 'json' },
                 cb)
     },
@@ -152,7 +166,7 @@ module.exports = function (log, dir, feedId) {
     seq,
     keyToSeq: level.get, // used by delete
     removeFeedFromLatest: function(feedId) {
-      level.del(['author', feedId], { keyEncoding: 'json' }, throwOnError)
+      level.del(['a', feedId], { keyEncoding: 'json' }, throwOnError)
     },
     remove: level.clear
   }
