@@ -52,7 +52,7 @@ module.exports = function (log, dir, feedId) {
   function handleData(data) {
     var p = 0 // note you pass in p!
     p = bipf.seekKey(data.value, p, bKey)
-    const key = bipf.decode(data.value, p)
+    const shortKey = bipf.decode(data.value, p).slice(1, 10)
 
     p = 0
     p = bipf.seekKey(data.value, p, bValue)
@@ -64,7 +64,7 @@ module.exports = function (log, dir, feedId) {
         if (~pRoot) {
           const root = bipf.decode(data.value, pRoot)
           if (root) {
-            batch.push({ type: 'put', key: ['r', root, key],
+            batch.push({ type: 'put', key: ['r', root, shortKey],
                          value: data.seq })
           }
         }
@@ -77,7 +77,7 @@ module.exports = function (log, dir, feedId) {
               if (mention.link &&
                   typeof mention.link === 'string' &&
                   (mention.link[0] === '@' || mention.link[0] === '%')) {
-                batch.push({ type: 'put', key: ['m', mention.link, key],
+                batch.push({ type: 'put', key: ['m', mention.link, shortKey],
                              value: data.seq })
               }
             })
@@ -92,7 +92,7 @@ module.exports = function (log, dir, feedId) {
               var pLink = bipf.seekKey(data.value, pVote, bLink)
               if (~pLink) {
                 const link = bipf.decode(data.value, pLink)
-                batch.push({ type: 'put', key: ['v', link, key],
+                batch.push({ type: 'put', key: ['v', link, shortKey],
                              value: data.seq })
               }
             }
