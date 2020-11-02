@@ -1,12 +1,10 @@
 const bipf = require('bipf')
-const Obv = require('obv')
-const path = require('path')
 const sort = require('ssb-sort')
 const push = require('push-stream')
-const Level = require('level')
 const pl = require('pull-level')
 const pull = require('pull-stream')
 const debug = require('debug')("social-index")
+const Plugin = require('./plugin')
 
 // 3 indexes:
 // - root (msgId) => msg seqs
@@ -14,19 +12,6 @@ const debug = require('debug')("social-index")
 // - votes (msgId) => msg seqs
 
 module.exports = function (log, dir, feedId) {
-  var seq = Obv()
-  seq.set(-1)
-
-  const indexesPath = path.join(dir, "indexes", "social")
-
-  if (typeof window === 'undefined') { // outside browser
-    const mkdirp = require('mkdirp')
-    mkdirp.sync(indexesPath)
-  }
-
-  var level = Level(indexesPath)
-  const META = '\x00'
-  const version = 1
 
   const bKey = Buffer.from('key')
   const bValue = Buffer.from('value')
@@ -39,18 +24,11 @@ module.exports = function (log, dir, feedId) {
   const bVote = Buffer.from('vote')
   const bLink = Buffer.from('link')
   
-  const throwOnError = function(err) { if (err) throw err }
-
   var batch = []
-  const chunkSize = 512
-  var isLive = false
-  var processed = 0
 
-  function writeBatch() {
-    level.put(META, { version, seq: seq.value },
-              { valueEncoding: 'json' }, throwOnError)
-
-    level.batch(batch, { keyEncoding: 'json' }, throwOnError)
+  function writeData() {
+    level.batch(batch, { keyEncoding: 'json' },
+                (err) => { if (err) throw err })
     batch = []
   }
 
@@ -106,45 +84,9 @@ module.exports = function (log, dir, feedId) {
       }
     }
 
-    seq.set(data.seq)
-
-    processed++
-
-    if (batch.length > chunkSize || isLive)
-      writeBatch()
+    return batch.length
   }
   
-  function updateIndexes() {
-    const start = Date.now()
-
-    log.stream({ gt: seq.value }).pipe({
-      paused: false,
-      write: handleData,
-      end: () => {
-        if (batch.length > 0)
-          writeBatch()
-        
-        debug(`social index scan time: ${Date.now()-start}ms, items: ${processed}`)
-
-        isLive = true
-        log.stream({ gt: seq.value, live: true }).pipe({
-          paused: false,
-          write: handleData
-        })
-      }
-    })
-  }
-  
-  level.get(META, { valueEncoding: 'json' }, (err, data) => {
-    debug("got social index status:", data)
-
-    if (data && data.version == version) {
-      seq.set(data.seq)
-      updateIndexes()
-    } else
-      level.clear(updateIndexes)
-  })
-
   function getMessagesFromSeqs(seqs, cb) {
     push(
       push.values(seqs),
@@ -157,8 +99,14 @@ module.exports = function (log, dir, feedId) {
       })
     )
   }
+
+  const name = "social"
+  let { level, seq } = Plugin(log, dir, name, 1, debug, handleData, writeData)
   
-  var self = {
+  return {
+    seq,
+    name,
+    remove: level.clear,
     getMessagesByMention: function(key, cb) {
       pull(
         pl.read(level, {
@@ -200,9 +148,6 @@ module.exports = function (log, dir, feedId) {
           getMessagesFromSeqs(data.map(x => x.value), cb)
         })
       )
-    },
-    remove: level.clear
+    }
   }
-
-  return self
 }

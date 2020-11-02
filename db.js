@@ -218,10 +218,9 @@ exports.init = function (dir, config) {
       totalPartial += 1
     })
 
-    return {
+    var result = {
       log: log.since.value,
       baseIndex: baseIndex.seq.value,
-      socialIndex: socialIndex.seq.value,
       partial: {
         totalPartial,
         profilesSynced,
@@ -231,11 +230,23 @@ exports.init = function (dir, config) {
         fullSynced,
       }
     }
+
+    for (var plugin in plugins)
+      result[plugin.name] = plugin.seq.value
+
+    return result
   }
 
   function clearIndexes() {
     baseIndex.remove(() => {})
-    socialIndex.remove(() => {})
+    for (var plugin in plugins)
+      plugins[plugin].remove(() => {})
+  }
+
+  var plugins = {}
+
+  function registerPlugin(plugin) {
+    plugins[plugin.name] = plugin
   }
 
   return {
@@ -248,16 +259,18 @@ exports.init = function (dir, config) {
     validateAndAdd,
     validateAndAddOOO,
     getStatus,
+
+    registerPlugin,
+    plugins,
+
+    getLatest: baseIndex.getLatest,
     getAllLatest: baseIndex.getAllLatest,
     getMessageFromAuthorSequence: baseIndex.getMessageFromAuthorSequence,
-    //contacts,
-    //profiles: fullIndex.profiles,
-    getMessagesByRoot: socialIndex.getMessagesByRoot,
-    getMessagesByMention: socialIndex.getMessagesByMention,
-    getMessagesByVoteLink: socialIndex.getMessagesByVoteLink,
+
+    // FIXME: contacts & profiles
+
     jitdb,
     onDrain: log.onDrain,
-    getLatest: baseIndex.getLatest,
 
     // hack
     state,
