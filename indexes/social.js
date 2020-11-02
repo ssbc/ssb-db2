@@ -9,17 +9,22 @@ const pull = require('pull-stream')
 const debug = require('debug')("social-index")
 
 // 3 indexes:
-// - root => msg seqs
-// - mention => msg seqs
-// - vote => msg seqs
+// - root (msgId) => msg seqs
+// - mentions (msgId) => msg seqs
+// - votes (msgId) => msg seqs
 
 module.exports = function (log, dir, feedId) {
   var seq = Obv()
   seq.set(-1)
 
-  // FIXME: mkdirp
+  const indexesPath = path.join(dir, "indexes", "social")
 
-  var level = Level(path.join(dir, "indexes", "social"))
+  if (typeof window === 'undefined') { // outside browser
+    const mkdirp = require('mkdirp')
+    mkdirp.sync(indexesPath)
+  }
+
+  var level = Level(indexesPath)
   const META = '\x00'
   const version = 1
 

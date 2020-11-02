@@ -15,9 +15,14 @@ module.exports = function (log, dir, feedId) {
   var seq = Obv()
   seq.set(-1)
 
-  // FIXME: mkdirp
+  const indexesPath = path.join(dir, "indexes", "base")
 
-  var level = Level(path.join(dir, "indexes", "base"))
+  if (typeof window === 'undefined') { // outside browser
+    const mkdirp = require('mkdirp')
+    mkdirp.sync(indexesPath)
+  }
+
+  var level = Level(indexesPath)
   const META = '\x00'
   const version = 1
 
