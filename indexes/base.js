@@ -1,10 +1,8 @@
 const bipf = require('bipf')
-const Obv = require('obv')
-const path = require('path')
-const Level = require('level')
 const pl = require('pull-level')
 const pull = require('pull-stream')
 const debug = require('debug')("base-index")
+const Plugin = require('./plugin')
 
 // 3 indexes:
 // - msg key => seq
@@ -12,20 +10,6 @@ const debug = require('debug')("base-index")
 // - author => latest { msg key, sequence timestamp } (validate state & EBT)
 
 module.exports = function (log, dir, feedId) {
-  var seq = Obv()
-  seq.set(-1)
-
-  const indexesPath = path.join(dir, "indexes", "base")
-
-  if (typeof window === 'undefined') { // outside browser
-    const mkdirp = require('mkdirp')
-    mkdirp.sync(indexesPath)
-  }
-
-  var level = Level(indexesPath)
-  const META = '\x00'
-  const version = 1
-
   const bValue = Buffer.from('value')
   const bKey = Buffer.from('key')
   const bAuthor = Buffer.from('author')
@@ -38,14 +22,7 @@ module.exports = function (log, dir, feedId) {
   var batchJsonKey = []
   var batchJson = []
 
-  const chunkSize = 512
-  var isLive = false
-  var processed = 0
-
-  function writeBatch() {
-    level.put(META, { version, seq: seq.value },
-              { valueEncoding: 'json' }, throwOnError)
-
+  function writeData() {
     level.batch(batchBasic, throwOnError)
     level.batch(batchJsonKey, { keyEncoding: 'json' }, throwOnError)
     level.batch(batchJson, { keyEncoding: 'json', valueEncoding: 'json' }, throwOnError)
@@ -84,48 +61,18 @@ module.exports = function (log, dir, feedId) {
       }
     }
 
-    seq.set(data.seq)
-    processed++
-
-    if (batchBasic.length > chunkSize || isLive)
-      writeBatch()
+    return batchBasic.length
   }
 
-  function updateIndexes() {
-    const start = Date.now()
-
-    // FIXME: new messages from user should call updateClock on ebt
-
-    log.stream({ gt: seq.value }).pipe({
-      paused: false,
-      write: handleData,
-      end: () => {
-        if (batchBasic.length > 0)
-          writeBatch()
-
-        debug(`base index scan time: ${Date.now()-start}ms, items: ${processed}`)
-
-        isLive = true
-        log.stream({ gt: seq.value, live: true }).pipe({
-          paused: false,
-          write: handleData
-        })
-      }
+  function beforeIndexUpdate(cb) {
+    getAllLatest((err, latest) => {
+      authorLatest = latest
+      cb()
     })
   }
 
-  level.get(META, { valueEncoding: 'json' }, (err, data) => {
-    debug("got base index status:", data)
-
-    if (data && data.version == version) {
-      seq.set(data.seq)
-      getAllLatest((err, latest) => {
-        authorLatest = latest
-        updateIndexes()
-      })
-    } else
-      level.clear(updateIndexes)
-  })
+  let { level, seq } = Plugin(log, dir, "base", 1, debug,
+                              handleData, writeData, beforeIndexUpdate)
 
   function getAllLatest(cb) {
     console.time("get all latest")
@@ -159,6 +106,9 @@ module.exports = function (log, dir, feedId) {
   }
   
   var self = {
+    seq,
+    remove: level.clear,
+
     getMessageFromKey: levelKeyToMessage,
     getMessageFromAuthorSequence: levelKeyToMessage,
 
@@ -169,12 +119,10 @@ module.exports = function (log, dir, feedId) {
                 cb)
     },
     getAllLatest,
-    seq,
     keyToSeq: level.get, // used by delete
     removeFeedFromLatest: function(feedId) {
       level.del(['a', feedId], { keyEncoding: 'json' }, throwOnError)
-    },
-    remove: level.clear
+    }
   }
 
   // ssb-db compatibility

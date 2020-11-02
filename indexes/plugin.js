@@ -3,7 +3,7 @@ const Level = require('level')
 const path = require('path')
 
 module.exports = function (log, dir, name, version, debug,
-                           handleData, writeData) {
+                           handleData, writeData, beforeIndexUpdate) {
   var seq = Obv()
   seq.set(-1)
 
@@ -66,7 +66,10 @@ module.exports = function (log, dir, name, version, debug,
 
     if (data && data.version == version) {
       seq.set(data.seq)
-      updateIndexes()
+      if (beforeIndexUpdate)
+        beforeIndexUpdate(updateIndexes)
+      else
+        updateIndexes()
     } else
       level.clear(updateIndexes)
   })
