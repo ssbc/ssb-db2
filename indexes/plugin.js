@@ -27,7 +27,7 @@ module.exports = function (log, dir, name, version, debug,
     let unWritten = 0
 
     function writeBatch() {
-      level.put(META, { version, seq: seq.value },
+      level.put(META, { version, seq: seq.value, processed },
                 { valueEncoding: 'json' },
                 (err) => { if (err) throw err })
 
@@ -35,7 +35,7 @@ module.exports = function (log, dir, name, version, debug,
     }
     
     function onData(data) {
-      unWritten = handleData(data, isLive)
+      unWritten = handleData(data, processed)
       seq.set(data.seq)
       processed++
       
@@ -66,6 +66,7 @@ module.exports = function (log, dir, name, version, debug,
 
     if (data && data.version == version) {
       seq.set(data.seq)
+      processed = data.processed
       if (beforeIndexUpdate)
         beforeIndexUpdate(updateIndexes)
       else

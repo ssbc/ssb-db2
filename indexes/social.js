@@ -32,7 +32,7 @@ module.exports = function (log, dir, feedId) {
     batch = []
   }
 
-  function handleData(data) {
+  function handleData(data, processed) {
     var p = 0 // note you pass in p!
     p = bipf.seekKey(data.value, p, bKey)
     const shortKey = bipf.decode(data.value, p).slice(1, 10)
@@ -61,7 +61,7 @@ module.exports = function (log, dir, feedId) {
                   typeof mention.link === 'string' &&
                   (mention.link[0] === '@' || mention.link[0] === '%')) {
                 batch.push({ type: 'put', key: ['m', mention.link, shortKey],
-                             value: data.seq })
+                             value: processed })
               }
             })
           }
@@ -112,12 +112,16 @@ module.exports = function (log, dir, feedId) {
         pl.read(level, {
           gte: ['m', key, ""],
           lte: ['m', key, undefined],
-          keyEncoding: 'json'
+          keyEncoding: 'json',
+          keys: false
         }),
         pull.collect((err, data) => {
           if (err) return cb(err)
 
-          getMessagesFromSeqs(data.map(x => x.value), cb)
+          return cb(null, {
+            type: 'DATA',
+            offsets: data
+          })
         })
       )
     },
@@ -126,12 +130,13 @@ module.exports = function (log, dir, feedId) {
         pl.read(level, {
           gte: ['r', rootId, ""],
           lte: ['r', rootId, undefined],
-          keyEncoding: 'json'
+          keyEncoding: 'json',
+          keys: false
         }),
         pull.collect((err, data) => {
           if (err) return cb(err)
 
-          getMessagesFromSeqs(data.map(x => x.value), cb)
+          getMessagesFromSeqs(data, cb)
         })
       )
     },
@@ -140,12 +145,13 @@ module.exports = function (log, dir, feedId) {
         pl.read(level, {
           gte: ['v', linkId, ""],
           lte: ['v', linkId, undefined],
-          keyEncoding: 'json'
+          keyEncoding: 'json',
+          keys: false
         }),
         pull.collect((err, data) => {
           if (err) return cb(err)
 
-          getMessagesFromSeqs(data.map(x => x.value), cb)
+          getMessagesFromSeqs(data, cb)
         })
       )
     }

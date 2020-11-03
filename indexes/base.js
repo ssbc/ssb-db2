@@ -50,14 +50,16 @@ module.exports = function (log, dir, feedId) {
       var p4 = bipf.seekKey(data.value, p, bTimestamp)
       const timestamp = bipf.decode(data.value, p4)
 
-      batchJsonKey.push({ type: 'put', key: [author, sequence], value: data.seq })
+      batchJsonKey.push({ type: 'put', key: [author, sequence],
+                          value: data.seq })
       
       var latestSequence = 0
       if (authorLatest[author])
         latestSequence = authorLatest[author].sequence
       if (sequence > latestSequence) {
         authorLatest[author] = { id: key, sequence, timestamp }
-        batchJson.push({ type: 'put', key: ['a', author], value: authorLatest[author] })
+        batchJson.push({ type: 'put', key: ['a', author],
+                         value: authorLatest[author] })
       }
     }
 
