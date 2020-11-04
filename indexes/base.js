@@ -127,9 +127,5 @@ module.exports = function (log, dir, feedId) {
     }
   }
 
-  // ssb-db compatibility
-  self.getAtSequence = self.getDataFromAuthorSequence
-  // FIXME: self.getVectorClock
-  
   return self
 }

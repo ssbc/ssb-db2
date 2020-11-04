@@ -4,6 +4,7 @@ const hash = require('ssb-keys/util').hash
 const validate = require('ssb-validate')
 const keys = require('ssb-keys')
 const path = require('path')
+const Obv = require('obv')
 
 const Log = require('./log')
 const BaseIndex = require('./indexes/base')
@@ -22,6 +23,8 @@ exports.init = function (dir, config) {
   const socialIndex = SocialIndex(log, dir, config.keys.public)
   //const contacts = fullIndex.contacts
   const partial = Partial(dir)
+
+  var post = Obv()
 
   function get(id, cb) {
     baseIndex.getMessageFromKey(id, (err, data) => {
@@ -103,7 +106,7 @@ exports.init = function (dir, config) {
     state.queue = []
     state = validate.appendNew(state, null, config.keys, msg, Date.now())
     add(state.queue[0].value, (err, data) => {
-      // FIXME: maybe re-add post obv again for EBT
+      post.set(data)
       cb(err, data)
     })
   }
@@ -259,6 +262,8 @@ exports.init = function (dir, config) {
     validateAndAdd,
     validateAndAddOOO,
     getStatus,
+
+    post,
 
     registerPlugin,
     plugins,
