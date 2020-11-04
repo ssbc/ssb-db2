@@ -275,7 +275,32 @@ exports.init = function (dir, config) {
     // FIXME: contacts & profiles
 
     jitdb,
-    onDrain: log.onDrain,
+    onDrain: function(indexName, cb) {
+      if (!cb) { // default
+        cb = indexName
+        indexName = 'base'
+      }
+
+      log.onDrain(() => {
+        let index = baseIndex
+        if (indexName != 'base')
+        {
+          index = plugins[indexName]
+          if (!index) return cb('Unknown index:' + indexName)
+        }
+
+        if (index.seq.value === log.since.value) {
+          cb()
+        } else {
+          var remove = index.seq(() => {
+            if (index.seq.value === log.since.value) {
+              remove()
+              cb()
+            }
+          })
+        }
+      })
+    },
 
     // hack
     state,
