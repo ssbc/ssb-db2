@@ -8,7 +8,6 @@ const Obv = require('obv')
 
 const Log = require('./log')
 const BaseIndex = require('./indexes/base')
-const SocialIndex = require('./indexes/social')
 const Partial = require('./indexes/partial')
 const JITDb = require('jitdb')
 
@@ -20,7 +19,6 @@ exports.init = function (dir, config) {
   const log = Log(dir, config)
   const jitdb = JITDb(log, path.join(dir, "indexes"))
   const baseIndex = BaseIndex(log, dir, config.keys.public)
-  const socialIndex = SocialIndex(log, dir, config.keys.public)
   //const contacts = fullIndex.contacts
   const partial = Partial(dir)
 
@@ -223,7 +221,7 @@ exports.init = function (dir, config) {
 
     var result = {
       log: log.since.value,
-      baseIndex: baseIndex.seq.value,
+      indexes: {},
       partial: {
         totalPartial,
         profilesSynced,
@@ -234,22 +232,27 @@ exports.init = function (dir, config) {
       }
     }
 
-    for (var plugin in plugins)
-      result[plugin.name] = plugin.seq.value
+    for (var index in indexes)
+      result.indexes[index.name] = index.seq.value
 
     return result
   }
 
   function clearIndexes() {
-    baseIndex.remove(() => {})
-    for (var plugin in plugins)
-      plugins[plugin].remove(() => {})
+    for (var index in indexes)
+      indexes[index].remove(() => {})
   }
 
-  var plugins = {}
+  var indexes = {
+    base: baseIndex
+  }
 
-  function registerPlugin(plugin) {
-    plugins[plugin.name] = plugin
+  function registerIndex(Index) {
+    const index = Index(log, dir, config.keys.public)
+
+    if (indexes[index.name]) throw "Index already exists"
+
+    indexes[index.name] = index
   }
 
   return {
@@ -265,8 +268,8 @@ exports.init = function (dir, config) {
 
     post,
 
-    registerPlugin,
-    plugins,
+    registerIndex,
+    indexes,
 
     getLatest: baseIndex.getLatest,
     getAllLatest: baseIndex.getAllLatest,
@@ -282,12 +285,8 @@ exports.init = function (dir, config) {
       }
 
       log.onDrain(() => {
-        let index = baseIndex
-        if (indexName != 'base')
-        {
-          index = plugins[indexName]
-          if (!index) return cb('Unknown index:' + indexName)
-        }
+        const index = indexes[indexName]
+        if (!index) return cb('Unknown index:' + indexName)
 
         if (index.seq.value === log.since.value) {
           cb()
