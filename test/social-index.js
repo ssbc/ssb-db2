@@ -2,6 +2,8 @@ const test = require('tape')
 const ssbKeys = require('ssb-keys')
 const path = require('path')
 
+const {query, toCallback} = require('jitdb/operators')
+
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 
@@ -44,17 +46,29 @@ test('getMessagesByMention', t => {
           t.equal(status.indexes['social'], 780, 'index in sync')
 
           const social = db.indexes['social']
-          social.getMessagesByMention(feedId, (err, result) => {
+          social.getMessagesByMention(feedId, (err, q) => {
             t.error(err, 'no err')
-            t.equal(result['offsets'].length, 1)
-            t.equal(result['offsets'][0], '1')
 
-            social.getMessagesByMention(postMsg.key, (err, result) => {
-              t.error(err, 'no err')
-              t.equal(result['offsets'].length, 1)
-              t.equal(result['offsets'][0], '2')
-              t.end()
-            })
+            query(
+              q,
+              toCallback((err, results) => {
+                t.equal(results.length, 1)
+                t.equal(results[0].value.content.text, mentionFeed.text)
+
+                social.getMessagesByMention(postMsg.key, (err, q) => {
+                  t.error(err, 'no err')
+
+                  query(
+                    q,
+                    toCallback((err, results) => {
+                      t.equal(results.length, 1)
+                      t.equal(results[0].value.content.text, mentionMsg.text)
+                      t.end()
+                    })
+                  )
+                })
+              })
+            )
           })
         })
       })
@@ -81,12 +95,18 @@ test('getMessagesByRoot', t => {
 
         db.onDrain('social', () => {
           const social = db.indexes['social']
-          social.getMessagesByRoot(postMsg.key, (err, result) => {
+          social.getMessagesByRoot(postMsg.key, (err, q) => {
             // doesn't include the root itself
             t.error(err, 'no err')
-            t.equal(result['offsets'].length, 1)
-            t.equal(result['offsets'][0], '5') // 3 + 3 (-1)
-            t.end()
+
+            query(
+              q,
+              toCallback((err, results) => {
+                t.equal(results.length, 1)
+                t.equal(results[0].value.content.text, threadMsg1.text)
+                t.end()
+              })
+            )
           })
         })
       })
@@ -118,19 +138,26 @@ test('getMessagesByVoteLink', t => {
       }
     }
 
-    db.publish(voteMsg1, (err) => {
+    db.publish(voteMsg1, (err, v1) => {
       t.error(err, 'no err')
 
-      db.publish(voteMsg2, (err) => {
+      db.publish(voteMsg2, (err, v2) => {
         t.error(err, 'no err')
 
         db.onDrain('social', () => {
           const social = db.indexes['social']
-          social.getMessagesByVoteLink(postMsg.key, (err, result) => {
+          social.getMessagesByVoteLink(postMsg.key, (err, q) => {
             t.error(err, 'no err')
-            t.equal(result['offsets'].length, 2)
-            t.deepEqual(result['offsets'], ['8', '7'])
-            t.end()
+
+            query(
+              q,
+              toCallback((err, results) => {
+                t.equal(results.length, 2)
+                t.equal(results[0].key, v1.key)
+                t.equal(results[1].key, v2.key)
+                t.end()
+              })
+            )
           })
         })
       })

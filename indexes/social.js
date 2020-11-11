@@ -6,12 +6,14 @@ const pull = require('pull-stream')
 const debug = require('debug')("social-index")
 const Plugin = require('./plugin')
 
+const {query, fromDB, and, offsets } = require('jitdb/operators')
+
 // 3 indexes:
 // - root (msgId) => msg seqs
 // - mentions (msgId) => msg seqs
 // - votes (msgId) => msg seqs
 
-module.exports = function (log, dir, feedId) {
+module.exports = function (log, jitdb, dir, feedId) {
 
   const bKey = Buffer.from('key')
   const bValue = Buffer.from('value')
@@ -102,7 +104,7 @@ module.exports = function (log, dir, feedId) {
 
   const name = "social"
   let { level, seq } = Plugin(log, dir, name, 1, debug, handleData, writeData)
-  
+
   return {
     seq,
     name,
@@ -118,10 +120,10 @@ module.exports = function (log, dir, feedId) {
         pull.collect((err, data) => {
           if (err) return cb(err)
 
-          return cb(null, {
-            type: 'DATA',
-            offsets: data
-          })
+          cb(null, query(
+            fromDB(jitdb),
+            and(offsets(data.map(x => parseInt(x))))
+          ))
         })
       )
     },
@@ -136,10 +138,10 @@ module.exports = function (log, dir, feedId) {
         pull.collect((err, data) => {
           if (err) return cb(err)
 
-          return cb(null, {
-            type: 'DATA',
-            offsets: data
-          })
+          cb(null, query(
+            fromDB(jitdb),
+            and(offsets(data.map(x => parseInt(x))))
+          ))
         })
       )
     },
@@ -154,10 +156,10 @@ module.exports = function (log, dir, feedId) {
         pull.collect((err, data) => {
           if (err) return cb(err)
 
-          return cb(null, {
-            type: 'DATA',
-            offsets: data
-          })
+          cb(null, query(
+            fromDB(jitdb),
+            and(offsets(data.map(x => parseInt(x))))
+          ))
         })
       )
     }

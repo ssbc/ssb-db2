@@ -238,7 +238,7 @@ exports.init = function (dir, config) {
   }
 
   function registerIndex(Index) {
-    const index = Index(log, dir, config.keys.public)
+    const index = Index(log, jitdb, dir, config.keys.public)
 
     if (indexes[index.name]) throw "Index already exists"
 
