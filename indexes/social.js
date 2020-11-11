@@ -48,7 +48,7 @@ module.exports = function (log, dir, feedId) {
           const root = bipf.decode(data.value, pRoot)
           if (root) {
             batch.push({ type: 'put', key: ['r', root, shortKey],
-                         value: data.seq })
+                         value: processed })
           }
         }
 
@@ -76,7 +76,7 @@ module.exports = function (log, dir, feedId) {
               if (~pLink) {
                 const link = bipf.decode(data.value, pLink)
                 batch.push({ type: 'put', key: ['v', link, shortKey],
-                             value: data.seq })
+                             value: processed })
               }
             }
           }
@@ -136,7 +136,10 @@ module.exports = function (log, dir, feedId) {
         pull.collect((err, data) => {
           if (err) return cb(err)
 
-          getMessagesFromSeqs(data, cb)
+          return cb(null, {
+            type: 'DATA',
+            offsets: data
+          })
         })
       )
     },
@@ -151,7 +154,10 @@ module.exports = function (log, dir, feedId) {
         pull.collect((err, data) => {
           if (err) return cb(err)
 
-          getMessagesFromSeqs(data, cb)
+          return cb(null, {
+            type: 'DATA',
+            offsets: data
+          })
         })
       )
     }
