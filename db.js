@@ -33,19 +33,6 @@ exports.init = function (dir, config) {
     })
   }
 
-  function getSync(id, cb) {
-    if (baseIndex.seq.value === log.since.value) {
-      get(id, cb)
-    } else {
-      var remove = baseIndex.seq(() => {
-        if (baseIndex.seq.value === log.since.value) {
-          remove()
-          get(id, cb)
-        }
-      })
-    }
-  }
-
   function add(msg, cb) {
     var id = getId(msg)
 
@@ -189,7 +176,7 @@ exports.init = function (dir, config) {
 
   function getStatus() {
     const partialState = partial.getSync()
-    const graph = contacts.getGraphForFeedSync(config.keys.public)
+    //const graph = contacts.getGraphForFeedSync(config.keys.public)
 
     // partial
     let profilesSynced = 0
@@ -201,6 +188,7 @@ exports.init = function (dir, config) {
     let fullSynced = 0
     let totalFull = 0
 
+    /*
     graph.following.forEach(relation => {
       if (partialState[relation] && partialState[relation]['full'])
         fullSynced += 1
@@ -218,6 +206,7 @@ exports.init = function (dir, config) {
 
       totalPartial += 1
     })
+    */
 
     var result = {
       log: log.since.value,
@@ -232,8 +221,9 @@ exports.init = function (dir, config) {
       }
     }
 
-    for (var index in indexes)
-      result.indexes[index.name] = index.seq.value
+    for (var indexName in indexes) {
+      result.indexes[indexName] = indexes[indexName].seq.value
+    }
 
     return result
   }
@@ -255,9 +245,36 @@ exports.init = function (dir, config) {
     indexes[index.name] = index
   }
 
+  function onDrain(indexName, cb) {
+    if (!cb) { // default
+      cb = indexName
+      indexName = 'base'
+    }
+
+    log.onDrain(() => {
+      const index = indexes[indexName]
+      if (!index) return cb('Unknown index:' + indexName)
+
+      if (index.seq.value === log.since.value) {
+        cb()
+      } else {
+        var remove = index.seq(() => {
+          if (index.seq.value === log.since.value) {
+            remove()
+            cb()
+          }
+        })
+      }
+    })
+  }
+
   return {
     get,
-    getSync,
+    getSync: function(id, cb) {
+      onDrain('base', () => {
+        get(id, cb)
+      })
+    },
     add,
     publish,
     del,
@@ -278,28 +295,7 @@ exports.init = function (dir, config) {
     // FIXME: contacts & profiles
 
     jitdb,
-    onDrain: function(indexName, cb) {
-      if (!cb) { // default
-        cb = indexName
-        indexName = 'base'
-      }
-
-      log.onDrain(() => {
-        const index = indexes[indexName]
-        if (!index) return cb('Unknown index:' + indexName)
-
-        if (index.seq.value === log.since.value) {
-          cb()
-        } else {
-          var remove = index.seq(() => {
-            if (index.seq.value === log.since.value) {
-              remove()
-              cb()
-            }
-          })
-        }
-      })
-    },
+    onDrain,
 
     // hack
     state,

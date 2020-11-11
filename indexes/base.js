@@ -112,7 +112,9 @@ module.exports = function (log, dir, feedId) {
     remove: level.clear,
 
     getMessageFromKey: levelKeyToMessage,
-    getMessageFromAuthorSequence: levelKeyToMessage,
+    getMessageFromAuthorSequence: (key, cb) => {
+      levelKeyToMessage(JSON.stringify(key), cb)
+    },
 
     // returns { id (msg key), sequence, timestamp }
     getLatest: function(feedId, cb) {
