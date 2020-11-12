@@ -102,6 +102,7 @@ test('getMessagesByRoot', t => {
             query(
               q,
               toCallback((err, results) => {
+                console.log(results)
                 t.equal(results.length, 1)
                 t.equal(results[0].value.content.text, threadMsg1.text)
                 t.end()

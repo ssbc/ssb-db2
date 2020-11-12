@@ -138,6 +138,8 @@ module.exports = function (log, jitdb, dir, feedId) {
         pull.collect((err, data) => {
           if (err) return cb(err)
 
+          console.log("root", data)
+          
           cb(null, query(
             fromDB(jitdb),
             and(offsets(data.map(x => parseInt(x))))
