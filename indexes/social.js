@@ -28,9 +28,8 @@ module.exports = function (log, jitdb, dir, feedId) {
   
   var batch = []
 
-  function writeData() {
-    level.batch(batch, { keyEncoding: 'json' },
-                (err) => { if (err) throw err })
+  function writeData(cb) {
+    level.batch(batch, { keyEncoding: 'json' }, cb)
     batch = []
   }
 
@@ -86,7 +85,10 @@ module.exports = function (log, jitdb, dir, feedId) {
       }
     }
 
-    return batch.length
+    if (batch.length)
+      return data.seq
+    else
+      return 0
   }
   
   function getMessagesFromSeqs(seqs, cb) {
