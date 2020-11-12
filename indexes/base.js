@@ -22,10 +22,10 @@ module.exports = function (log, dir, feedId) {
   var batchJsonKey = []
   var batchJson = []
 
-  function writeData() {
+  function writeData(cb) {
     level.batch(batchBasic, throwOnError)
     level.batch(batchJsonKey, { keyEncoding: 'json' }, throwOnError)
-    level.batch(batchJson, { keyEncoding: 'json', valueEncoding: 'json' }, throwOnError)
+    level.batch(batchJson, { keyEncoding: 'json', valueEncoding: 'json' }, cb)
 
     batchBasic = []
     batchJsonKey = []
@@ -63,7 +63,10 @@ module.exports = function (log, dir, feedId) {
       }
     }
 
-    return batchBasic.length
+    if (batchBasic.length)
+      return data.seq
+    else
+      return 0
   }
 
   function beforeIndexUpdate(cb) {

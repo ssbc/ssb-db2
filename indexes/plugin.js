@@ -24,31 +24,38 @@ module.exports = function (log, dir, name, version, debug,
   function updateIndexes() {
     const start = Date.now()
 
-    let unWritten = 0
+    let unWrittenSeq = 0
 
-    function writeBatch() {
+    function writeBatch(cb) {
       level.put(META, { version, seq: seq.value, processed },
                 { valueEncoding: 'json' },
                 (err) => { if (err) throw err })
 
-      writeData()
+      writeData(cb)
     }
     
     function onData(data) {
-      unWritten = handleData(data, processed)
-      seq.set(data.seq)
+      unWrittenSeq = handleData(data, processed)
       processed++
       
-      if (unWritten > chunkSize || isLive)
-        writeBatch()
+      if (unWrittenSeq > chunkSize || isLive) {
+        writeBatch((err) => {
+          if (err) throw err
+          seq.set(data.seq)
+        })
+      }
     }
     
     log.stream({ gt: seq.value }).pipe({
       paused: false,
       write: onData,
       end: () => {
-        if (unWritten > 0)
-          writeBatch()
+        if (unWrittenSeq > 0) {
+          writeBatch((err) => {
+            if (err) throw err
+            seq.set(unwrittenSeq)
+          })
+        }
         
         debug(`${name} index scan time: ${Date.now()-start}ms, items: ${processed}`)
 
