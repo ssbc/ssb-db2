@@ -46,6 +46,8 @@ test('getMessagesByMention', t => {
           t.equal(status.indexes['social'], 780, 'index in sync')
 
           const social = db.indexes['social']
+          console.log("social", social)
+          console.log("status", db.getStatus())
           social.getMessagesByMention(feedId, (err, q) => {
             t.error(err, 'no err')
 
@@ -95,6 +97,8 @@ test('getMessagesByRoot', t => {
 
         db.onDrain('social', () => {
           const social = db.indexes['social']
+          console.log("social", social)
+          console.log("status", db.getStatus())
           social.getMessagesByRoot(postMsg.key, (err, q) => {
             // doesn't include the root itself
             t.error(err, 'no err')
@@ -147,12 +151,15 @@ test('getMessagesByVoteLink', t => {
 
         db.onDrain('social', () => {
           const social = db.indexes['social']
+          console.log("social", social)
+          console.log("status", db.getStatus())
           social.getMessagesByVoteLink(postMsg.key, (err, q) => {
             t.error(err, 'no err')
 
             query(
               q,
               toCallback((err, results) => {
+                console.log(results)
                 t.equal(results.length, 2)
                 t.equal(results[0].key, v1.key)
                 t.equal(results[1].key, v2.key)
