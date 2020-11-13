@@ -22,14 +22,13 @@ To get the post messages of a specific author, you can do:
 ```js
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
-const {query, and, type, author, toCallback} = require('ssb-db2/operators')
+const {and, type, author, toCallback} = require('ssb-db2/operators')
 
 const sbot = SecretStack({appKey: caps.shs})
   .use(require('ssb-db2'))
   .call(null, {})
 
-query(
-  sbot.db,
+sbot.db.query(
   and(type('post')),
   and(author('@6CAxOI3f+LUOVrbAl0IemqiS7ATpQvr9Mdw9LC4+Uv0=.ed25519')),
   toCallback((err, msgs) => {
