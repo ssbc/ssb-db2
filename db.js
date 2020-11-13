@@ -11,6 +11,8 @@ const BaseIndex = require('./indexes/base')
 const Partial = require('./indexes/partial')
 const JITDb = require('jitdb')
 
+const jitdbOperators = require('jitdb/operators')
+
 function getId(msg) {
   return '%'+hash(JSON.stringify(msg, null, 2))
 }
@@ -273,6 +275,10 @@ exports.init = function (dir, config) {
     })
   }
 
+  function query(...args) {
+    return jitdbOperators.query(jitdbOperators.fromDB(jitdb), ...args)
+  }
+
   return {
     get,
     getSync: function(id, cb) {
@@ -300,6 +306,8 @@ exports.init = function (dir, config) {
     // FIXME: contacts & profiles
 
     jitdb,
+    query,
+
     onDrain,
 
     // hack

@@ -1,15 +1,6 @@
 const jitdbOperators = require('jitdb/operators')
 const seekers = require('./seekers')
 
-// override query() from jitdb to implicitly call fromDB()
-function query(first, ...rest) {
-  if (!first.meta && first.jitdb) {
-    return jitdbOperators.query(jitdbOperators.fromDB(first.jitdb), ...rest)
-  } else {
-    return jitdbOperators.query(first, ...rest)
-  }
-}
-
 function toBuffer(value) {
   return Buffer.isBuffer(value) ? value : Buffer.from(value)
 }
@@ -71,7 +62,6 @@ function isPrivate() {
 }
 
 module.exports = Object.assign({}, jitdbOperators, {
-  query,
   type,
   author,
   channel,
