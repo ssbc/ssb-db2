@@ -53,7 +53,7 @@ module.exports = function (log, dir, name, version, debug,
         if (unWrittenSeq > 0) {
           writeBatch((err) => {
             if (err) throw err
-            seq.set(unwrittenSeq)
+            seq.set(unWrittenSeq)
           })
         }
         
