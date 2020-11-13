@@ -1,8 +1,6 @@
 const test = require('tape')
-const pull = require('pull-stream')
 const ssbKeys = require('ssb-keys')
 const path = require('path')
-
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 
@@ -19,7 +17,7 @@ const ssbDB = db.init(dir, {
 
 test('Base', t => {
   const post = { type: 'post', text: 'Testing!' }
-  
+
   ssbDB.publish(post, (err, postMsg) => {
     t.error(err, 'no err')
     t.equal(postMsg.value.content.text, post.text, 'text correct')

@@ -20,27 +20,16 @@ for doing EBT.
 To get the post messages of a specific author, you can do:
 
 ```js
-const { fromDB, query, and, type, author, toCallback } = require('jitdb/operators')
-
+const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
-const ssbKeys = require('ssb-keys')
-const path = require('path')
+const {query, and, type, author, toCallback} = require('ssb-db2/operators')
 
-const createSbot = require('secret-stack')({
-    caps: { shs: Buffer.from(caps.shs, 'base64') },
-})
-      .use(require("ssb-db2"))
-
-const dir = "./ssb"
-var keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
-
-const sbot = createSbot({
-  keys,
-  path: dir,
-})
+const sbot = SecretStack({appKey: caps.shs})
+  .use(require('ssb-db2'))
+  .call(null, {})
 
 query(
-  sbot.db.jitdb,
+  sbot.db,
   and(type('post')),
   and(author('@6CAxOI3f+LUOVrbAl0IemqiS7ATpQvr9Mdw9LC4+Uv0=.ed25519')),
   toCallback((err, msgs) => {
@@ -56,7 +45,7 @@ is also available as indexes/social. It has 3 methods:
  - getMessagesByMention
  - getMessagesByRoot
  - getMessagesByVoteLink
- 
+
 This plugin is meant as a base for application developers to write
 their own plugins if the functionality of jitdb is not enough. JITDB
 is good for indexing specific values, like type `post`, whereas for
@@ -66,33 +55,22 @@ each, a specialized index makes more sense.
 To get the post messages of a specific root, you can do:
 
 ```js
-const { fromDB, query, and, type, author, toCallback } = require('jitdb/operators')
-
+const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
-const ssbKeys = require('ssb-keys')
-const path = require('path')
+const {query, and, type, author, toCallback} = require('ssb-db2/operators')
 
-const createSbot = require('secret-stack')({
-    caps: { shs: Buffer.from(caps.shs, 'base64') },
-})
-      .use(require("ssb-db2"))
-      .use(require("ssb-db2/social")) // include index
-
-const dir = "./ssb"
-var keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
-
-const sbot = createSbot({
-  keys,
-  path: dir,
-})
+const sbot = SecretStack({appKey: caps.shs})
+  .use(require('ssb-db2'))
+  .use(require('ssb-db2/social')) // include index
+  .call(null, {})
 
 sbot.db.indexes.social.getMessagesByRoot(msgKey, (err, rootMsgQuery) => {
   query(
     rootMsgQuery,
     and(type('post')),
     toCallback((err, msgs) => {
-      console.log('There are ' + msgs.length + ')
-      sbot.close() 
+      console.log('There are ' + msgs.length + ' messages')
+      sbot.close()
     })
   )
 })

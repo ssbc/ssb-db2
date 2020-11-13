@@ -1,11 +1,9 @@
 const test = require('tape')
 const ssbKeys = require('ssb-keys')
 const path = require('path')
-
-const {query, toCallback} = require('jitdb/operators')
-
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
+const {query, toCallback} = require('../operators')
 
 const dir = '/tmp/ssb-db2-social-index'
 
@@ -27,7 +25,7 @@ test('getMessagesByMention', t => {
   const feedId = '@abc'
   const mentionFeed = { type: 'post', text: 'Hello @abc',
                         mentions: [ { link: feedId } ] }
-  
+
   db.publish(post, (err, postMsg) => {
     t.error(err, 'no err')
 
