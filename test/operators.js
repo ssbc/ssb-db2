@@ -3,7 +3,7 @@ const ssbKeys = require('ssb-keys')
 const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
-const {query, and, type, toCallback, author} = require('../operators')
+const {and, type, toCallback, author} = require('../operators')
 
 const dir = '/tmp/ssb-db2-operators'
 
@@ -25,8 +25,7 @@ test('execute and(type("post"), author(me))', t => {
     t.error(err, 'no err')
 
     db.onDrain('base', () => {
-      query(
-        db,
+      db.query(
         and(type('post'), author(keys.id)),
         toCallback((err2, msgs) => {
           t.error(err2, 'no err2')
