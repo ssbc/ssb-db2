@@ -63,16 +63,13 @@ const sbot = SecretStack({appKey: caps.shs})
   .use(require('ssb-db2/social')) // include index
   .call(null, {})
 
-sbot.db.indexes.social.getMessagesByRoot(msgKey, (err, rootMsgQuery) => {
-  query(
-    rootMsgQuery,
-    and(type('post')),
-    toCallback((err, msgs) => {
-      console.log('There are ' + msgs.length + ' messages')
-      sbot.close()
-    })
-  )
-})
+sbot.db.query(
+  and(hasRoot(msgKey), type('post')),
+  toCallback((err, msgs) => {
+    console.log('There are ' + msgs.length + ' messages')
+    sbot.close()
+  })
+)
 ```
 
 ## Methods

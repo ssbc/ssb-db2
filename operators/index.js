@@ -1,5 +1,5 @@
 const jitdbOperators = require('jitdb/operators')
-const seekers = require('./seekers')
+const seekers = require('../seekers')
 
 function toBuffer(value) {
   return Buffer.isBuffer(value) ? value : Buffer.from(value)

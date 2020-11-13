@@ -276,7 +276,9 @@ exports.init = function (dir, config) {
   // override query() from jitdb to implicitly call fromDB()
   function query(first, ...rest) {
     if (!first.meta) {
-      return jitdbOperators.query(jitdbOperators.fromDB(jitdb), first, ...rest)
+      const ops = jitdbOperators.fromDB(jitdb)
+      ops.meta.db2 = this
+      return jitdbOperators.query(ops, first, ...rest)
     } else {
       return jitdbOperators.query(first, ...rest)
     }
