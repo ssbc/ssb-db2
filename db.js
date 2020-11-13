@@ -1,15 +1,15 @@
 const push = require('push-stream')
-
 const hash = require('ssb-keys/util').hash
 const validate = require('ssb-validate')
 const keys = require('ssb-keys')
 const path = require('path')
 const Obv = require('obv')
+const jitdbOperators = require('jitdb/operators')
+const JITDb = require('jitdb')
 
 const Log = require('./log')
 const BaseIndex = require('./indexes/base')
 const Partial = require('./indexes/partial')
-const JITDb = require('jitdb')
 
 function getId(msg) {
   return '%'+hash(JSON.stringify(msg, null, 2))
@@ -95,7 +95,7 @@ exports.init = function (dir, config) {
       cb(err, data)
     })
   }
-  
+
   function del(key, cb) {
     baseIndex.keyToSeq(key, (err, seq) => {
       if (err) return cb(err)
@@ -273,6 +273,15 @@ exports.init = function (dir, config) {
     })
   }
 
+  // override query() from jitdb to implicitly call fromDB()
+  function query(first, ...rest) {
+    if (!first.meta) {
+      return jitdbOperators.query(jitdbOperators.fromDB(jitdb), first, ...rest)
+    } else {
+      return jitdbOperators.query(first, ...rest)
+    }
+  }
+
   return {
     get,
     getSync: function(id, cb) {
@@ -301,6 +310,7 @@ exports.init = function (dir, config) {
 
     jitdb,
     onDrain,
+    query,
 
     // hack
     state,

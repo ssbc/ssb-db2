@@ -5,7 +5,6 @@
 const test = require('tape')
 const ssbKeys = require('ssb-keys')
 const path = require('path')
-
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 
@@ -24,7 +23,7 @@ const db = DB.init(dir, {
 
 test('drain', t => {
   const post = { type: 'post', text: 'Testing!' }
-  
+
   db.publish(post, (err, postMsg) => {
     t.error(err, 'no err')
 
@@ -40,7 +39,7 @@ test('drain', t => {
 test('get', t => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }
-  
+
   db.publish(post, (err, postMsg) => {
     t.error(err, 'no err')
 
@@ -50,7 +49,7 @@ test('get', t => {
       db.onDrain('base', () => {
         db.get(postMsg.key, (err, msg) => {
           t.equal(msg.content.text, post.text, 'correct msg')
-          
+
           t.end()
         })
       })
@@ -61,7 +60,7 @@ test('get', t => {
 test('getsync', t => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }
-  
+
   db.publish(post, (err, postMsg) => {
     t.error(err, 'no err')
 
@@ -70,7 +69,7 @@ test('getsync', t => {
 
       db.getSync(postMsg.key, (err, msg) => {
         t.equal(msg.content.text, post.text, 'correct msg')
-          
+
         t.end()
       })
     })
@@ -80,7 +79,7 @@ test('getsync', t => {
 test('author seq', t => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }
-  
+
   db.publish(post, (err, postMsg) => {
     t.error(err, 'no err')
 
@@ -91,7 +90,7 @@ test('author seq', t => {
         db.getMessageFromAuthorSequence([keys.id, postMsg2.value.sequence], (err, msg) => {
           t.error(err, 'no err')
           t.equal(msg.value.content.text, post2.text, 'correct msg')
-          
+
           t.end()
         })
       })
@@ -101,7 +100,7 @@ test('author seq', t => {
 
 test('get latest', t => {
   const post = { type: 'post', text: 'Testing!' }
-  
+
   db.publish(post, (err, postMsg) => {
     t.error(err, 'no err')
 
@@ -119,7 +118,7 @@ test('get latest', t => {
 
 test('get all latest', t => {
   const post = { type: 'post', text: 'Testing!' }
-  
+
   db.publish(post, (err, postMsg) => {
     t.error(err, 'no err')
 

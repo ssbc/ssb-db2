@@ -5,8 +5,7 @@ const pl = require('pull-level')
 const pull = require('pull-stream')
 const debug = require('debug')("social-index")
 const Plugin = require('./plugin')
-
-const {query, fromDB, and, offsets } = require('jitdb/operators')
+const {query, fromDB, and, offsets} = require('../operators')
 
 // 3 indexes:
 // - root (msgId) => msg seqs
@@ -25,7 +24,7 @@ module.exports = function (log, jitdb, dir, feedId) {
   const bType = Buffer.from('type')
   const bVote = Buffer.from('vote')
   const bLink = Buffer.from('link')
-  
+
   var batch = []
 
   function writeData(cb) {
@@ -90,7 +89,7 @@ module.exports = function (log, jitdb, dir, feedId) {
     else
       return 0
   }
-  
+
   function getMessagesFromSeqs(seqs, cb) {
     push(
       push.values(seqs),
