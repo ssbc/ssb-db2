@@ -72,7 +72,7 @@ exports.init = function (dir, config) {
   }
 
   var state = validate.initial()
-  
+
   // restore current state
   baseIndex.getAllLatest((err, last) => {
     // copy to so we avoid weirdness, because this object
@@ -106,6 +106,7 @@ exports.init = function (dir, config) {
   }
 
   function deleteFeed(feedId, cb) {
+    // FIXME: doesn't work, need test
     jitdb.onReady(() => {
       jitdb.query({
         type: 'EQUAL',
