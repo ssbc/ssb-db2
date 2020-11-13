@@ -80,7 +80,6 @@ module.exports = function (log, dir, feedId) {
                               handleData, writeData, beforeIndexUpdate)
 
   function getAllLatest(cb) {
-    console.time("get all latest")
     pull(
       pl.read(level, {
         gte: '["a",',
@@ -92,8 +91,6 @@ module.exports = function (log, dir, feedId) {
         data.forEach(d => {
           result[JSON.parse(d.key)[1]] = d.value
         })
-        console.log(Object.keys(result).length)
-        console.timeEnd("get all latest")
         cb(null, result)
       })
     )
