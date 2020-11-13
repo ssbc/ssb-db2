@@ -3,9 +3,13 @@ const pull = require('pull-stream')
 const ssbKeys = require('ssb-keys')
 const path = require('path')
 
+const rimraf = require('rimraf')
+const mkdirp = require('mkdirp')
+
 const dir = '/tmp/ssb-db2-validate'
 
-require('rimraf').sync(dir)
+rimraf.sync(dir)
+mkdirp.sync(dir)
 
 const db = require('../db')
 const ssbDB = db.init(dir, {

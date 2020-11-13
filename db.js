@@ -4,9 +4,10 @@ const hash = require('ssb-keys/util').hash
 const validate = require('ssb-validate')
 const keys = require('ssb-keys')
 const path = require('path')
+const Obv = require('obv')
 
 const Log = require('./log')
-const FullScanIndexes = require('./indexes/full-scan')
+const BaseIndex = require('./indexes/base')
 const Partial = require('./indexes/partial')
 const JITDb = require('jitdb')
 
@@ -17,30 +18,19 @@ function getId(msg) {
 exports.init = function (dir, config) {
   const log = Log(dir, config)
   const jitdb = JITDb(log, path.join(dir, "indexes"))
-  const fullIndex = FullScanIndexes(log, dir, config.keys.public)
-  const contacts = fullIndex.contacts
-  const partial = Partial(dir)
+  const baseIndex = BaseIndex(log, dir, config.keys.public)
+  //const contacts = fullIndex.contacts
+  //const partial = Partial(dir)
+
+  var post = Obv()
 
   function get(id, cb) {
-    fullIndex.getDataFromKey(id, (err, data) => {
+    baseIndex.getMessageFromKey(id, (err, data) => {
       if (data)
         cb(null, data.value)
       else
         cb(err)
     })
-  }
-
-  function getSync(id, cb) {
-    if (fullIndex.seq.value === log.since.value) {
-      get(id, cb)
-    } else {
-      var remove = fullIndex.seq(() => {
-        if (fullIndex.seq.value === log.since.value) {
-          remove()
-          get(id, cb)
-        }
-      })
-    }
   }
 
   function add(msg, cb) {
@@ -50,12 +40,12 @@ exports.init = function (dir, config) {
       Beware:
 
       There is a race condition here if you add the same message quickly
-      after another because fullIndex is lazy. The default js SSB
+      after another because baseIndex is lazy. The default js SSB
       implementation adds messages in order, so it doesn't really have
       this problem.
     */
 
-    fullIndex.getDataFromKey(id, (err, data) => {
+    baseIndex.getMessageFromKey(id, (err, data) => {
       if (data)
         cb(null, data.value)
       else {
@@ -82,9 +72,9 @@ exports.init = function (dir, config) {
   }
 
   var state = validate.initial()
-  
+
   // restore current state
-  fullIndex.getAllLatest((err, last) => {
+  baseIndex.getAllLatest((err, last) => {
     // copy to so we avoid weirdness, because this object
     // tracks the state coming in to the database.
     for (var k in last) {
@@ -101,13 +91,13 @@ exports.init = function (dir, config) {
     state.queue = []
     state = validate.appendNew(state, null, config.keys, msg, Date.now())
     add(state.queue[0].value, (err, data) => {
-      // FIXME: maybe re-add post obv again for EBT
+      post.set(data)
       cb(err, data)
     })
   }
   
   function del(key, cb) {
-    fullIndex.keyToSeq(key, (err, seq) => {
+    baseIndex.keyToSeq(key, (err, seq) => {
       if (err) return cb(err)
       if (seq == null) return cb(new Error('seq is null!'))
 
@@ -116,6 +106,7 @@ exports.init = function (dir, config) {
   }
 
   function deleteFeed(feedId, cb) {
+    // FIXME: doesn't work, need test
     jitdb.onReady(() => {
       jitdb.query({
         type: 'EQUAL',
@@ -133,7 +124,7 @@ exports.init = function (dir, config) {
           push.collect((err) => {
             if (!err) {
               delete state.feeds[feedId]
-              fullIndex.removeFeedFromLatest(feedId)
+              baseIndex.removeFeedFromLatest(feedId)
             }
             cb(err)
           })
@@ -185,19 +176,22 @@ exports.init = function (dir, config) {
   }
 
   function getStatus() {
-    const partialState = partial.getSync()
-    const graph = contacts.getGraphForFeedSync(config.keys.public)
+    //const partialState = partial.getSync()
+    //const graph = contacts.getGraphForFeedSync(config.keys.public)
 
     // partial
+    /*
     let profilesSynced = 0
     let contactsSynced = 0
     let messagesSynced = 0
     let totalPartial = 0
+    */
 
     // full
     let fullSynced = 0
     let totalFull = 0
 
+    /*
     graph.following.forEach(relation => {
       if (partialState[relation] && partialState[relation]['full'])
         fullSynced += 1
@@ -215,10 +209,12 @@ exports.init = function (dir, config) {
 
       totalPartial += 1
     })
+    */
 
-    return {
+    var result = {
       log: log.since.value,
-      indexes: fullIndex.seq.value,
+      indexes: {},
+      /*
       partial: {
         totalPartial,
         profilesSynced,
@@ -227,16 +223,63 @@ exports.init = function (dir, config) {
         totalFull,
         fullSynced,
       }
+      */
     }
+
+    for (var indexName in indexes) {
+      result.indexes[indexName] = indexes[indexName].seq.value
+    }
+
+    return result
   }
 
   function clearIndexes() {
-    fullIndex.remove(() => {})
+    for (var index in indexes)
+      indexes[index].remove(() => {})
+  }
+
+  var indexes = {
+    base: baseIndex
+  }
+
+  function registerIndex(Index) {
+    const index = Index(log, jitdb, dir, config.keys.public)
+
+    if (indexes[index.name]) throw "Index already exists"
+
+    indexes[index.name] = index
+  }
+
+  function onDrain(indexName, cb) {
+    if (!cb) { // default
+      cb = indexName
+      indexName = 'base'
+    }
+
+    log.onDrain(() => {
+      const index = indexes[indexName]
+      if (!index) return cb('Unknown index:' + indexName)
+
+      if (index.seq.value === log.since.value) {
+        cb()
+      } else {
+        var remove = index.seq(() => {
+          if (index.seq.value === log.since.value) {
+            remove()
+            cb()
+          }
+        })
+      }
+    })
   }
 
   return {
     get,
-    getSync,
+    getSync: function(id, cb) {
+      onDrain('base', () => {
+        get(id, cb)
+      })
+    },
     add,
     publish,
     del,
@@ -244,16 +287,20 @@ exports.init = function (dir, config) {
     validateAndAdd,
     validateAndAddOOO,
     getStatus,
-    getAllLatest: fullIndex.getAllLatest,
-    getDataFromAuthorSequence: fullIndex.getDataFromAuthorSequence,
-    contacts,
-    profiles: fullIndex.profiles,
-    getMessagesByRoot: fullIndex.getMessagesByRoot,
-    getMessagesByMention: fullIndex.getMessagesByMention,
-    getMessagesByVoteLink: fullIndex.getMessagesByVoteLink,
+
+    post,
+
+    registerIndex,
+    indexes,
+
+    getLatest: baseIndex.getLatest,
+    getAllLatest: baseIndex.getAllLatest,
+    getMessageFromAuthorSequence: baseIndex.getMessageFromAuthorSequence,
+
+    // FIXME: contacts & profiles
+
     jitdb,
-    onDrain: log.onDrain,
-    getLatest: fullIndex.getLatest,
+    onDrain,
 
     // hack
     state,
@@ -262,6 +309,6 @@ exports.init = function (dir, config) {
     clearIndexes,
 
     // partial stuff
-    partial
+    //partial
   }
 }
