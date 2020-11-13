@@ -20,7 +20,7 @@ exports.init = function (dir, config) {
   const jitdb = JITDb(log, path.join(dir, "indexes"))
   const baseIndex = BaseIndex(log, dir, config.keys.public)
   //const contacts = fullIndex.contacts
-  const partial = Partial(dir)
+  //const partial = Partial(dir)
 
   var post = Obv()
 
@@ -176,14 +176,16 @@ exports.init = function (dir, config) {
   }
 
   function getStatus() {
-    const partialState = partial.getSync()
+    //const partialState = partial.getSync()
     //const graph = contacts.getGraphForFeedSync(config.keys.public)
 
     // partial
+    /*
     let profilesSynced = 0
     let contactsSynced = 0
     let messagesSynced = 0
     let totalPartial = 0
+    */
 
     // full
     let fullSynced = 0
@@ -212,6 +214,7 @@ exports.init = function (dir, config) {
     var result = {
       log: log.since.value,
       indexes: {},
+      /*
       partial: {
         totalPartial,
         profilesSynced,
@@ -220,6 +223,7 @@ exports.init = function (dir, config) {
         totalFull,
         fullSynced,
       }
+      */
     }
 
     for (var indexName in indexes) {
@@ -305,6 +309,6 @@ exports.init = function (dir, config) {
     clearIndexes,
 
     // partial stuff
-    partial
+    //partial
   }
 }
