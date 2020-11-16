@@ -3,7 +3,8 @@ const ssbKeys = require('ssb-keys')
 const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
-const {query, toCallback} = require('../operators')
+const {and, toCallback} = require('../operators')
+const {hasRoot, votesFor, mentions} = require('../operators/social')
 
 const dir = '/tmp/ssb-db2-social-index'
 
@@ -43,31 +44,24 @@ test('getMessagesByMention', t => {
           const status = db.getStatus()
           t.equal(status.indexes['social'], 780, 'index in sync')
 
-          const social = db.indexes['social']
-          social.getMessagesByMention(feedId, (err, q) => {
-            t.error(err, 'no err')
+          db.query(
+            and(mentions(feedId)),
+            toCallback((err, results) => {
+              t.error(err, 'no err')
+              t.equal(results.length, 1)
+              t.equal(results[0].value.content.text, mentionFeed.text)
 
-            query(
-              q,
-              toCallback((err, results) => {
-                t.equal(results.length, 1)
-                t.equal(results[0].value.content.text, mentionFeed.text)
-
-                social.getMessagesByMention(postMsg.key, (err, q) => {
-                  t.error(err, 'no err')
-
-                  query(
-                    q,
-                    toCallback((err, results) => {
-                      t.equal(results.length, 1)
-                      t.equal(results[0].value.content.text, mentionMsg.text)
-                      t.end()
-                    })
-                  )
+              db.query(
+                and(mentions(postMsg.key)),
+                toCallback((err2, results2) => {
+                  t.error(err2, 'no err')
+                  t.equal(results2.length, 1)
+                  t.equal(results2[0].value.content.text, mentionMsg.text)
+                  t.end()
                 })
-              })
-            )
-          })
+              )
+            })
+          )
         })
       })
     })
@@ -92,20 +86,15 @@ test('getMessagesByRoot', t => {
         t.error(err, 'no err')
 
         db.onDrain('social', () => {
-          const social = db.indexes['social']
-          social.getMessagesByRoot(postMsg.key, (err, q) => {
-            // doesn't include the root itself
-            t.error(err, 'no err')
-
-            query(
-              q,
-              toCallback((err, results) => {
-                t.equal(results.length, 1)
-                t.equal(results[0].value.content.text, threadMsg1.text)
-                t.end()
-              })
-            )
-          })
+          db.query(
+            and(hasRoot(postMsg.key)),
+            toCallback((err, results) => {
+              t.error(err, 'no err')
+              t.equal(results.length, 1)
+              t.equal(results[0].value.content.text, threadMsg1.text)
+              t.end()
+            })
+          )
         })
       })
     })
@@ -143,20 +132,16 @@ test('getMessagesByVoteLink', t => {
         t.error(err, 'no err')
 
         db.onDrain('social', () => {
-          const social = db.indexes['social']
-          social.getMessagesByVoteLink(postMsg.key, (err, q) => {
-            t.error(err, 'no err')
-
-            query(
-              q,
-              toCallback((err, results) => {
-                t.equal(results.length, 2)
-                t.equal(results[0].key, v1.key)
-                t.equal(results[1].key, v2.key)
-                t.end()
-              })
-            )
-          })
+          db.query(
+            and(votesFor(postMsg.key)),
+            toCallback((err, results) => {
+              t.error(err, 'no err')
+              t.equal(results.length, 2)
+              t.equal(results[0].key, v1.key)
+              t.equal(results[1].key, v2.key)
+              t.end()
+            })
+          )
         })
       })
     })
