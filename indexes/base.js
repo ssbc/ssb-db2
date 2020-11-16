@@ -1,7 +1,6 @@
 const bipf = require('bipf')
 const pl = require('pull-level')
 const pull = require('pull-stream')
-const debug = require('debug')("base-index")
 const Plugin = require('./plugin')
 
 // 3 indexes:
@@ -52,7 +51,7 @@ module.exports = function (log, dir, feedId) {
 
       batchJsonKey.push({ type: 'put', key: [author, sequence],
                           value: data.seq })
-      
+
       var latestSequence = 0
       if (authorLatest[author])
         latestSequence = authorLatest[author].sequence
@@ -76,7 +75,7 @@ module.exports = function (log, dir, feedId) {
     })
   }
 
-  let { level, seq } = Plugin(log, dir, "base", 1, debug,
+  let { level, seq } = Plugin(log, dir, "base", 1,
                               handleData, writeData, beforeIndexUpdate)
 
   function getAllLatest(cb) {
@@ -95,7 +94,7 @@ module.exports = function (log, dir, feedId) {
       })
     )
   }
-  
+
   function levelKeyToMessage(key, cb) {
     level.get(key, (err, seq) => {
       if (err) return cb(err)
@@ -106,7 +105,7 @@ module.exports = function (log, dir, feedId) {
         })
     })
   }
-  
+
   var self = {
     seq,
     remove: level.clear,

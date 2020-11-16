@@ -3,7 +3,6 @@ const sort = require('ssb-sort')
 const push = require('push-stream')
 const pl = require('pull-level')
 const pull = require('pull-stream')
-const debug = require('debug')("social-index")
 const Plugin = require('./plugin')
 const {query, fromDB, and, offsets} = require('../operators')
 
@@ -104,7 +103,7 @@ module.exports = function (log, jitdb, dir, feedId) {
   }
 
   const name = "social"
-  let { level, seq } = Plugin(log, dir, name, 1, debug, handleData, writeData)
+  let { level, seq } = Plugin(log, dir, name, 1, handleData, writeData)
 
   return {
     seq,
