@@ -8,7 +8,7 @@ module.exports = function (log, dir, name, version,
   var seq = Obv()
   seq.set(-1)
 
-  const indexesPath = path.join(dir, "indexes", name)
+  const indexesPath = path.join(dir, 'db2', 'indexes', name)
   const debug = Debug('ssb:db2:' + name)
 
   if (typeof window === 'undefined') { // outside browser

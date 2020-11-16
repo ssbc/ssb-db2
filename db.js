@@ -17,7 +17,7 @@ function getId(msg) {
 
 exports.init = function (dir, config) {
   const log = Log(dir, config)
-  const jitdb = JITDb(log, path.join(dir, "indexes"))
+  const jitdb = JITDb(log, path.join(dir, 'db2', 'indexes'))
   const baseIndex = BaseIndex(log, dir, config.keys.public)
   //const contacts = fullIndex.contacts
   //const partial = Partial(dir)
