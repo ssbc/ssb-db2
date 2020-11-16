@@ -1,13 +1,15 @@
 const Obv = require('obv')
 const Level = require('level')
 const path = require('path')
+const Debug = require('debug')
 
-module.exports = function (log, dir, name, version, debug,
+module.exports = function (log, dir, name, version,
                            handleData, writeData, beforeIndexUpdate) {
   var seq = Obv()
   seq.set(-1)
 
   const indexesPath = path.join(dir, "indexes", name)
+  const debug = Debug('ssb:db2:' + name)
 
   if (typeof window === 'undefined') { // outside browser
     const mkdirp = require('mkdirp')
@@ -16,11 +18,11 @@ module.exports = function (log, dir, name, version, debug,
 
   var level = Level(indexesPath)
   const META = '\x00'
-  
+
   const chunkSize = 512
   var isLive = false
   var processed = 0
-  
+
   function updateIndexes() {
     const start = Date.now()
 
@@ -33,11 +35,11 @@ module.exports = function (log, dir, name, version, debug,
 
       writeData(cb)
     }
-    
+
     function onData(data) {
       unWrittenSeq = handleData(data, processed)
       processed++
-      
+
       if (unWrittenSeq > chunkSize || isLive) {
         writeBatch((err) => {
           if (err) throw err
@@ -45,7 +47,7 @@ module.exports = function (log, dir, name, version, debug,
         })
       }
     }
-    
+
     log.stream({ gt: seq.value }).pipe({
       paused: false,
       write: onData,
@@ -56,8 +58,8 @@ module.exports = function (log, dir, name, version, debug,
             seq.set(unWrittenSeq)
           })
         }
-        
-        debug(`${name} index scan time: ${Date.now()-start}ms, items: ${processed}`)
+
+        debug(`index scan time: ${Date.now()-start}ms, items: ${processed}`)
 
         isLive = true
         log.stream({ gt: seq.value, live: true }).pipe({
@@ -69,7 +71,7 @@ module.exports = function (log, dir, name, version, debug,
   }
 
   level.get(META, { valueEncoding: 'json' }, (err, data) => {
-    debug(`got ${name} index status:`, data)
+    debug(`got index status:`, data)
 
     if (data && data.version == version) {
       seq.set(data.seq)
