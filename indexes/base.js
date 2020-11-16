@@ -17,9 +17,13 @@ module.exports = function (log, dir, feedId) {
 
   const throwOnError = function(err) { if (err) throw err }
 
-  var batchBasic = []
-  var batchJsonKey = []
-  var batchJson = []
+  let batchBasic = []
+  let batchJsonKey = []
+  let batchJson = []
+  let authorLatest = {}
+
+  const { level, seq } = Plugin(log, dir, "base", 1,
+                                handleData, writeData, beforeIndexUpdate)
 
   function writeData(cb) {
     level.batch(batchBasic, throwOnError)
@@ -31,10 +35,8 @@ module.exports = function (log, dir, feedId) {
     batchJson = []
   }
 
-  let authorLatest = {}
-
   function handleData(data) {
-    var p = 0 // note you pass in p!
+    let p = 0 // note you pass in p!
     p = bipf.seekKey(data.value, p, bKey)
     const key = bipf.decode(data.value, p)
     batchBasic.push({ type: 'put', key, value: data.seq })
@@ -42,17 +44,17 @@ module.exports = function (log, dir, feedId) {
     p = 0
     p = bipf.seekKey(data.value, p, bValue)
     if (~p) {
-      var p2 = bipf.seekKey(data.value, p, bAuthor)
+      const p2 = bipf.seekKey(data.value, p, bAuthor)
       const author = bipf.decode(data.value, p2)
-      var p3 = bipf.seekKey(data.value, p, bSequence)
+      const p3 = bipf.seekKey(data.value, p, bSequence)
       const sequence = bipf.decode(data.value, p3)
-      var p4 = bipf.seekKey(data.value, p, bTimestamp)
+      const p4 = bipf.seekKey(data.value, p, bTimestamp)
       const timestamp = bipf.decode(data.value, p4)
 
       batchJsonKey.push({ type: 'put', key: [author, sequence],
                           value: data.seq })
 
-      var latestSequence = 0
+      let latestSequence = 0
       if (authorLatest[author])
         latestSequence = authorLatest[author].sequence
       if (sequence > latestSequence) {
@@ -75,9 +77,6 @@ module.exports = function (log, dir, feedId) {
     })
   }
 
-  let { level, seq } = Plugin(log, dir, "base", 1,
-                              handleData, writeData, beforeIndexUpdate)
-
   function getAllLatest(cb) {
     pull(
       pl.read(level, {
@@ -86,7 +85,7 @@ module.exports = function (log, dir, feedId) {
       }),
       pull.collect((err, data) => {
         if (err) return cb(err)
-        let result = {}
+        const result = {}
         data.forEach(d => {
           result[JSON.parse(d.key)[1]] = d.value
         })
@@ -106,7 +105,7 @@ module.exports = function (log, dir, feedId) {
     })
   }
 
-  var self = {
+  const self = {
     seq,
     remove: level.clear,
 

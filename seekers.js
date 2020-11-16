@@ -1,4 +1,4 @@
-const bipf = require('bipf')
+const {seekKey} = require('bipf')
 
 const bValue = Buffer.from('value')
 const bAuthor = Buffer.from('author')
@@ -11,45 +11,45 @@ const bChannel = Buffer.from('channel')
 
 module.exports = {
   seekAuthor: function(buffer) {
-    var p = 0 // note you pass in p!
-    p = bipf.seekKey(buffer, p, bValue)
+    let p = 0 // note you pass in p!
+    p = seekKey(buffer, p, bValue)
     if (!~p) return
-    return bipf.seekKey(buffer, p, bAuthor)
+    return seekKey(buffer, p, bAuthor)
   },
 
   seekType: function(buffer) {
-    var p = 0 // note you pass in p!
-    p = bipf.seekKey(buffer, p, bValue)
+    let p = 0 // note you pass in p!
+    p = seekKey(buffer, p, bValue)
     if (!~p) return
-    p = bipf.seekKey(buffer, p, bContent)
+    p = seekKey(buffer, p, bContent)
     if (!~p) return
-    return bipf.seekKey(buffer, p, bType)
+    return seekKey(buffer, p, bType)
   },
 
   seekRoot: function(buffer) {
-    var p = 0 // note you pass in p!
-    p = bipf.seekKey(buffer, p, bValue)
+    let p = 0 // note you pass in p!
+    p = seekKey(buffer, p, bValue)
     if (!~p) return
-    p = bipf.seekKey(buffer, p, bContent)
+    p = seekKey(buffer, p, bContent)
     if (!~p) return
-    return bipf.seekKey(buffer, p, bRoot)
+    return seekKey(buffer, p, bRoot)
   },
 
   seekPrivate: function(buffer) {
-    var p = 0 // note you pass in p!
-    p = bipf.seekKey(buffer, p, bValue)
+    let p = 0 // note you pass in p!
+    p = seekKey(buffer, p, bValue)
     if (!~p) return
-    p = bipf.seekKey(buffer, p, bMeta)
+    p = seekKey(buffer, p, bMeta)
     if (!~p) return
-    return bipf.seekKey(buffer, p, bPrivate)
+    return seekKey(buffer, p, bPrivate)
   },
 
   seekChannel: function(buffer) {
-    var p = 0 // note you pass in p!
-    p = bipf.seekKey(buffer, p, bValue)
+    let p = 0 // note you pass in p!
+    p = seekKey(buffer, p, bValue)
     if (!~p) return
-    p = bipf.seekKey(buffer, p, bContent)
+    p = seekKey(buffer, p, bContent)
     if (!~p) return
-    return bipf.seekKey(buffer, p, bChannel)
+    return seekKey(buffer, p, bChannel)
   }
 }

@@ -5,6 +5,8 @@ const test = require('tape')
 const pull = require('pull-stream')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
+const DB = require('../db')
+const HistoryCompat = require('../compat/history-stream')
 
 const dir = '/tmp/ssb-db2-history-stream'
 
@@ -12,21 +14,20 @@ rimraf.sync(dir)
 mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
-const DB = require('../db')
 const db = DB.init(dir, {
   path: dir,
   keys
 })
 
 // simulate secret stack
-let sbot = {db}
-require("../compat/history-stream").init(sbot)
+const sbot = {db}
+HistoryCompat.init(sbot)
 
 test('Base', t => {
   const post = { type: 'post', text: 'Testing!' }
 
-  var state = validate.initial()
-  const otherKeys = require('ssb-keys').generate()
+  let state = validate.initial()
+  const otherKeys = ssbKeys.generate()
   const otherMsg = { type: 'post', text: 'test1' }
 
   state = validate.appendNew(state, null, otherKeys, otherMsg, Date.now())
@@ -140,7 +141,7 @@ test('non feed should err', t => {
 })
 
 test('Encrypted', t => {
-  var content = { type: 'post', text: 'super secret', recps: [keys.id] }
+  let content = { type: 'post', text: 'super secret', recps: [keys.id] }
   content = ssbKeys.box(content, content.recps.map(x => x.substr(1)))
 
   db.publish(content, (err, privateMsg) => {

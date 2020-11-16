@@ -22,7 +22,26 @@ exports.init = function (dir, config) {
   //const contacts = fullIndex.contacts
   //const partial = Partial(dir)
 
-  var post = Obv()
+  const indexes = {
+    base: baseIndex
+  }
+  const post = Obv()
+  const hmac_key = null
+  let state = validate.initial()
+
+  // restore current state
+  baseIndex.getAllLatest((err, last) => {
+    // copy to so we avoid weirdness, because this object
+    // tracks the state coming in to the database.
+    for (const k in last) {
+      state.feeds[k] = {
+        id: last[k].id,
+        timestamp: last[k].timestamp,
+        sequence: last[k].sequence,
+        queue: []
+      }
+    }
+  })
 
   function get(id, cb) {
     baseIndex.getMessageFromKey(id, (err, data) => {
@@ -34,7 +53,7 @@ exports.init = function (dir, config) {
   }
 
   function add(msg, cb) {
-    var id = getId(msg)
+    const id = getId(msg)
 
     /*
       Beware:
@@ -70,22 +89,6 @@ exports.init = function (dir, config) {
       }
     })
   }
-
-  var state = validate.initial()
-
-  // restore current state
-  baseIndex.getAllLatest((err, last) => {
-    // copy to so we avoid weirdness, because this object
-    // tracks the state coming in to the database.
-    for (var k in last) {
-      state.feeds[k] = {
-        id: last[k].id,
-        timestamp: last[k].timestamp,
-        sequence: last[k].sequence,
-        queue: []
-      }
-    }
-  })
 
   function publish(msg, cb) {
     state.queue = []
@@ -137,15 +140,13 @@ exports.init = function (dir, config) {
     return keys.unbox(msg.content, config.keys.private)
   }
 
-  const hmac_key = null
-
   function validateAndAddOOO(msg, cb) {
     try {
-      var state = validate.initial()
-      validate.appendOOO(state, hmac_key, msg)
+      let oooState = validate.initial()
+      validate.appendOOO(oooState, hmac_key, msg)
 
-      if (state.error)
-        return cb(state.error)
+      if (oooState.error)
+        return cb(oooState.error)
 
       add(msg, cb)
     }
@@ -211,7 +212,7 @@ exports.init = function (dir, config) {
     })
     */
 
-    var result = {
+    const result = {
       log: log.since.value,
       indexes: {},
       /*
@@ -226,7 +227,7 @@ exports.init = function (dir, config) {
       */
     }
 
-    for (var indexName in indexes) {
+    for (const indexName in indexes) {
       result.indexes[indexName] = indexes[indexName].seq.value
     }
 
@@ -234,12 +235,8 @@ exports.init = function (dir, config) {
   }
 
   function clearIndexes() {
-    for (var index in indexes)
-      indexes[index].remove(() => {})
-  }
-
-  var indexes = {
-    base: baseIndex
+    for (const indexName in indexes)
+      indexes[indexName].remove(() => {})
   }
 
   function registerIndex(Index) {
@@ -263,7 +260,7 @@ exports.init = function (dir, config) {
       if (index.seq.value === log.since.value) {
         cb()
       } else {
-        var remove = index.seq(() => {
+        const remove = index.seq(() => {
           if (index.seq.value === log.since.value) {
             remove()
             cb()

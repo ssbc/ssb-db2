@@ -14,9 +14,9 @@ module.exports = function (dir) {
   const path = require('path')
 
   const queue = require('../waiting-queue')()
-  var state = {}
+  let state = {}
 
-  var f = AtomicFile(path.join(dir, 'db2', 'indexes', 'partial.json'))
+  const f = AtomicFile(path.join(dir, 'db2', 'indexes', 'partial.json'))
 
   f.get((err, data) => {
     if (data)
@@ -31,7 +31,8 @@ module.exports = function (dir) {
       if (err) console.error("error saving partial", err)
     })
   }
-  var saveState = debounce(atomicSave, 1000, { leading: true })
+
+  const saveState = debounce(atomicSave, 1000, { leading: true })
 
   function save(cb) {
     saveState()

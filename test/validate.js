@@ -3,14 +3,15 @@ const ssbKeys = require('ssb-keys')
 const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
+const validate = require('ssb-validate')
+const DB = require('../db')
 
 const dir = '/tmp/ssb-db2-validate'
 
 rimraf.sync(dir)
 mkdirp.sync(dir)
 
-const db = require('../db')
-const ssbDB = db.init(dir, {
+const ssbDB = DB.init(dir, {
   path: dir,
   keys: ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 })
@@ -42,9 +43,8 @@ test('Multiple', t => {
 })
 
 test('Raw feed with unused type + ooo', t => {
-  const validate = require('ssb-validate')
-  var state = validate.initial()
-  var keys = require('ssb-keys').generate()
+  let state = validate.initial()
+  const keys = ssbKeys.generate()
 
   state = validate.appendNew(state, null, keys, { type: 'post', text: 'test1' }, Date.now()) // ooo
   state = validate.appendNew(state, null, keys, { type: 'post', text: 'test2' }, Date.now()+1) // missing
@@ -79,9 +79,8 @@ test('Raw feed with unused type + ooo', t => {
 
 // we might get some messages from an earlier thread, and then get the latest 25 messages from the user
 test('Add with holes', t => {
-  const validate = require('ssb-validate')
-  var state = validate.initial()
-  var keys = require('ssb-keys').generate()
+  let state = validate.initial()
+  const keys = ssbKeys.generate()
 
   state = validate.appendNew(state, null, keys, { type: 'post', text: 'test1' }, Date.now()) // ooo
   state = validate.appendNew(state, null, keys, { type: 'post', text: 'test2' }, Date.now()+1) // missing
@@ -99,9 +98,8 @@ test('Add with holes', t => {
 })
 
 test('Add same message twice', t => {
-  const validate = require('ssb-validate')
-  var state = validate.initial()
-  var keys = require('ssb-keys').generate()
+  let state = validate.initial()
+  const keys = ssbKeys.generate()
 
   state = validate.appendNew(state, null, keys, { type: 'post', text: 'test1' }, Date.now())
   state = validate.appendNew(state, null, keys, { type: 'post', text: 'test2' }, Date.now()+1)
@@ -121,9 +119,8 @@ test('Add same message twice', t => {
 })
 
 test('Strict order basic case', t => {
-  const validate = require('ssb-validate')
-  var state = validate.initial()
-  var keys = require('ssb-keys').generate()
+  let state = validate.initial()
+  const keys = ssbKeys.generate()
 
   state = validate.appendNew(state, null, keys, { type: 'post', text: 'test1' }, Date.now())
   state = validate.appendNew(state, null, keys, { type: 'post', text: 'test2' }, Date.now()+1)
@@ -139,9 +136,8 @@ test('Strict order basic case', t => {
 })
 
 test('Strict order fail case', t => {
-  const validate = require('ssb-validate')
-  var state = validate.initial()
-  var keys = require('ssb-keys').generate()
+  let state = validate.initial()
+  const keys = ssbKeys.generate()
 
   state = validate.appendNew(state, null, keys, { type: 'post', text: 'test1' }, Date.now())
   state = validate.appendNew(state, null, keys, { type: 'post', text: 'test2' }, Date.now()+1)

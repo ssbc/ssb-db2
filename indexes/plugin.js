@@ -5,9 +5,6 @@ const Debug = require('debug')
 
 module.exports = function (log, dir, name, version,
                            handleData, writeData, beforeIndexUpdate) {
-  var seq = Obv()
-  seq.set(-1)
-
   const indexesPath = path.join(dir, 'db2', 'indexes', name)
   const debug = Debug('ssb:db2:' + name)
 
@@ -16,12 +13,13 @@ module.exports = function (log, dir, name, version,
     mkdirp.sync(indexesPath)
   }
 
-  var level = Level(indexesPath)
+  const level = Level(indexesPath)
   const META = '\x00'
-
   const chunkSize = 512
-  var isLive = false
-  var processed = 0
+  let isLive = false
+  let processed = 0
+  const seq = Obv()
+  seq.set(-1)
 
   function updateIndexes() {
     const start = Date.now()

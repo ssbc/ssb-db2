@@ -3,6 +3,7 @@ const ssbKeys = require('ssb-keys')
 const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
+const DB = require('../db')
 const {and, type, toCallback, author} = require('../operators')
 
 const dir = '/tmp/ssb-db2-operators'
@@ -12,7 +13,6 @@ mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
-const DB = require('../db')
 const db = DB.init(dir, {
   path: dir,
   keys

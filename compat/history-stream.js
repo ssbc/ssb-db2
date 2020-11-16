@@ -41,7 +41,7 @@ exports.init = function (sbot, config) {
     }
 
     function formatMsg(msg) {
-      let fixedMsg = originalData(msg)
+      const fixedMsg = originalData(msg)
       if (!keys && values)
         return fixedMsg.value
       else if (keys && !values)
