@@ -1,7 +1,4 @@
 exports.init = function (sbot, config) {
-  sbot.publish = sbot.db.publish
-
-  // EBT
   sbot.post = sbot.db.post
   sbot.getAtSequence = sbot.db.getMessageFromAuthorSequence
   sbot.getVectorClock = function(cb) {

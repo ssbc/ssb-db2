@@ -72,6 +72,31 @@ sbot.db.query(
 )
 ```
 
+SSB DB2 includes a couple of plugins for backwards compatibility,
+including legacy replication, ebt and publish. They can be loaded as:
+
+```js
+const SecretStack = require('secret-stack')
+
+const sbot = SecretStack({appKey: caps.shs})
+  .use(require('ssb-db2'))
+  .use(require('ssb-db2/compat')) // include all compatibility plugins
+  .call(null, {})
+```
+
+or specifically:
+
+```js
+const SecretStack = require('secret-stack')
+
+const sbot = SecretStack({appKey: caps.shs})
+  .use(require('ssb-db2'))
+  .use(require('ssb-db2/compat/db')) // basic db compatibility
+  .use(require('ssb-db2/compat/history-stream')) // legacy replication
+  .use(require('ssb-db2/compat/ebt')) // ebt db helpers
+  .call(null, {})
+```
+
 ## Methods
 
 FIXME: add documentation for these

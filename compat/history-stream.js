@@ -1,8 +1,8 @@
 const pull = require('pull-stream')
 const pullCont = require('pull-cont')
 const ref = require('ssb-ref')
-const { originalData } = require('./msg-utils')
-const { author } = require("./operators")
+const { originalData } = require('../msg-utils')
+const { author } = require("../operators")
 
 // exports.name is blank to merge into global namespace
 
