@@ -1,18 +1,14 @@
-function isString (s) {
-  return typeof s === 'string'
-}
-
 exports.originalValue = function(value) {
-  var copy = {}
+  const copy = {}
 
-  for (let key in value) {
+  for (const key in value) {
     if (key !== 'meta' && key !== 'cyphertext' && key !== 'private' && key !== 'unbox') {
       copy[key] = value[key]
     }
   }
 
   if (value.meta && value.meta.original) {
-    for (let key in value.meta.original) {
+    for (const key in value.meta.original) {
       copy[key] = value.meta.original[key]
     }
   }

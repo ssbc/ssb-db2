@@ -5,8 +5,8 @@ exports.init = function (sbot, config) {
     sbot.db.getAllLatest((err, last) => {
       if (err) return cb(err)
 
-      var clock = {}
-      for (var k in last) {
+      const clock = {}
+      for (const k in last) {
         clock[k] = last[k].sequence
       }
 

@@ -3,6 +3,8 @@ const ssbKeys = require('ssb-keys')
 const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
+const DB = require('../db')
+const Social = require('../indexes/social')
 const {and, toCallback} = require('../operators')
 const {hasRoot, votesFor, mentions} = require('../operators/social')
 
@@ -13,13 +15,12 @@ mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
-const DB = require('../db')
 const db = DB.init(dir, {
   path: dir,
   keys
 })
 
-db.registerIndex(require('../indexes/social'))
+db.registerIndex(Social)
 
 test('getMessagesByMention', t => {
   const post = { type: 'post', text: 'Testing!' }

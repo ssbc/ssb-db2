@@ -24,7 +24,7 @@ module.exports = function (log, jitdb, dir, feedId) {
   const bVote = Buffer.from('vote')
   const bLink = Buffer.from('link')
 
-  var batch = []
+  let batch = []
 
   function writeData(cb) {
     level.batch(batch, { keyEncoding: 'json' }, cb)
@@ -32,7 +32,7 @@ module.exports = function (log, jitdb, dir, feedId) {
   }
 
   function handleData(data, processed) {
-    var p = 0 // note you pass in p!
+    let p = 0 // note you pass in p!
     p = bipf.seekKey(data.value, p, bKey)
     const shortKey = bipf.decode(data.value, p).slice(1, 10)
 
@@ -40,9 +40,9 @@ module.exports = function (log, jitdb, dir, feedId) {
     p = bipf.seekKey(data.value, p, bValue)
     if (~p) {
       // content
-      var pContent = bipf.seekKey(data.value, p, bContent)
+      const pContent = bipf.seekKey(data.value, p, bContent)
       if (~pContent) {
-        var pRoot = bipf.seekKey(data.value, pContent, bRoot)
+        const pRoot = bipf.seekKey(data.value, pContent, bRoot)
         if (~pRoot) {
           const root = bipf.decode(data.value, pRoot)
           if (root) {
@@ -51,7 +51,7 @@ module.exports = function (log, jitdb, dir, feedId) {
           }
         }
 
-        var pMentions = bipf.seekKey(data.value, pContent, bMentions)
+        const pMentions = bipf.seekKey(data.value, pContent, bMentions)
         if (~pMentions) {
           const mentionsData = bipf.decode(data.value, pMentions)
           if (Array.isArray(mentionsData)) {
@@ -66,12 +66,12 @@ module.exports = function (log, jitdb, dir, feedId) {
           }
         }
 
-        var pType = bipf.seekKey(data.value, pContent, bType)
+        const pType = bipf.seekKey(data.value, pContent, bType)
         if (~pType) {
           if (bipf.compareString(data.value, pType, bVote) === 0) {
-            var pVote = bipf.seekKey(data.value, pContent, bVote)
+            const pVote = bipf.seekKey(data.value, pContent, bVote)
             if (~pVote) {
-              var pLink = bipf.seekKey(data.value, pVote, bLink)
+              const pLink = bipf.seekKey(data.value, pVote, bLink)
               if (~pLink) {
                 const link = bipf.decode(data.value, pLink)
                 batch.push({ type: 'put', key: ['v', link, shortKey],
@@ -103,7 +103,7 @@ module.exports = function (log, jitdb, dir, feedId) {
   }
 
   const name = "social"
-  let { level, seq } = Plugin(log, dir, name, 1, handleData, writeData)
+  const { level, seq } = Plugin(log, dir, name, 1, handleData, writeData)
 
   return {
     seq,
