@@ -92,7 +92,7 @@ const SecretStack = require('secret-stack')
 const sbot = SecretStack({appKey: caps.shs})
   .use(require('ssb-db2'))
   .use(require('ssb-db2/compat/db')) // basic db compatibility
-  .use(require('ssb-db2/compat/history-histream')) // legacy replication
+  .use(require('ssb-db2/compat/history-stream')) // legacy replication
   .use(require('ssb-db2/compat/ebt')) // ebt db helpers
   .call(null, {})
 ```
