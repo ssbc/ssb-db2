@@ -20,7 +20,7 @@ const db = DB.init(dir, {
 
 // simulate secret stack
 let sbot = {db}
-require("../replicate-compat").init(sbot)
+require("../compat/history-stream").init(sbot)
 
 test('Base', t => {
   const post = { type: 'post', text: 'Testing!' }
