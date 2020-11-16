@@ -4,9 +4,9 @@ var path = require('path')
 
 module.exports = function (dir, config) {
   config = config || {}
-    
+
   var log = OffsetLog(
-    path.join(dir, 'log.bipf'),
+    path.join(dir, 'db2', 'log.bipf'),
     { blockSize:1024*64 }
   )
 

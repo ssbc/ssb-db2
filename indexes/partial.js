@@ -16,7 +16,7 @@ module.exports = function (dir) {
   const queue = require('../waiting-queue')()
   var state = {}
 
-  var f = AtomicFile(path.join(dir, "indexes/partial.json"))
+  var f = AtomicFile(path.join(dir, 'db2', 'indexes', 'partial.json'))
 
   f.get((err, data) => {
     if (data)
