@@ -15,6 +15,9 @@ By default SSB-DB2 only loads a base index (indexes/base), this index
 includes the basic functionality for getting messages from the log and
 for doing EBT.
 
+By default the database is stored in ~/.ssb/db2/log.bipf and indexes
+are stored in ~/.ssb/db2/indexes/.
+
 ## Usage
 
 To get the post messages of a specific author, you can do:
