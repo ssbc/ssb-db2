@@ -33,6 +33,7 @@
   "scripts": {
     "test": "tape test/*.js | tap-spec"
   },
-  "author": "arj",
-  "license": "beerware"
+  "author": "Anders Rune Jensen <arj03@protonmail.ch>",
+  "contributors": ["Andre Staltz <contact@staltz.com>"],
+  "license": "LGPL-3.0"
 }
