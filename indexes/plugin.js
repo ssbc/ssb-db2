@@ -48,10 +48,11 @@ module.exports = function (
     }
 
     function onData(data) {
-      unWrittenSeq = handleData(data, processed)
+      let r = handleData(data, processed)
+      unWrittenSeq = r[1]
       processed++
 
-      if (unWrittenSeq > chunkSize || isLive) {
+      if (r[0] > chunkSize || isLive) {
         writeBatch((err) => {
           if (err) throw err
           seq.set(data.seq)

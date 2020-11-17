@@ -78,7 +78,7 @@ module.exports = function (log, dir, feedId) {
       }
     }
 
-    if (batchBasic.length) return data.seq
+    if (batchBasic.length) return [batchBasic.length, data.seq]
     else return 0
   }
 
