@@ -8,7 +8,7 @@
     "url": "git@github.com:arj03/ssb-db2.git"
   },
   "dependencies": {
-    "async-flumelog": "^1.0.7",
+    "async-flumelog": "^1.0.8",
     "atomic-file": "^2.1.1",
     "bipf": "^1.3.0",
     "jitdb": "~0.17.0",
