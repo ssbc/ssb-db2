@@ -7,6 +7,7 @@ to be 100% backwards compatible. The main reasons are:
 
  - Performance, the database stores data in [bipf]
  - Replace flume with [jitdb] and specialized indexes
+ - Work well with partial replication
 
 SSB-DB2 is a secret-stack plugin that registers itself in the db
 namespace.
