@@ -4,7 +4,7 @@ const push = require('push-stream')
 const pl = require('pull-level')
 const pull = require('pull-stream')
 const Plugin = require('./plugin')
-const {query, fromDB, and, offsets} = require('../operators')
+const { query, fromDB, and, offsets } = require('../operators')
 
 // 3 indexes:
 // - root (msgId) => msg seqs
@@ -12,7 +12,6 @@ const {query, fromDB, and, offsets} = require('../operators')
 // - votes (msgId) => msg seqs
 
 module.exports = function (log, jitdb, dir, feedId) {
-
   const bKey = Buffer.from('key')
   const bValue = Buffer.from('value')
   const bContent = Buffer.from('content')
@@ -46,8 +45,11 @@ module.exports = function (log, jitdb, dir, feedId) {
         if (~pRoot) {
           const root = bipf.decode(data.value, pRoot)
           if (root) {
-            batch.push({ type: 'put', key: ['r', root, shortKey],
-                         value: processed })
+            batch.push({
+              type: 'put',
+              key: ['r', root, shortKey],
+              value: processed,
+            })
           }
         }
 
@@ -55,12 +57,17 @@ module.exports = function (log, jitdb, dir, feedId) {
         if (~pMentions) {
           const mentionsData = bipf.decode(data.value, pMentions)
           if (Array.isArray(mentionsData)) {
-            mentionsData.forEach(mention => {
-              if (mention.link &&
-                  typeof mention.link === 'string' &&
-                  (mention.link[0] === '@' || mention.link[0] === '%')) {
-                batch.push({ type: 'put', key: ['m', mention.link, shortKey],
-                             value: processed })
+            mentionsData.forEach((mention) => {
+              if (
+                mention.link &&
+                typeof mention.link === 'string' &&
+                (mention.link[0] === '@' || mention.link[0] === '%')
+              ) {
+                batch.push({
+                  type: 'put',
+                  key: ['m', mention.link, shortKey],
+                  value: processed,
+                })
               }
             })
           }
@@ -74,8 +81,11 @@ module.exports = function (log, jitdb, dir, feedId) {
               const pLink = bipf.seekKey(data.value, pVote, bLink)
               if (~pLink) {
                 const link = bipf.decode(data.value, pLink)
-                batch.push({ type: 'put', key: ['v', link, shortKey],
-                             value: processed })
+                batch.push({
+                  type: 'put',
+                  key: ['v', link, shortKey],
+                  value: processed,
+                })
               }
             }
           }
@@ -83,10 +93,8 @@ module.exports = function (log, jitdb, dir, feedId) {
       }
     }
 
-    if (batch.length)
-      return data.seq
-    else
-      return 0
+    if (batch.length) return data.seq
+    else return 0
   }
 
   function getMessagesFromSeqs(seqs, cb) {
@@ -94,7 +102,7 @@ module.exports = function (log, jitdb, dir, feedId) {
       push.values(seqs),
       push.asyncMap(log.get),
       push.collect((err, results) => {
-        const msgs = results.map(x => bipf.decode(x, 0))
+        const msgs = results.map((x) => bipf.decode(x, 0))
         sort(msgs)
         msgs.reverse()
         cb(null, msgs)
@@ -102,66 +110,66 @@ module.exports = function (log, jitdb, dir, feedId) {
     )
   }
 
-  const name = "social"
+  const name = 'social'
   const { level, seq } = Plugin(log, dir, name, 1, handleData, writeData)
 
   return {
     seq,
     name,
     remove: level.clear,
-    getMessagesByMention: function(key, cb) {
+    getMessagesByMention: function (key, cb) {
       pull(
         pl.read(level, {
-          gte: ['m', key, ""],
+          gte: ['m', key, ''],
           lte: ['m', key, undefined],
           keyEncoding: 'json',
-          keys: false
+          keys: false,
         }),
         pull.collect((err, data) => {
           if (err) return cb(err)
 
-          cb(null, query(
-            fromDB(jitdb),
-            and(offsets(data.map(x => parseInt(x))))
-          ))
+          cb(
+            null,
+            query(fromDB(jitdb), and(offsets(data.map((x) => parseInt(x)))))
+          )
         })
       )
     },
-    getMessagesByRoot: function(rootId, cb) {
+    getMessagesByRoot: function (rootId, cb) {
       pull(
         pl.read(level, {
-          gte: ['r', rootId, ""],
+          gte: ['r', rootId, ''],
           lte: ['r', rootId, undefined],
           keyEncoding: 'json',
-          keys: false
+          keys: false,
         }),
         pull.collect((err, data) => {
           if (err) return cb(err)
 
-          cb(null, query(
-            fromDB(jitdb),
-            and(offsets(data.map(x => parseInt(x))))
-          ))
+          cb(
+            null,
+            query(fromDB(jitdb), and(offsets(data.map((x) => parseInt(x)))))
+          )
         })
       )
     },
-    getMessagesByVoteLink: function(linkId, cb) {
+    getMessagesByVoteLink: function (linkId, cb) {
       pull(
         pl.read(level, {
-          gte: ['v', linkId, ""],
+          gte: ['v', linkId, ''],
           lte: ['v', linkId, undefined],
           keyEncoding: 'json',
-          keys: false
+          keys: false,
         }),
         pull.collect((err, data) => {
           if (err) return cb(err)
 
-          cb(null, query(
-            fromDB(jitdb),
-            and(offsets(data.map(x => parseInt(x))))
-          ))
+          cb(
+            null,
+            query(fromDB(jitdb), and(offsets(data.map((x) => parseInt(x)))))
+          )
         })
       )
-    }
+    },
   }
 }

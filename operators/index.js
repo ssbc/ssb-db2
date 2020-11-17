@@ -13,7 +13,7 @@ function type(value) {
       value: toBuffer(value),
       indexType: 'type',
     },
-  };
+  }
 }
 
 function author(value) {
@@ -24,7 +24,7 @@ function author(value) {
       value: toBuffer(value),
       indexType: 'author',
     },
-  };
+  }
 }
 
 function channel(value) {
@@ -35,7 +35,7 @@ function channel(value) {
       value: toBuffer(value),
       indexType: 'channel',
     },
-  };
+  }
 }
 
 function isRoot() {
@@ -46,7 +46,7 @@ function isRoot() {
       value: undefined,
       indexType: 'root',
     },
-  };
+  }
 }
 
 const bTrue = Buffer.from('true')
@@ -58,7 +58,7 @@ function isPrivate() {
       value: bTrue,
       indexType: 'private',
     },
-  };
+  }
 }
 
 module.exports = Object.assign({}, jitdbOperators, {
@@ -66,5 +66,5 @@ module.exports = Object.assign({}, jitdbOperators, {
   author,
   channel,
   isRoot,
-  isPrivate
+  isPrivate,
 })

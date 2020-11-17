@@ -5,8 +5,8 @@ const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const DB = require('../db')
 const Social = require('../indexes/social')
-const {and, toCallback} = require('../operators')
-const {hasRoot, votesFor, mentions} = require('../operators/social')
+const { and, toCallback } = require('../operators')
+const { hasRoot, votesFor, mentions } = require('../operators/social')
 
 const dir = '/tmp/ssb-db2-social-index'
 
@@ -17,16 +17,19 @@ const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
 const db = DB.init(dir, {
   path: dir,
-  keys
+  keys,
 })
 
 db.registerIndex(Social)
 
-test('getMessagesByMention', t => {
+test('getMessagesByMention', (t) => {
   const post = { type: 'post', text: 'Testing!' }
   const feedId = '@abc'
-  const mentionFeed = { type: 'post', text: 'Hello @abc',
-                        mentions: [ { link: feedId } ] }
+  const mentionFeed = {
+    type: 'post',
+    text: 'Hello @abc',
+    mentions: [{ link: feedId }],
+  }
 
   db.publish(post, (err, postMsg) => {
     t.error(err, 'no err')
@@ -34,9 +37,11 @@ test('getMessagesByMention', t => {
     db.publish(mentionFeed, (err) => {
       t.error(err, 'no err')
 
-      const mentionMsg = { type: 'post',
-                           text: `What is [this](${postMsg.key})`,
-                           mentions: [{ link: postMsg.key }] }
+      const mentionMsg = {
+        type: 'post',
+        text: `What is [this](${postMsg.key})`,
+        mentions: [{ link: postMsg.key }],
+      }
 
       db.publish(mentionMsg, (err) => {
         t.error(err, 'no err')
@@ -69,7 +74,7 @@ test('getMessagesByMention', t => {
   })
 })
 
-test('getMessagesByRoot', t => {
+test('getMessagesByRoot', (t) => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }
 
@@ -79,9 +84,7 @@ test('getMessagesByRoot', t => {
     db.publish(post2, (err) => {
       t.error(err, 'no err')
 
-      const threadMsg1 = { type: 'post',
-                           text: 'reply',
-                           root: postMsg.key }
+      const threadMsg1 = { type: 'post', text: 'reply', root: postMsg.key }
 
       db.publish(threadMsg1, (err) => {
         t.error(err, 'no err')
@@ -102,7 +105,7 @@ test('getMessagesByRoot', t => {
   })
 })
 
-test('getMessagesByVoteLink', t => {
+test('getMessagesByVoteLink', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 
   db.publish(post, (err, postMsg) => {
@@ -113,8 +116,8 @@ test('getMessagesByVoteLink', t => {
       vote: {
         link: postMsg.key,
         value: 1,
-        expression: '❤'
-      }
+        expression: '❤',
+      },
     }
 
     const voteMsg2 = {
@@ -122,8 +125,8 @@ test('getMessagesByVoteLink', t => {
       vote: {
         link: postMsg.key,
         value: -1,
-        expression: '❤'
-      }
+        expression: '❤',
+      },
     }
 
     db.publish(voteMsg1, (err, v1) => {

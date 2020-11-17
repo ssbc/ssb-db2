@@ -3,12 +3,20 @@ const Level = require('level')
 const path = require('path')
 const Debug = require('debug')
 
-module.exports = function (log, dir, name, version,
-                           handleData, writeData, beforeIndexUpdate) {
+module.exports = function (
+  log,
+  dir,
+  name,
+  version,
+  handleData,
+  writeData,
+  beforeIndexUpdate
+) {
   const indexesPath = path.join(dir, 'db2', 'indexes', name)
   const debug = Debug('ssb:db2:' + name)
 
-  if (typeof window === 'undefined') { // outside browser
+  if (typeof window === 'undefined') {
+    // outside browser
     const mkdirp = require('mkdirp')
     mkdirp.sync(indexesPath)
   }
@@ -27,9 +35,14 @@ module.exports = function (log, dir, name, version,
     let unWrittenSeq = 0
 
     function writeBatch(cb) {
-      level.put(META, { version, seq: seq.value, processed },
-                { valueEncoding: 'json' },
-                (err) => { if (err) throw err })
+      level.put(
+        META,
+        { version, seq: seq.value, processed },
+        { valueEncoding: 'json' },
+        (err) => {
+          if (err) throw err
+        }
+      )
 
       writeData(cb)
     }
@@ -57,14 +70,14 @@ module.exports = function (log, dir, name, version,
           })
         }
 
-        debug(`index scan time: ${Date.now()-start}ms, items: ${processed}`)
+        debug(`index scan time: ${Date.now() - start}ms, items: ${processed}`)
 
         isLive = true
         log.stream({ gt: seq.value, live: true }).pipe({
           paused: false,
-          write: onData
+          write: onData,
         })
-      }
+      },
     })
   }
 
@@ -74,12 +87,9 @@ module.exports = function (log, dir, name, version,
     if (data && data.version == version) {
       seq.set(data.seq)
       processed = data.processed
-      if (beforeIndexUpdate)
-        beforeIndexUpdate(updateIndexes)
-      else
-        updateIndexes()
-    } else
-      level.clear(updateIndexes)
+      if (beforeIndexUpdate) beforeIndexUpdate(updateIndexes)
+      else updateIndexes()
+    } else level.clear(updateIndexes)
   })
 
   return { level, seq }

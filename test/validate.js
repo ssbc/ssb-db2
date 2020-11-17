@@ -13,10 +13,10 @@ mkdirp.sync(dir)
 
 const ssbDB = DB.init(dir, {
   path: dir,
-  keys: ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  keys: ssbKeys.loadOrCreateSync(path.join(dir, 'secret')),
 })
 
-test('Base', t => {
+test('Base', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 
   ssbDB.publish(post, (err, postMsg) => {
@@ -26,7 +26,7 @@ test('Base', t => {
   })
 })
 
-test('Multiple', t => {
+test('Multiple', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 
   ssbDB.publish(post, (err, postMsg) => {
@@ -42,16 +42,52 @@ test('Multiple', t => {
   })
 })
 
-test('Raw feed with unused type + ooo', t => {
+test('Raw feed with unused type + ooo', (t) => {
   let state = validate.initial()
   const keys = ssbKeys.generate()
 
-  state = validate.appendNew(state, null, keys, { type: 'post', text: 'test1' }, Date.now()) // ooo
-  state = validate.appendNew(state, null, keys, { type: 'post', text: 'test2' }, Date.now()+1) // missing
-  state = validate.appendNew(state, null, keys, { type: 'post', text: 'test3' }, Date.now()+2) // start
-  state = validate.appendNew(state, null, keys, { type: 'vote', vote: { link: '%something.sha256', value: 1 } }, Date.now()+3)
-  state = validate.appendNew(state, null, keys, { type: 'post', text: 'test5' }, Date.now()+4)
-  state = validate.appendNew(state, null, keys, { type: 'post', text: 'test6' }, Date.now()+5)
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'post', text: 'test1' },
+    Date.now()
+  ) // ooo
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'post', text: 'test2' },
+    Date.now() + 1
+  ) // missing
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'post', text: 'test3' },
+    Date.now() + 2
+  ) // start
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'vote', vote: { link: '%something.sha256', value: 1 } },
+    Date.now() + 3
+  )
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'post', text: 'test5' },
+    Date.now() + 4
+  )
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'post', text: 'test6' },
+    Date.now() + 5
+  )
 
   ssbDB.validateAndAdd(state.queue[2].value, (err) => {
     t.error(err, 'no err')
@@ -78,13 +114,31 @@ test('Raw feed with unused type + ooo', t => {
 })
 
 // we might get some messages from an earlier thread, and then get the latest 25 messages from the user
-test('Add with holes', t => {
+test('Add with holes', (t) => {
   let state = validate.initial()
   const keys = ssbKeys.generate()
 
-  state = validate.appendNew(state, null, keys, { type: 'post', text: 'test1' }, Date.now()) // ooo
-  state = validate.appendNew(state, null, keys, { type: 'post', text: 'test2' }, Date.now()+1) // missing
-  state = validate.appendNew(state, null, keys, { type: 'post', text: 'test3' }, Date.now()+2) // start
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'post', text: 'test1' },
+    Date.now()
+  ) // ooo
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'post', text: 'test2' },
+    Date.now() + 1
+  ) // missing
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'post', text: 'test3' },
+    Date.now() + 2
+  ) // start
 
   ssbDB.validateAndAdd(state.queue[0].value, (err) => {
     t.error(err, 'no err')
@@ -97,12 +151,24 @@ test('Add with holes', t => {
   })
 })
 
-test('Add same message twice', t => {
+test('Add same message twice', (t) => {
   let state = validate.initial()
   const keys = ssbKeys.generate()
 
-  state = validate.appendNew(state, null, keys, { type: 'post', text: 'test1' }, Date.now())
-  state = validate.appendNew(state, null, keys, { type: 'post', text: 'test2' }, Date.now()+1)
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'post', text: 'test1' },
+    Date.now()
+  )
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'post', text: 'test2' },
+    Date.now() + 1
+  )
 
   ssbDB.validateAndAdd(state.queue[0].value, (err) => {
     t.error(err, 'no err')
@@ -118,12 +184,24 @@ test('Add same message twice', t => {
   })
 })
 
-test('Strict order basic case', t => {
+test('Strict order basic case', (t) => {
   let state = validate.initial()
   const keys = ssbKeys.generate()
 
-  state = validate.appendNew(state, null, keys, { type: 'post', text: 'test1' }, Date.now())
-  state = validate.appendNew(state, null, keys, { type: 'post', text: 'test2' }, Date.now()+1)
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'post', text: 'test1' },
+    Date.now()
+  )
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'post', text: 'test2' },
+    Date.now() + 1
+  )
 
   ssbDB.validateAndAdd(state.queue[0].value, (err) => {
     t.error(err, 'no err')
@@ -135,13 +213,31 @@ test('Strict order basic case', t => {
   })
 })
 
-test('Strict order fail case', t => {
+test('Strict order fail case', (t) => {
   let state = validate.initial()
   const keys = ssbKeys.generate()
 
-  state = validate.appendNew(state, null, keys, { type: 'post', text: 'test1' }, Date.now())
-  state = validate.appendNew(state, null, keys, { type: 'post', text: 'test2' }, Date.now()+1)
-  state = validate.appendNew(state, null, keys, { type: 'post', text: 'test3' }, Date.now()+2)
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'post', text: 'test1' },
+    Date.now()
+  )
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'post', text: 'test2' },
+    Date.now() + 1
+  )
+  state = validate.appendNew(
+    state,
+    null,
+    keys,
+    { type: 'post', text: 'test3' },
+    Date.now() + 2
+  )
 
   ssbDB.validateAndAdd(state.queue[0].value, (err) => {
     t.error(err, 'no err')
