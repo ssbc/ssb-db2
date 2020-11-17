@@ -1,8 +1,13 @@
-exports.originalValue = function(value) {
+exports.originalValue = function (value) {
   const copy = {}
 
   for (const key in value) {
-    if (key !== 'meta' && key !== 'cyphertext' && key !== 'private' && key !== 'unbox') {
+    if (
+      key !== 'meta' &&
+      key !== 'cyphertext' &&
+      key !== 'private' &&
+      key !== 'unbox'
+    ) {
       copy[key] = value[key]
     }
   }
@@ -16,7 +21,7 @@ exports.originalValue = function(value) {
   return copy
 }
 
-exports.originalData = function(data) {
+exports.originalData = function (data) {
   data.value = exports.originalValue(data.value)
   return data
 }

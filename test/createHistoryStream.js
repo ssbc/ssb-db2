@@ -16,14 +16,14 @@ mkdirp.sync(dir)
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 const db = DB.init(dir, {
   path: dir,
-  keys
+  keys,
 })
 
 // simulate secret stack
-const sbot = {db}
+const sbot = { db }
 HistoryCompat.init(sbot)
 
-test('Base', t => {
+test('Base', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 
   let state = validate.initial()
@@ -33,7 +33,7 @@ test('Base', t => {
   state = validate.appendNew(state, null, otherKeys, otherMsg, Date.now())
   db.add(state.queue[0].value, (err) => {
     db.publish(post, (err, postMsg) => {
-      db.onDrain("base", () => {
+      db.onDrain('base', () => {
         pull(
           sbot.createHistoryStream({ id: keys.id, keys: false }),
           pull.collect((err, results) => {
@@ -48,7 +48,7 @@ test('Base', t => {
   })
 })
 
-test('Keys', t => {
+test('Keys', (t) => {
   pull(
     sbot.createHistoryStream({ id: keys.id }),
     pull.collect((err, results) => {
@@ -59,7 +59,7 @@ test('Keys', t => {
   )
 })
 
-test('No values', t => {
+test('No values', (t) => {
   pull(
     sbot.createHistoryStream({ id: keys.id, values: false }),
     pull.collect((err, results) => {
@@ -70,7 +70,7 @@ test('No values', t => {
   )
 })
 
-test('Seq', t => {
+test('Seq', (t) => {
   pull(
     sbot.createHistoryStream({ id: keys.id, keys: false, seq: 1 }),
     pull.collect((err, results) => {
@@ -91,8 +91,12 @@ test('Seq', t => {
                   t.equal(results[0].content.text, post.text)
 
                   pull(
-                    sbot.createHistoryStream({ id: keys.id, keys: false,
-                                               seq: 1, limit: 1 }),
+                    sbot.createHistoryStream({
+                      id: keys.id,
+                      keys: false,
+                      seq: 1,
+                      limit: 1,
+                    }),
                     pull.collect((err, results) => {
                       t.equal(results.length, 1)
                       t.equal(results[0].content.text, 'Testing!')
@@ -110,7 +114,7 @@ test('Seq', t => {
   )
 })
 
-test('limit', t => {
+test('limit', (t) => {
   db.publish({ type: 'post', text: 'Testing 2' }, (err, postMsg) => {
     pull(
       sbot.createHistoryStream({ id: keys.id, limit: 1 }),
@@ -130,19 +134,22 @@ test('limit', t => {
   })
 })
 
-test('non feed should err', t => {
+test('non feed should err', (t) => {
   pull(
-    sbot.createHistoryStream({ id: "wat", limit: 1 }),
+    sbot.createHistoryStream({ id: 'wat', limit: 1 }),
     pull.collect((err, results) => {
-      t.equal(err, "wat is not a feed")
+      t.equal(err, 'wat is not a feed')
       t.end()
     })
   )
 })
 
-test('Encrypted', t => {
+test('Encrypted', (t) => {
   let content = { type: 'post', text: 'super secret', recps: [keys.id] }
-  content = ssbKeys.box(content, content.recps.map(x => x.substr(1)))
+  content = ssbKeys.box(
+    content,
+    content.recps.map((x) => x.substr(1))
+  )
 
   db.publish(content, (err, privateMsg) => {
     db.onDrain(() => {

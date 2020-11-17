@@ -1,4 +1,4 @@
-const {deferred} = require('jitdb/operators')
+const { deferred } = require('jitdb/operators')
 
 function hasRoot(msgKey) {
   return deferred((meta, cb) => {

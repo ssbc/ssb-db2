@@ -12,7 +12,7 @@ const BaseIndex = require('./indexes/base')
 const Partial = require('./indexes/partial')
 
 function getId(msg) {
-  return '%'+hash(JSON.stringify(msg, null, 2))
+  return '%' + hash(JSON.stringify(msg, null, 2))
 }
 
 exports.init = function (dir, config) {
@@ -23,7 +23,7 @@ exports.init = function (dir, config) {
   //const partial = Partial(dir)
 
   const indexes = {
-    base: baseIndex
+    base: baseIndex,
   }
   const post = Obv()
   const hmac_key = null
@@ -38,17 +38,15 @@ exports.init = function (dir, config) {
         id: last[k].id,
         timestamp: last[k].timestamp,
         sequence: last[k].sequence,
-        queue: []
+        queue: [],
       }
     }
   })
 
   function get(id, cb) {
     baseIndex.getMessageFromKey(id, (err, data) => {
-      if (data)
-        cb(null, data.value)
-      else
-        cb(err)
+      if (data) cb(null, data.value)
+      else cb(err)
     })
   }
 
@@ -65,22 +63,21 @@ exports.init = function (dir, config) {
     */
 
     baseIndex.getMessageFromKey(id, (err, data) => {
-      if (data)
-        cb(null, data.value)
+      if (data) cb(null, data.value)
       else {
         // store encrypted messages for us unencrypted for views
         // ebt will turn messages into encrypted ones before sending
-        if (typeof (msg.content) === 'string') {
+        if (typeof msg.content === 'string') {
           const decrypted = keys.unbox(msg.content, config.keys.private)
           if (decrypted) {
             const cyphertext = msg.content
 
             msg.content = decrypted
             msg.meta = {
-	      private: "true",
-	      original: {
-	        content: cyphertext
-	      }
+              private: 'true',
+              original: {
+                content: cyphertext,
+              },
             }
           }
         }
@@ -111,28 +108,31 @@ exports.init = function (dir, config) {
   function deleteFeed(feedId, cb) {
     // FIXME: doesn't work, need test
     jitdb.onReady(() => {
-      jitdb.query({
-        type: 'EQUAL',
-        data: {
-          seek: jitdb.seekAuthor,
-          value: feedId,
-          indexType: "author"
+      jitdb.query(
+        {
+          type: 'EQUAL',
+          data: {
+            seek: jitdb.seekAuthor,
+            value: feedId,
+            indexType: 'author',
+          },
+        },
+        (err, results) => {
+          push(
+            push.values(results),
+            push.asyncMap((msg, cb) => {
+              del(msg.key, cb)
+            }),
+            push.collect((err) => {
+              if (!err) {
+                delete state.feeds[feedId]
+                baseIndex.removeFeedFromLatest(feedId)
+              }
+              cb(err)
+            })
+          )
         }
-      }, (err, results) => {
-        push(
-          push.values(results),
-          push.asyncMap((msg, cb) => {
-            del(msg.key, cb)
-          }),
-          push.collect((err) => {
-            if (!err) {
-              delete state.feeds[feedId]
-              baseIndex.removeFeedFromLatest(feedId)
-            }
-            cb(err)
-          })
-        )
-      })
+      )
     })
   }
 
@@ -145,13 +145,10 @@ exports.init = function (dir, config) {
       let oooState = validate.initial()
       validate.appendOOO(oooState, hmac_key, msg)
 
-      if (oooState.error)
-        return cb(oooState.error)
+      if (oooState.error) return cb(oooState.error)
 
       add(msg, cb)
-    }
-    catch (ex)
-    {
+    } catch (ex) {
       return cb(ex)
     }
   }
@@ -160,18 +157,13 @@ exports.init = function (dir, config) {
     const knownAuthor = msg.author in state.feeds
 
     try {
-      if (!knownAuthor)
-        state = validate.appendOOO(state, hmac_key, msg)
-      else
-        state = validate.append(state, hmac_key, msg)
+      if (!knownAuthor) state = validate.appendOOO(state, hmac_key, msg)
+      else state = validate.append(state, hmac_key, msg)
 
-      if (state.error)
-        return cb(state.error)
+      if (state.error) return cb(state.error)
 
       add(msg, cb)
-    }
-    catch (ex)
-    {
+    } catch (ex) {
       return cb(ex)
     }
   }
@@ -235,20 +227,20 @@ exports.init = function (dir, config) {
   }
 
   function clearIndexes() {
-    for (const indexName in indexes)
-      indexes[indexName].remove(() => {})
+    for (const indexName in indexes) indexes[indexName].remove(() => {})
   }
 
   function registerIndex(Index) {
     const index = Index(log, jitdb, dir, config.keys.public)
 
-    if (indexes[index.name]) throw "Index already exists"
+    if (indexes[index.name]) throw 'Index already exists'
 
     indexes[index.name] = index
   }
 
   function onDrain(indexName, cb) {
-    if (!cb) { // default
+    if (!cb) {
+      // default
       cb = indexName
       indexName = 'base'
     }
@@ -283,7 +275,7 @@ exports.init = function (dir, config) {
 
   return {
     get,
-    getSync: function(id, cb) {
+    getSync: function (id, cb) {
       onDrain('base', () => {
         get(id, cb)
       })

@@ -15,15 +15,24 @@ module.exports = function (log, dir, feedId) {
   const bSequence = Buffer.from('sequence')
   const bTimestamp = Buffer.from('timestamp')
 
-  const throwOnError = function(err) { if (err) throw err }
+  const throwOnError = function (err) {
+    if (err) throw err
+  }
 
   let batchBasic = []
   let batchJsonKey = []
   let batchJson = []
   let authorLatest = {}
 
-  const { level, seq } = Plugin(log, dir, "base", 1,
-                                handleData, writeData, beforeIndexUpdate)
+  const { level, seq } = Plugin(
+    log,
+    dir,
+    'base',
+    1,
+    handleData,
+    writeData,
+    beforeIndexUpdate
+  )
 
   function writeData(cb) {
     level.batch(batchBasic, throwOnError)
@@ -51,23 +60,26 @@ module.exports = function (log, dir, feedId) {
       const p4 = bipf.seekKey(data.value, p, bTimestamp)
       const timestamp = bipf.decode(data.value, p4)
 
-      batchJsonKey.push({ type: 'put', key: [author, sequence],
-                          value: data.seq })
+      batchJsonKey.push({
+        type: 'put',
+        key: [author, sequence],
+        value: data.seq,
+      })
 
       let latestSequence = 0
-      if (authorLatest[author])
-        latestSequence = authorLatest[author].sequence
+      if (authorLatest[author]) latestSequence = authorLatest[author].sequence
       if (sequence > latestSequence) {
         authorLatest[author] = { id: key, sequence, timestamp }
-        batchJson.push({ type: 'put', key: ['a', author],
-                         value: authorLatest[author] })
+        batchJson.push({
+          type: 'put',
+          key: ['a', author],
+          value: authorLatest[author],
+        })
       }
     }
 
-    if (batchBasic.length)
-      return data.seq
-    else
-      return 0
+    if (batchBasic.length) return data.seq
+    else return 0
   }
 
   function beforeIndexUpdate(cb) {
@@ -81,12 +93,12 @@ module.exports = function (log, dir, feedId) {
     pull(
       pl.read(level, {
         gte: '["a",',
-        valueEncoding: 'json'
+        valueEncoding: 'json',
       }),
       pull.collect((err, data) => {
         if (err) return cb(err)
         const result = {}
-        data.forEach(d => {
+        data.forEach((d) => {
           result[JSON.parse(d.key)[1]] = d.value
         })
         cb(null, result)
@@ -115,16 +127,18 @@ module.exports = function (log, dir, feedId) {
     },
 
     // returns { id (msg key), sequence, timestamp }
-    getLatest: function(feedId, cb) {
-      level.get(['a', feedId],
-                { keyEncoding: 'json', valueEncoding: 'json' },
-                cb)
+    getLatest: function (feedId, cb) {
+      level.get(
+        ['a', feedId],
+        { keyEncoding: 'json', valueEncoding: 'json' },
+        cb
+      )
     },
     getAllLatest,
     keyToSeq: level.get, // used by delete
-    removeFeedFromLatest: function(feedId) {
+    removeFeedFromLatest: function (feedId) {
       level.del(['a', feedId], { keyEncoding: 'json' }, throwOnError)
-    }
+    },
   }
 
   return self

@@ -1,4 +1,4 @@
-const {seekKey} = require('bipf')
+const { seekKey } = require('bipf')
 
 const bValue = Buffer.from('value')
 const bAuthor = Buffer.from('author')
@@ -10,14 +10,14 @@ const bPrivate = Buffer.from('private')
 const bChannel = Buffer.from('channel')
 
 module.exports = {
-  seekAuthor: function(buffer) {
+  seekAuthor: function (buffer) {
     let p = 0 // note you pass in p!
     p = seekKey(buffer, p, bValue)
     if (!~p) return
     return seekKey(buffer, p, bAuthor)
   },
 
-  seekType: function(buffer) {
+  seekType: function (buffer) {
     let p = 0 // note you pass in p!
     p = seekKey(buffer, p, bValue)
     if (!~p) return
@@ -26,7 +26,7 @@ module.exports = {
     return seekKey(buffer, p, bType)
   },
 
-  seekRoot: function(buffer) {
+  seekRoot: function (buffer) {
     let p = 0 // note you pass in p!
     p = seekKey(buffer, p, bValue)
     if (!~p) return
@@ -35,7 +35,7 @@ module.exports = {
     return seekKey(buffer, p, bRoot)
   },
 
-  seekPrivate: function(buffer) {
+  seekPrivate: function (buffer) {
     let p = 0 // note you pass in p!
     p = seekKey(buffer, p, bValue)
     if (!~p) return
@@ -44,12 +44,12 @@ module.exports = {
     return seekKey(buffer, p, bPrivate)
   },
 
-  seekChannel: function(buffer) {
+  seekChannel: function (buffer) {
     let p = 0 // note you pass in p!
     p = seekKey(buffer, p, bValue)
     if (!~p) return
     p = seekKey(buffer, p, bContent)
     if (!~p) return
     return seekKey(buffer, p, bChannel)
-  }
+  },
 }

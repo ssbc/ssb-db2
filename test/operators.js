@@ -4,7 +4,7 @@ const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const DB = require('../db')
-const {and, type, toCallback, author} = require('../operators')
+const { and, type, toCallback, author } = require('../operators')
 
 const dir = '/tmp/ssb-db2-operators'
 
@@ -15,10 +15,10 @@ const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
 const db = DB.init(dir, {
   path: dir,
-  keys
+  keys,
 })
 
-test('execute and(type("post"), author(me))', t => {
+test('execute and(type("post"), author(me))', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 
   db.publish(post, (err, postMsg) => {

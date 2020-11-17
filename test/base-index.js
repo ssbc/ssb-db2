@@ -18,10 +18,10 @@ const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
 const db = DB.init(dir, {
   path: dir,
-  keys
+  keys,
 })
 
-test('drain', t => {
+test('drain', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 
   db.publish(post, (err, postMsg) => {
@@ -36,7 +36,7 @@ test('drain', t => {
   })
 })
 
-test('get', t => {
+test('get', (t) => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }
 
@@ -57,7 +57,7 @@ test('get', t => {
   })
 })
 
-test('getsync', t => {
+test('getsync', (t) => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }
 
@@ -76,7 +76,7 @@ test('getsync', t => {
   })
 })
 
-test('author seq', t => {
+test('author seq', (t) => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }
 
@@ -87,18 +87,21 @@ test('author seq', t => {
       t.error(err, 'no err')
 
       db.onDrain('base', () => {
-        db.getMessageFromAuthorSequence([keys.id, postMsg2.value.sequence], (err, msg) => {
-          t.error(err, 'no err')
-          t.equal(msg.value.content.text, post2.text, 'correct msg')
+        db.getMessageFromAuthorSequence(
+          [keys.id, postMsg2.value.sequence],
+          (err, msg) => {
+            t.error(err, 'no err')
+            t.equal(msg.value.content.text, post2.text, 'correct msg')
 
-          t.end()
-        })
+            t.end()
+          }
+        )
       })
     })
   })
 })
 
-test('get latest', t => {
+test('get latest', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 
   db.publish(post, (err, postMsg) => {
@@ -116,7 +119,7 @@ test('get latest', t => {
   })
 })
 
-test('get all latest', t => {
+test('get all latest', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 
   db.publish(post, (err, postMsg) => {
@@ -124,7 +127,7 @@ test('get all latest', t => {
 
     db.onDrain('base', () => {
       db.getAllLatest((err, all) => {
-        t.equal(Object.keys(all).length, 1, "authors")
+        t.equal(Object.keys(all).length, 1, 'authors')
         const status = all[keys.id]
         t.equal(postMsg.key, status.id)
         t.equal(postMsg.value.sequence, status.sequence)
