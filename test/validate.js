@@ -11,7 +11,7 @@ const dir = '/tmp/ssb-db2-validate'
 rimraf.sync(dir)
 mkdirp.sync(dir)
 
-const ssbDB = DB.init(dir, {
+const ssbDB = DB.init({}, dir, {
   path: dir,
   keys: ssbKeys.loadOrCreateSync(path.join(dir, 'secret')),
 })

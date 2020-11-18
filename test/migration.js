@@ -38,10 +38,9 @@ test('migration moves msgs from old log to new log', (t) => {
   const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../index'))
-    .use(require('../migration'))
     .call(null, { keys, path: dir })
 
-  sbot.dbMigration.start()
+  sbot.db.migration.start()
 
   let progressEventsReceived = false
   pull(
@@ -87,7 +86,6 @@ test('migration keeps new log synced with old log being updated', (t) => {
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('ssb-db'))
     .use(require('../index'))
-    .use(require('../migration'))
     .call(null, { keys, path: dir, db2: { automigrate: true } })
 
   pull(
@@ -138,6 +136,36 @@ test('migration keeps new log synced with old log being updated', (t) => {
   )
 })
 
+test('refuses to db2.add() while old log exists', (t) => {
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('ssb-db'))
+    .use(require('../index'))
+    .call(null, { keys, path: dir, db2: { automigrate: true } })
+
+  pull(
+    fromEvent('ssb:db2:migration:progress', sbot),
+    pull.filter((x) => x === 1),
+    pull.take(1),
+    // FIXME: why do we still need a setTimeout?
+    pull.asyncMap((x, cb) => setTimeout(cb, 500)),
+    pull.drain(() => {
+      const post = { type: 'post', text: 'Testing!' }
+      sbot.db.publish(post, (err, posted) => {
+        t.ok(err)
+        t.notOk(posted)
+        t.true(
+          err.message.includes('refusing to publish() because the old log'),
+          'error message is about the old log'
+        )
+        sbot.close(() => {
+          t.end()
+        })
+      })
+    })
+  )
+})
+
 test('migration does nothing when there is no old log', (t) => {
   const emptyDir = '/tmp/ssb-db2-migration-empty'
   rimraf.sync(emptyDir)
@@ -145,12 +173,12 @@ test('migration does nothing when there is no old log', (t) => {
 
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../index'))
-    .use(require('../migration'))
     .call(null, { keys: ssbKeys.generate(), path: emptyDir })
 
-  sbot.dbMigration.start()
+  sbot.db.migration.start()
 
   setTimeout(() => {
+    t.pass('did nothing')
     sbot.close(() => {
       t.end()
     })

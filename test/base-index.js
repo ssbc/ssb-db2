@@ -16,7 +16,7 @@ mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
-const db = DB.init(dir, {
+const db = DB.init({}, dir, {
   path: dir,
   keys,
 })

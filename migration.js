@@ -79,9 +79,7 @@ function scanAndCount(pushstream, cb) {
   })
 }
 
-exports.name = 'dbMigration'
-
-exports.init = function init(sbot, config) {
+exports.init = function init(sbot, config, newLog) {
   const oldLogExists = makeFileExistsObv(getOldLogPath(config))
 
   let started = false
@@ -99,7 +97,7 @@ exports.init = function init(sbot, config) {
       sbot,
       config
     )
-    const newLogStream = sbot.db.log.stream({ gte: 0 })
+    const newLogStream = newLog.stream({ gte: 0 })
 
     let oldSize = null
     let migratedSize = null
@@ -157,7 +155,7 @@ exports.init = function init(sbot, config) {
         }),
         pull.map(updateMigratedSizeAndPluck),
         pull.map(toBIPF),
-        pull.asyncMap(writeTo(sbot.db.log)),
+        pull.asyncMap(writeTo(newLog)),
         pull.reduce(
           (x) => x + 1,
           0,
@@ -169,7 +167,7 @@ exports.init = function init(sbot, config) {
               oldLogStreamLive,
               pull.map(updateMigratedSizeAndPluck),
               pull.map(toBIPF),
-              pull.asyncMap(writeTo(sbot.db.log)),
+              pull.asyncMap(writeTo(newLog)),
               pull.drain(() => {
                 debug('1 new msg synced from old log to new log')
               })
