@@ -263,14 +263,13 @@ exports.init = function (dir, config) {
     })
   }
 
-  async function close(cb) {
+  function close(cb) {
     const tasks = []
     tasks.push(promisify(log.close)())
     for (const indexName in indexes) {
       tasks.push(promisify(indexes[indexName].close)())
     }
-    await Promise.all(tasks)
-    if (cb) cb()
+    return Promise.all(tasks).then(cb)
   }
 
   // override query() from jitdb to implicitly call fromDB()
