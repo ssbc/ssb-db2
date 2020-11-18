@@ -11,7 +11,7 @@ const pull = require('pull-stream')
 const fromEvent = require('pull-stream-util/from-event')
 const { toCallback } = require('../operators')
 
-const dir = '/tmp/ssb-db2-migration'
+const dir = '/tmp/ssb-db2-migrate'
 
 rimraf.sync(dir)
 mkdirp.sync(dir)
@@ -21,7 +21,7 @@ const TOTAL = 10
 test('generate fixture with flumelog-offset', (t) => {
   generateFixture({
     outputDir: dir,
-    seed: 'migration',
+    seed: 'migrate',
     messages: TOTAL,
     authors: 5,
     slim: true,
@@ -34,17 +34,17 @@ test('generate fixture with flumelog-offset', (t) => {
   })
 })
 
-test('migration moves msgs from old log to new log', (t) => {
+test('migrate moves msgs from old log to new log', (t) => {
   const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../index'))
     .call(null, { keys, path: dir })
 
-  sbot.db.migration.start()
+  sbot.db.migrate.start()
 
   let progressEventsReceived = false
   pull(
-    fromEvent('ssb:db2:migration:progress', sbot),
+    fromEvent('ssb:db2:migrate:progress', sbot),
     pull.take(TOTAL),
     pull.collect((err, nums) => {
       t.error(err)
@@ -58,7 +58,7 @@ test('migration moves msgs from old log to new log', (t) => {
   )
 
   pull(
-    fromEvent('ssb:db2:migration:progress', sbot),
+    fromEvent('ssb:db2:migrate:progress', sbot),
     pull.filter((x) => x === 1),
     pull.take(1),
     // FIXME: why do we still need a setTimeout?
@@ -81,7 +81,7 @@ test('migration moves msgs from old log to new log', (t) => {
   )
 })
 
-test('migration keeps new log synced with old log being updated', (t) => {
+test('migrate keeps new log synced with old log being updated', (t) => {
   const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('ssb-db'))
@@ -89,7 +89,7 @@ test('migration keeps new log synced with old log being updated', (t) => {
     .call(null, { keys, path: dir, db2: { automigrate: true } })
 
   pull(
-    fromEvent('ssb:db2:migration:progress', sbot),
+    fromEvent('ssb:db2:migrate:progress', sbot),
     pull.filter((x) => x === 1),
     pull.take(1),
     // FIXME: why do we still need a setTimeout?
@@ -104,7 +104,7 @@ test('migration keeps new log synced with old log being updated', (t) => {
 
             // This should run after the sbot.publish completes
             pull(
-              fromEvent('ssb:db2:migration:progress', sbot),
+              fromEvent('ssb:db2:migrate:progress', sbot),
               pull.filter((x) => x === 1),
               pull.take(1),
               // FIXME: why do we still need a setTimeout?
@@ -144,7 +144,7 @@ test('refuses to db2.add() while old log exists', (t) => {
     .call(null, { keys, path: dir, db2: { automigrate: true } })
 
   pull(
-    fromEvent('ssb:db2:migration:progress', sbot),
+    fromEvent('ssb:db2:migrate:progress', sbot),
     pull.filter((x) => x === 1),
     pull.take(1),
     // FIXME: why do we still need a setTimeout?
@@ -166,8 +166,8 @@ test('refuses to db2.add() while old log exists', (t) => {
   )
 })
 
-test('migration does nothing when there is no old log', (t) => {
-  const emptyDir = '/tmp/ssb-db2-migration-empty'
+test('migrate does nothing when there is no old log', (t) => {
+  const emptyDir = '/tmp/ssb-db2-migrate-empty'
   rimraf.sync(emptyDir)
   mkdirp.sync(emptyDir)
 
@@ -175,7 +175,7 @@ test('migration does nothing when there is no old log', (t) => {
     .use(require('../index'))
     .call(null, { keys: ssbKeys.generate(), path: emptyDir })
 
-  sbot.db.migration.start()
+  sbot.db.migrate.start()
 
   setTimeout(() => {
     t.pass('did nothing')
@@ -185,9 +185,9 @@ test('migration does nothing when there is no old log', (t) => {
   }, 1000)
 
   pull(
-    fromEvent('ssb:db2:migration:progress', sbot),
+    fromEvent('ssb:db2:migrate:progress', sbot),
     pull.drain(() => {
-      t.fail('we are not supposed to get any migration progress events')
+      t.fail('we are not supposed to get any migrate progress events')
     })
   )
 })

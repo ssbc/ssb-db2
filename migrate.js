@@ -6,7 +6,7 @@ const FlumeLog = require('flumelog-offset')
 const bipf = require('bipf')
 const jsonCodec = require('flumecodec/json')
 const Obv = require('obv')
-const debug = require('debug')('ssb:db2:migration')
+const debug = require('debug')('ssb:db2:migrate')
 
 const blockSize = 64 * 1024
 
@@ -123,7 +123,7 @@ exports.init = function init(sbot, config, newLog) {
     function emitProgressEvent() {
       if (oldSize !== null && migratedSize !== null) {
         const progress = migratedSize / oldSize
-        sbot.emit('ssb:db2:migration:progress', progress)
+        sbot.emit('ssb:db2:migrate:progress', progress)
       }
     }
 

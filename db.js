@@ -10,7 +10,7 @@ const JITDb = require('jitdb')
 
 const Log = require('./log')
 const BaseIndex = require('./indexes/base')
-const Migration = require('./migration')
+const Migrate = require('./migrate')
 const Partial = require('./indexes/partial')
 
 function getId(msg) {
@@ -21,7 +21,7 @@ exports.init = function (sbot, dir, config) {
   const log = Log(dir, config)
   const jitdb = JITDb(log, path.join(dir, 'db2', 'indexes'))
   const baseIndex = BaseIndex(log, dir, config.keys.public)
-  const migration = Migration.init(sbot, config, log)
+  const migrate = Migrate.init(sbot, config, log)
   //const contacts = fullIndex.contacts
   //const partial = Partial(dir)
 
@@ -47,7 +47,7 @@ exports.init = function (sbot, dir, config) {
   })
 
   function guardAgainstDuplicateLogs(methodName) {
-    if (migration.oldLogExists.value === true) {
+    if (migrate.oldLogExists.value === true) {
       return new Error(
         'ssb-db2: refusing to ' +
           methodName +
@@ -339,7 +339,7 @@ exports.init = function (sbot, dir, config) {
     getLatest: baseIndex.getLatest,
     getAllLatest: baseIndex.getAllLatest,
     getMessageFromAuthorSequence: baseIndex.getMessageFromAuthorSequence,
-    migration,
+    migrate,
 
     // FIXME: contacts & profiles
 
