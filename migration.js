@@ -84,12 +84,16 @@ exports.name = 'dbMigration'
 exports.init = function init(sbot, config) {
   const oldLogExists = makeFileExistsObv(getOldLogPath(config))
 
+  let started = false
+
   if (config.db2 && config.db2.automigrate) {
     start()
   }
 
   function start() {
     if (oldLogExists.value === false) return
+    if (started) return
+    started = true
 
     const [oldLogStream, oldLogStreamLive, oldSizeStream] = getOldLogStreams(
       sbot,
