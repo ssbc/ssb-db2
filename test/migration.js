@@ -41,6 +41,8 @@ test('migration moves msgs from old log to new log', (t) => {
     .use(require('../migration'))
     .call(null, { keys, path: dir })
 
+  sbot.dbMigration.start()
+
   let progressEventsReceived = false
   pull(
     fromEvent('ssb:db2:migration:progress', sbot),
@@ -86,7 +88,7 @@ test('migration keeps new log synced with old log being updated', (t) => {
     .use(require('ssb-db'))
     .use(require('../index'))
     .use(require('../migration'))
-    .call(null, { keys, path: dir })
+    .call(null, { keys, path: dir, db2: { automigrate: true } })
 
   pull(
     fromEvent('ssb:db2:migration:progress', sbot),
@@ -132,6 +134,32 @@ test('migration keeps new log synced with old log being updated', (t) => {
           })
         )
       })
+    })
+  )
+})
+
+test('migration does nothing when there is no old log', (t) => {
+  const emptyDir = '/tmp/ssb-db2-migration-empty'
+  rimraf.sync(emptyDir)
+  mkdirp.sync(emptyDir)
+
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../index'))
+    .use(require('../migration'))
+    .call(null, { keys: ssbKeys.generate(), path: emptyDir })
+
+  sbot.dbMigration.start()
+
+  setTimeout(() => {
+    sbot.close(() => {
+      t.end()
+    })
+  }, 1000)
+
+  pull(
+    fromEvent('ssb:db2:migration:progress', sbot),
+    pull.drain(() => {
+      t.fail('we are not supposed to get any migration progress events')
     })
   )
 })
