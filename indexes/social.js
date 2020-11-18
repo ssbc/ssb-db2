@@ -93,7 +93,7 @@ module.exports = function (log, jitdb, dir, feedId) {
       }
     }
 
-    if (batch.length) return data.seq
+    if (batch.length) return batch.length
     else return 0
   }
 
