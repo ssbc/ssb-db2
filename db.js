@@ -4,6 +4,7 @@ const validate = require('ssb-validate')
 const keys = require('ssb-keys')
 const path = require('path')
 const Obv = require('obv')
+const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
 const JITDb = require('jitdb')
 
@@ -262,6 +263,15 @@ exports.init = function (dir, config) {
     })
   }
 
+  function close(cb) {
+    const tasks = []
+    tasks.push(promisify(log.close)())
+    for (const indexName in indexes) {
+      tasks.push(promisify(indexes[indexName].close)())
+    }
+    return Promise.all(tasks).then(cb)
+  }
+
   // override query() from jitdb to implicitly call fromDB()
   function query(first, ...rest) {
     if (!first.meta) {
@@ -287,6 +297,7 @@ exports.init = function (dir, config) {
     validateAndAdd,
     validateAndAddOOO,
     getStatus,
+    close,
 
     post,
 
