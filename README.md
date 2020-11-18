@@ -101,6 +101,46 @@ const sbot = SecretStack({appKey: caps.shs})
   .call(null, {})
 ```
 
+## Migrating from ssb-db
+
+The flumelog used underneath ssb-db2 is different than that one in ssb-db, this means we need to scan over the old log and copy all messages onto the new log, if you wish to use ssb-db2 to make queries.
+
+ssb-db2 comes with migration methods built-in, you can enable them (they are off by default!) in your config file (or object):
+
+```js
+const SecretStack = require('secret-stack')
+
+const config = {
+  keys: keys,
+  db2: {
+    automigrate: true
+  }
+}
+
+const sbot = SecretStack({appKey: caps.shs})
+  .use(require('ssb-db2'))
+  .use(require('ssb-db2/compat'))
+  .call(null, config)
+```
+
+The above script will initiate migration as soon as the plugins are loaded. If you wish the manually dictate when the migration starts, don't use the `automigrate` config above, instead, call the `migrate.start()` method yourself:
+
+```js
+sbot.db.migrate.start()
+```
+
+Note, it is acceptable to load both ssb-db and ssb-db2 plugins, the system will still function correctly and migrate correctly:
+
+```js
+const sbot = SecretStack({appKey: caps.shs})
+  .use(require('ssb-db'))
+  .use(require('ssb-db2'))
+  .use(require('ssb-db2/compat'))
+  .call(null, config)
+```
+
+However, note that while the old log exists, it will be continously migrated to the new log, and ssb-db2 forbids you to use its database-writing APIs such as `add()`, `publish()`, `del()` and so forth, to prevent the two logs from diverging into inconsistent states. The old log will remain the source of truth and keep getting copied into the new log, until the old log file does not exist anymore.
+
 ## Methods
 
 FIXME: add documentation for these

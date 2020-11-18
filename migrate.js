@@ -181,5 +181,6 @@ exports.init = function init(sbot, config, newLog) {
   return {
     start,
     oldLogExists,
+    // dangerouslyKillOldLog, // FIXME: implement this
   }
 }
