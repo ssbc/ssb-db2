@@ -303,6 +303,7 @@ exports.init = function (dir, config) {
 
     registerIndex,
     indexes,
+    log,
 
     getLatest: baseIndex.getLatest,
     getAllLatest: baseIndex.getAllLatest,
