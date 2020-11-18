@@ -138,3 +138,17 @@ test('get all latest', (t) => {
     })
   })
 })
+
+test('db.close', (t) => {
+  const post = { type: 'post', text: 'Testing!' }
+
+  db.publish(post, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    db.onDrain('base', () => {
+      db.close(() => {
+        t.end()
+      })
+    })
+  })
+})

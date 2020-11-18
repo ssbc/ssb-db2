@@ -120,6 +120,7 @@ module.exports = function (log, dir, feedId) {
   const self = {
     seq,
     remove: level.clear,
+    close: level.close.bind(level),
 
     getMessageFromKey: levelKeyToMessage,
     getMessageFromAuthorSequence: (key, cb) => {

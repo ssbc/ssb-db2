@@ -117,6 +117,7 @@ module.exports = function (log, jitdb, dir, feedId) {
     seq,
     name,
     remove: level.clear,
+    close: level.close.bind(level),
     getMessagesByMention: function (key, cb) {
       pull(
         pl.read(level, {
