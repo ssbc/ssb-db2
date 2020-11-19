@@ -101,6 +101,7 @@ exports.init = function init(sbot, config, newLog) {
 
     let oldSize = null
     let migratedSize = null
+    let progressCalls = 0
 
     function updateOldSize(read) {
       read(null, function next(end, data) {
@@ -122,8 +123,10 @@ exports.init = function init(sbot, config, newLog) {
 
     function emitProgressEvent() {
       if (oldSize !== null && migratedSize !== null) {
-        const progress = migratedSize / oldSize
-        sbot.emit('ssb:db2:migrate:progress', progress)
+        if (progressCalls++ % 1000 == 0) {
+          const progress = migratedSize / oldSize
+          sbot.emit('ssb:db2:migrate:progress', progress)
+        }
       }
     }
 
