@@ -123,7 +123,7 @@ exports.init = function init(sbot, config, newLog) {
 
     function emitProgressEvent() {
       if (oldSize !== null && migratedSize !== null) {
-        if (progressCalls++ % 1000 == 0) {
+        if (progressCalls < 100 || progressCalls++ % 1000 == 0) {
           const progress = migratedSize / oldSize
           sbot.emit('ssb:db2:migrate:progress', progress)
         }
@@ -149,7 +149,6 @@ exports.init = function init(sbot, config, newLog) {
       if (err) return console.error(err)
       if (msgCountNewLog === 0) debug('new log is empty, will start migrating')
       else debug('new log has %s msgs, will continue migrating', msgCountNewLog)
-
       pull(
         oldLogStream,
         skip(msgCountNewLog, function whenDoneSkipping(obj) {
