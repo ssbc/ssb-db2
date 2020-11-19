@@ -8,7 +8,7 @@ const Plugin = require('./plugin')
 // - [author, sequence] => seq (EBT)
 // - author => latest { msg key, sequence timestamp } (validate state & EBT)
 
-module.exports = function (log, dir, feedId) {
+module.exports = function (log, dir) {
   const bValue = Buffer.from('value')
   const bKey = Buffer.from('key')
   const bAuthor = Buffer.from('author')

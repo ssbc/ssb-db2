@@ -20,7 +20,7 @@ function getId(msg) {
 exports.init = function (sbot, dir, config) {
   const log = Log(dir, config)
   const jitdb = JITDb(log, path.join(dir, 'db2', 'indexes'))
-  const baseIndex = BaseIndex(log, dir, config.keys.public)
+  const baseIndex = BaseIndex(log, dir)
   const migrate = Migrate.init(sbot, config, log)
   //const contacts = fullIndex.contacts
   //const partial = Partial(dir)
@@ -264,7 +264,7 @@ exports.init = function (sbot, dir, config) {
   }
 
   function registerIndex(Index) {
-    const index = Index(log, jitdb, dir, config.keys.public)
+    const index = Index(log, dir)
 
     if (indexes[index.name]) throw 'Index already exists'
 
