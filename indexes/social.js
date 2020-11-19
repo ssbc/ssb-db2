@@ -1,17 +1,15 @@
 const bipf = require('bipf')
-const sort = require('ssb-sort')
-const push = require('push-stream')
 const pl = require('pull-level')
 const pull = require('pull-stream')
 const Plugin = require('./plugin')
-const { query, fromDB, and, offsets } = require('../operators')
+const { offsets } = require('../operators')
 
 // 3 indexes:
 // - root (msgId) => msg seqs
 // - mentions (msgId) => msg seqs
 // - votes (msgId) => msg seqs
 
-module.exports = function (log, jitdb, dir, feedId) {
+module.exports = function (log, dir) {
   const bKey = Buffer.from('key')
   const bValue = Buffer.from('value')
   const bContent = Buffer.from('content')
@@ -97,17 +95,8 @@ module.exports = function (log, jitdb, dir, feedId) {
     else return 0
   }
 
-  function getMessagesFromSeqs(seqs, cb) {
-    push(
-      push.values(seqs),
-      push.asyncMap(log.get),
-      push.collect((err, results) => {
-        const msgs = results.map((x) => bipf.decode(x, 0))
-        sort(msgs)
-        msgs.reverse()
-        cb(null, msgs)
-      })
-    )
+  function parseInt10(x) {
+    return parseInt(x, 10)
   }
 
   const name = 'social'
@@ -129,10 +118,7 @@ module.exports = function (log, jitdb, dir, feedId) {
         pull.collect((err, data) => {
           if (err) return cb(err)
 
-          cb(
-            null,
-            query(fromDB(jitdb), and(offsets(data.map((x) => parseInt(x)))))
-          )
+          cb(null, offsets(data.map(parseInt10)))
         })
       )
     },
@@ -147,10 +133,7 @@ module.exports = function (log, jitdb, dir, feedId) {
         pull.collect((err, data) => {
           if (err) return cb(err)
 
-          cb(
-            null,
-            query(fromDB(jitdb), and(offsets(data.map((x) => parseInt(x)))))
-          )
+          cb(null, offsets(data.map(parseInt10)))
         })
       )
     },
@@ -165,10 +148,7 @@ module.exports = function (log, jitdb, dir, feedId) {
         pull.collect((err, data) => {
           if (err) return cb(err)
 
-          cb(
-            null,
-            query(fromDB(jitdb), and(offsets(data.map((x) => parseInt(x)))))
-          )
+          cb(null, offsets(data.map(parseInt10)))
         })
       )
     },
