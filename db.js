@@ -10,16 +10,18 @@ const JITDb = require('jitdb')
 
 const Log = require('./log')
 const BaseIndex = require('./indexes/base')
+const Migrate = require('./migrate')
 const Partial = require('./indexes/partial')
 
 function getId(msg) {
   return '%' + hash(JSON.stringify(msg, null, 2))
 }
 
-exports.init = function (dir, config) {
+exports.init = function (sbot, dir, config) {
   const log = Log(dir, config)
   const jitdb = JITDb(log, path.join(dir, 'db2', 'indexes'))
   const baseIndex = BaseIndex(log, dir, config.keys.public)
+  const migrate = Migrate.init(sbot, config, log)
   //const contacts = fullIndex.contacts
   //const partial = Partial(dir)
 
@@ -44,6 +46,18 @@ exports.init = function (dir, config) {
     }
   })
 
+  function guardAgainstDuplicateLogs(methodName) {
+    if (migrate.oldLogExists.value === true) {
+      return new Error(
+        'ssb-db2: refusing to ' +
+          methodName +
+          ' because the old log still exists. ' +
+          'This is to protect your feed from forking ' +
+          'into an irrecoverable state.'
+      )
+    }
+  }
+
   function get(id, cb) {
     baseIndex.getMessageFromKey(id, (err, data) => {
       if (data) cb(null, data.value)
@@ -52,6 +66,9 @@ exports.init = function (dir, config) {
   }
 
   function add(msg, cb) {
+    const guard = guardAgainstDuplicateLogs('add()')
+    if (guard) return cb(guard)
+
     const id = getId(msg)
 
     /*
@@ -89,6 +106,9 @@ exports.init = function (dir, config) {
   }
 
   function publish(msg, cb) {
+    const guard = guardAgainstDuplicateLogs('publish()')
+    if (guard) return cb(guard)
+
     state.queue = []
     state = validate.appendNew(state, null, config.keys, msg, Date.now())
     add(state.queue[0].value, (err, data) => {
@@ -98,6 +118,9 @@ exports.init = function (dir, config) {
   }
 
   function del(key, cb) {
+    const guard = guardAgainstDuplicateLogs('del()')
+    if (guard) return cb(guard)
+
     baseIndex.keyToSeq(key, (err, seq) => {
       if (err) return cb(err)
       if (seq == null) return cb(new Error('seq is null!'))
@@ -107,6 +130,9 @@ exports.init = function (dir, config) {
   }
 
   function deleteFeed(feedId, cb) {
+    const guard = guardAgainstDuplicateLogs('deleteFeed()')
+    if (guard) return cb(guard)
+
     // FIXME: doesn't work, need test
     jitdb.onReady(() => {
       jitdb.query(
@@ -142,6 +168,9 @@ exports.init = function (dir, config) {
   }
 
   function validateAndAddOOO(msg, cb) {
+    const guard = guardAgainstDuplicateLogs('validateAndAddOOO()')
+    if (guard) return cb(guard)
+
     try {
       let oooState = validate.initial()
       validate.appendOOO(oooState, hmac_key, msg)
@@ -155,6 +184,9 @@ exports.init = function (dir, config) {
   }
 
   function validateAndAdd(msg, cb) {
+    const guard = guardAgainstDuplicateLogs('validateAndAdd()')
+    if (guard) return cb(guard)
+
     const knownAuthor = msg.author in state.feeds
 
     try {
@@ -307,6 +339,7 @@ exports.init = function (dir, config) {
     getLatest: baseIndex.getLatest,
     getAllLatest: baseIndex.getAllLatest,
     getMessageFromAuthorSequence: baseIndex.getMessageFromAuthorSequence,
+    migrate,
 
     // FIXME: contacts & profiles
 

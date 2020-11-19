@@ -11,6 +11,9 @@
     "async-flumelog": "^1.0.8",
     "atomic-file": "^2.1.1",
     "bipf": "^1.3.0",
+    "debug": "~4.2.0",
+    "flumecodec": "0.0.1",
+    "flumelog-offset": "3.4.4",
     "husky": "^4.3.0",
     "jitdb": "~0.17.0",
     "level": "^6.0.1",
@@ -22,6 +25,7 @@
     "promisify-4loc": "1.0.0",
     "pull-cont": "^0.1.1",
     "pull-level": "^2.0.4",
+    "pull-notify": "~0.1.1",
     "pull-stream": "^3.6.14",
     "push-stream": "^11.0.0",
     "ssb-keys": "^8.0.0",
@@ -31,6 +35,11 @@
   },
   "devDependencies": {
     "rimraf": "^3.0.2",
+    "ssb-fixtures": "2.2.0",
+    "ssb-db": "20.3.0",
+    "secret-stack": "6.3.1",
+    "pull-stream-util": "0.1.2",
+    "ssb-caps": "1.1.0",
     "tap-spec": "^5.0.0",
     "tape": "^5.0.1"
   },
@@ -45,6 +54,8 @@
     }
   },
   "author": "Anders Rune Jensen <arj03@protonmail.ch>",
-  "contributors": ["Andre Staltz <contact@staltz.com>"],
+  "contributors": [
+    "Andre Staltz <contact@staltz.com>"
+  ],
   "license": "LGPL-3.0"
 }
