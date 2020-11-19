@@ -37,7 +37,7 @@ test('generate fixture with flumelog-offset', (t) => {
 test('migrate moves msgs from old log to new log', (t) => {
   const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
-    .use(require('../index'))
+    .use(require('../'))
     .call(null, { keys, path: dir })
 
   sbot.db.migrate.start()
@@ -61,11 +61,10 @@ test('migrate moves msgs from old log to new log', (t) => {
     fromEvent('ssb:db2:migrate:progress', sbot),
     pull.filter((x) => x === 1),
     pull.take(1),
-    // FIXME: why do we still need a setTimeout?
-    pull.asyncMap((x, cb) => setTimeout(cb, 500)),
     pull.drain(() => {
-      t.true(fs.existsSync(path.join(dir, 'db2', 'log.bipf')), 'migration done')
+      // we need to make sure async-flumelog has written the data
       sbot.db.onDrain(() => {
+        t.true(fs.existsSync(path.join(dir, 'db2', 'log.bipf')), 'migration done')
         sbot.db.query(
           toCallback((err1, msgs) => {
             t.error(err1, 'no err')
@@ -92,11 +91,9 @@ test('migrate keeps new log synced with old log being updated', (t) => {
     fromEvent('ssb:db2:migrate:progress', sbot),
     pull.filter((x) => x === 1),
     pull.take(1),
-    // FIXME: why do we still need a setTimeout?
-    pull.asyncMap((x, cb) => setTimeout(cb, 500)),
     pull.drain(() => {
-      t.true(fs.existsSync(path.join(dir, 'db2', 'log.bipf')), 'migration done')
       sbot.db.onDrain(() => {
+        t.true(fs.existsSync(path.join(dir, 'db2', 'log.bipf')), 'migration done')
         sbot.db.query(
           toCallback((err1, msgs) => {
             t.error(err1, '1st query suceeded')
@@ -107,18 +104,18 @@ test('migrate keeps new log synced with old log being updated', (t) => {
               fromEvent('ssb:db2:migrate:progress', sbot),
               pull.filter((x) => x === 1),
               pull.take(1),
-              // FIXME: why do we still need a setTimeout?
-              pull.asyncMap((x, cb) => setTimeout(cb, 500)),
               pull.drain(() => {
-                sbot.db.query(
-                  toCallback((err3, msgs2) => {
-                    t.error(err3, '2nd query suceeded')
-                    t.equal(msgs2.length, TOTAL + 1, `${TOTAL + 1} msgs`)
-                    sbot.close(() => {
-                      t.end()
+                sbot.db.onDrain(() => {
+                  sbot.db.query(
+                    toCallback((err3, msgs2) => {
+                      t.error(err3, '2nd query suceeded')
+                      t.equal(msgs2.length, TOTAL + 1, `${TOTAL + 1} msgs`)
+                      sbot.close(() => {
+                        t.end()
+                      })
                     })
-                  })
-                )
+                  )
+                })
               })
             )
 
@@ -147,8 +144,6 @@ test('refuses to db2.add() while old log exists', (t) => {
     fromEvent('ssb:db2:migrate:progress', sbot),
     pull.filter((x) => x === 1),
     pull.take(1),
-    // FIXME: why do we still need a setTimeout?
-    pull.asyncMap((x, cb) => setTimeout(cb, 500)),
     pull.drain(() => {
       const post = { type: 'post', text: 'Testing!' }
       sbot.db.publish(post, (err, posted) => {
