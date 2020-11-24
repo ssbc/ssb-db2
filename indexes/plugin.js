@@ -2,6 +2,7 @@ const Obv = require('obv')
 const Level = require('level')
 const path = require('path')
 const Debug = require('debug')
+const { indexesPath } = require('../defaults')
 
 module.exports = function (
   log,
@@ -12,16 +13,16 @@ module.exports = function (
   writeData,
   beforeIndexUpdate
 ) {
-  const indexesPath = path.join(dir, 'db2', 'indexes', name)
+  const indexPath = path.join(indexesPath(dir), name)
   const debug = Debug('ssb:db2:' + name)
 
   if (typeof window === 'undefined') {
     // outside browser
     const mkdirp = require('mkdirp')
-    mkdirp.sync(indexesPath)
+    mkdirp.sync(indexPath)
   }
 
-  const level = Level(indexesPath)
+  const level = Level(indexPath)
   const META = '\x00'
   const chunkSize = 512
   let isLive = false
@@ -49,8 +50,7 @@ module.exports = function (
 
     function onData(data) {
       let unwritten = handleData(data, processed)
-      if (unwritten > 0)
-        unWrittenSeq = data.seq
+      if (unwritten > 0) unWrittenSeq = data.seq
       processed++
 
       if (unwritten > chunkSize || isLive) {

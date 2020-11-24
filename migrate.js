@@ -1,18 +1,13 @@
 const fs = require('fs')
-const path = require('path')
 const pull = require('pull-stream')
 const Notify = require('pull-notify')
 const FlumeLog = require('flumelog-offset')
+const AsyncFlumeLog = require('async-flumelog')
 const bipf = require('bipf')
 const jsonCodec = require('flumecodec/json')
 const Obv = require('obv')
 const debug = require('debug')('ssb:db2:migrate')
-
-const blockSize = 64 * 1024
-
-function getOldLogPath(config) {
-  return path.join(config.path, 'flume', 'log.offset')
-}
+const { BLOCK_SIZE, oldLogPath, newLogPath } = require('./defaults')
 
 function skip(count, onDone) {
   let skipped = 0
@@ -42,8 +37,10 @@ function getOldLogStreams(sbot, config) {
     )
     return [logStream, logStreamLive, sizeStream]
   } else {
-    const oldLogPath = getOldLogPath(config)
-    const oldLog = FlumeLog(oldLogPath, { blockSize, codec: jsonCodec })
+    const oldLog = FlumeLog(oldLogPath(config.path), {
+      blockSize: BLOCK_SIZE,
+      codec: jsonCodec,
+    })
     const opts = { seqs: true, codec: jsonCodec }
     const logStream = oldLog.stream({ old: true, live: false, ...opts })
     const logStreamLive = oldLog.stream({ old: false, live: true, ...opts })
@@ -79,8 +76,10 @@ function scanAndCount(pushstream, cb) {
   })
 }
 
-exports.init = function init(sbot, config, newLog) {
-  const oldLogExists = makeFileExistsObv(getOldLogPath(config))
+exports.name = 'db2migrate'
+
+exports.init = function init(sbot, config, newLogMaybe) {
+  const oldLogExists = makeFileExistsObv(oldLogPath(config.path))
 
   let started = false
 
@@ -97,6 +96,10 @@ exports.init = function init(sbot, config, newLog) {
       sbot,
       config
     )
+    const newLog =
+      newLogMaybe && newLogMaybe.stream
+        ? newLogMaybe
+        : AsyncFlumeLog(newLogPath(config.path), { blockSize: BLOCK_SIZE })
     const newLogStream = newLog.stream({ gte: 0 })
 
     let oldSize = null
@@ -138,7 +141,7 @@ exports.init = function init(sbot, config, newLog) {
         // FIXME: see also issue #16
         log.append(data, () => {})
         emitProgressEvent()
-        if (dataTransferred % blockSize == 0) log.onDrain(cb)
+        if (dataTransferred % BLOCK_SIZE === 0) log.onDrain(cb)
         else cb()
       }
     }

@@ -12,11 +12,12 @@ module.exports = function (dir) {
   const AtomicFile = require('atomic-file')
   const debounce = require('lodash.debounce')
   const path = require('path')
+  const { indexesPath } = require('../defaults')
 
   const queue = require('../waiting-queue')()
   let state = {}
 
-  const f = AtomicFile(path.join(dir, 'db2', 'indexes', 'partial.json'))
+  const f = AtomicFile(path.join(indexesPath(dir), 'partial.json'))
 
   f.get((err, data) => {
     if (data) state = data.state

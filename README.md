@@ -141,6 +141,22 @@ const sbot = SecretStack({appKey: caps.shs})
 
 However, note that while the old log exists, it will be continously migrated to the new log, and ssb-db2 forbids you to use its database-writing APIs such as `add()`, `publish()`, `del()` and so forth, to prevent the two logs from diverging into inconsistent states. The old log will remain the source of truth and keep getting copied into the new log, until the old log file does not exist anymore.
 
+### Migrating without including ssb-db2
+
+Because ssb-db2 also begins indexing basic metadata once it's included as a plugin, this may cost more (precious) CPU time. **If you are not yet using db2 APIs** but would like to migrate the log anyway, in preparation for later activating db2, then you can include only the migration plugin, like this:
+
+```js
+const sbot = SecretStack({appKey: caps.shs})
+  .use(require('ssb-db2/migrate'))
+  .call(null, config)
+```
+
+Note that the `start` behavior is the same: you can either start it automatically using `config.db2.automigrate` or manually like this:
+
+```js
+sbot.db2migrate.start()
+```
+
 ## Methods
 
 FIXME: add documentation for these

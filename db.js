@@ -2,12 +2,12 @@ const push = require('push-stream')
 const hash = require('ssb-keys/util').hash
 const validate = require('ssb-validate')
 const keys = require('ssb-keys')
-const path = require('path')
 const Obv = require('obv')
 const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
 const JITDb = require('jitdb')
 
+const { indexesPath } = require('./defaults')
 const Log = require('./log')
 const BaseIndex = require('./indexes/base')
 const Migrate = require('./migrate')
@@ -19,7 +19,7 @@ function getId(msg) {
 
 exports.init = function (sbot, dir, config) {
   const log = Log(dir, config)
-  const jitdb = JITDb(log, path.join(dir, 'db2', 'indexes'))
+  const jitdb = JITDb(log, indexesPath(dir))
   const baseIndex = BaseIndex(log, dir)
   const migrate = Migrate.init(sbot, config, log)
   //const contacts = fullIndex.contacts
