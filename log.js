@@ -1,12 +1,12 @@
 const OffsetLog = require('async-flumelog')
 const bipf = require('bipf')
-const path = require('path')
+const { BLOCK_SIZE, newLogPath } = require('./defaults')
 
 module.exports = function (dir, config) {
   config = config || {}
 
-  const log = OffsetLog(path.join(dir, 'db2', 'log.bipf'), {
-    blockSize: 1024 * 64,
+  const log = OffsetLog(newLogPath(dir), {
+    blockSize: BLOCK_SIZE,
   })
 
   log.add = function (id, msg, cb) {
