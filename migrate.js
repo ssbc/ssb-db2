@@ -2,11 +2,12 @@ const fs = require('fs')
 const pull = require('pull-stream')
 const Notify = require('pull-notify')
 const FlumeLog = require('flumelog-offset')
+const AsyncFlumeLog = require('async-flumelog')
 const bipf = require('bipf')
 const jsonCodec = require('flumecodec/json')
 const Obv = require('obv')
 const debug = require('debug')('ssb:db2:migrate')
-const { BLOCK_SIZE, oldLogPath } = require('./defaults')
+const { BLOCK_SIZE, oldLogPath, newLogPath } = require('./defaults')
 
 function skip(count, onDone) {
   let skipped = 0
@@ -75,7 +76,9 @@ function scanAndCount(pushstream, cb) {
   })
 }
 
-exports.init = function init(sbot, config, newLog) {
+exports.name = 'db2migrate'
+
+exports.init = function init(sbot, config, newLogMaybe) {
   const oldLogExists = makeFileExistsObv(oldLogPath(config.path))
 
   let started = false
@@ -93,6 +96,10 @@ exports.init = function init(sbot, config, newLog) {
       sbot,
       config
     )
+    const newLog =
+      newLogMaybe && newLogMaybe.stream
+        ? newLogMaybe
+        : AsyncFlumeLog(newLogPath(config.path), { blockSize: BLOCK_SIZE })
     const newLogStream = newLog.stream({ gte: 0 })
 
     let oldSize = null
