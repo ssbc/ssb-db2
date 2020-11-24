@@ -157,6 +157,10 @@ Note that the `start` behavior is the same: you can either start it automaticall
 sbot.db2migrate.start()
 ```
 
+### Migrating gently
+
+If migrating to the new log is not a priority over other computations and UI responses, you can choose to do the migration tasks gently, respecting current CPU usage. To enable this mode, set `config.db2.migrateMaxCpu` to a number between 1 and 100 representing the maximum CPU load allowed for this task. Underneath, it will use [`pull-drain-gently`](https://gitlab.com/staltz/pull-drain-gently/). You can also set `config.db2.migrateMaxPause`, which is a parameter handed down to `pull-drain-gently`, [read more about it here](https://gitlab.com/staltz/pull-drain-gently/#tweaking-the-parameters).
+
 ## Methods
 
 FIXME: add documentation for these
