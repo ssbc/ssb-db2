@@ -64,7 +64,10 @@ test('migrate moves msgs from old log to new log', (t) => {
     pull.drain(() => {
       // we need to make sure async-flumelog has written the data
       sbot.db.onDrain(() => {
-        t.true(fs.existsSync(path.join(dir, 'db2', 'log.bipf')), 'migration done')
+        t.true(
+          fs.existsSync(path.join(dir, 'db2', 'log.bipf')),
+          'migration done'
+        )
         sbot.db.query(
           toCallback((err1, msgs) => {
             t.error(err1, 'no err')
@@ -85,7 +88,14 @@ test('migrate keeps new log synced with old log being updated', (t) => {
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('ssb-db'))
     .use(require('../index'))
-    .call(null, { keys, path: dir, db2: { automigrate: true } })
+    .call(null, {
+      keys,
+      path: dir,
+      db2: {
+        automigrate: true,
+        migrateMaxCpu: 40,
+      },
+    })
 
   pull(
     fromEvent('ssb:db2:migrate:progress', sbot),
@@ -93,7 +103,10 @@ test('migrate keeps new log synced with old log being updated', (t) => {
     pull.take(1),
     pull.drain(() => {
       sbot.db.onDrain(() => {
-        t.true(fs.existsSync(path.join(dir, 'db2', 'log.bipf')), 'migration done')
+        t.true(
+          fs.existsSync(path.join(dir, 'db2', 'log.bipf')),
+          'migration done'
+        )
         sbot.db.query(
           toCallback((err1, msgs) => {
             t.error(err1, '1st query suceeded')
