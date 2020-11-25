@@ -2,7 +2,7 @@ const bipf = require('bipf')
 const pl = require('pull-level')
 const pull = require('pull-stream')
 const Plugin = require('./plugin')
-const json = require('level-codec/lib/encodings').json
+const jsonCodec = require('flumecodec/json')
 const { offsets, liveOffsets } = require('../operators')
 
 // 3 indexes:
@@ -25,7 +25,7 @@ module.exports = function (log, dir) {
   let batch = []
 
   function writeData(cb) {
-    level.batch(batch, { keyEncoding: json }, cb)
+    level.batch(batch, { keyEncoding: jsonCodec }, cb)
     batch = []
   }
 
@@ -129,7 +129,7 @@ module.exports = function (log, dir) {
         {
           gte: ['m', key, ''],
           lte: ['m', key, undefined],
-          keyEncoding: json,
+          keyEncoding: jsonCodec,
           keys: false,
         },
         live,
@@ -141,7 +141,7 @@ module.exports = function (log, dir) {
         {
           gte: ['r', rootId, ''],
           lte: ['r', rootId, undefined],
-          keyEncoding: json,
+          keyEncoding: jsonCodec,
           keys: false,
         },
         live,
@@ -153,7 +153,7 @@ module.exports = function (log, dir) {
         {
           gte: ['v', linkId, ''],
           lte: ['v', linkId, undefined],
-          keyEncoding: json,
+          keyEncoding: jsonCodec,
           keys: false,
         },
         live,
