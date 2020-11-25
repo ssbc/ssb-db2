@@ -2,7 +2,8 @@ const bipf = require('bipf')
 const pl = require('pull-level')
 const pull = require('pull-stream')
 const Plugin = require('./plugin')
-const { offsets } = require('../operators')
+const json = require('level-codec/lib/encodings').json
+const { offsets, liveOffsets } = require('../operators')
 
 // 3 indexes:
 // - root (msgId) => msg seqs
@@ -24,7 +25,7 @@ module.exports = function (log, dir) {
   let batch = []
 
   function writeData(cb) {
-    level.batch(batch, { keyEncoding: 'json' }, cb)
+    level.batch(batch, { keyEncoding: json }, cb)
     batch = []
   }
 
@@ -102,54 +103,61 @@ module.exports = function (log, dir) {
   const name = 'social'
   const { level, seq } = Plugin(log, dir, name, 1, handleData, writeData)
 
+  function getResults(opts, live, cb) {
+    pull(
+      pl.read(level, opts),
+      pull.collect((err, data) => {
+        if (err) return cb(err)
+        if (live) {
+          const ps = pull(
+            pl.read(level, Object.assign({}, opts, { live, old: false })),
+            pull.map(parseInt10)
+          )
+          cb(null, liveOffsets(data.map(parseInt10), ps))
+        } else cb(null, offsets(data.map(parseInt10)))
+      })
+    )
+  }
+
   return {
     seq,
     name,
     remove: level.clear,
     close: level.close.bind(level),
-    getMessagesByMention: function (key, cb) {
-      pull(
-        pl.read(level, {
+    getMessagesByMention: function (key, live, cb) {
+      getResults(
+        {
           gte: ['m', key, ''],
           lte: ['m', key, undefined],
-          keyEncoding: 'json',
+          keyEncoding: json,
           keys: false,
-        }),
-        pull.collect((err, data) => {
-          if (err) return cb(err)
-
-          cb(null, offsets(data.map(parseInt10)))
-        })
+        },
+        live,
+        cb
       )
     },
-    getMessagesByRoot: function (rootId, cb) {
-      pull(
-        pl.read(level, {
+    getMessagesByRoot: function (rootId, live, cb) {
+      getResults(
+        {
           gte: ['r', rootId, ''],
           lte: ['r', rootId, undefined],
-          keyEncoding: 'json',
+          keyEncoding: json,
           keys: false,
-        }),
-        pull.collect((err, data) => {
-          if (err) return cb(err)
-
-          cb(null, offsets(data.map(parseInt10)))
-        })
+        },
+        live,
+        cb
       )
     },
-    getMessagesByVoteLink: function (linkId, cb) {
-      pull(
-        pl.read(level, {
+    getMessagesByVoteLink: function (linkId, live, cb) {
+      getResults(
+        {
           gte: ['v', linkId, ''],
           lte: ['v', linkId, undefined],
-          keyEncoding: 'json',
+          keyEncoding: json,
           keys: false,
-        }),
-        pull.collect((err, data) => {
-          if (err) return cb(err)
-
-          cb(null, offsets(data.map(parseInt10)))
-        })
+        },
+        live,
+        cb
       )
     },
   }
