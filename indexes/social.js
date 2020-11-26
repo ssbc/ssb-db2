@@ -46,7 +46,7 @@ module.exports = function (log, dir) {
           if (root) {
             batch.push({
               type: 'put',
-              key: ['r', root, shortKey],
+              key: [root, 'r',  shortKey],
               value: processed,
             })
           }
@@ -64,7 +64,7 @@ module.exports = function (log, dir) {
               ) {
                 batch.push({
                   type: 'put',
-                  key: ['m', mention.link, shortKey],
+                  key: [mention.link, 'm', shortKey],
                   value: processed,
                 })
               }
@@ -82,7 +82,7 @@ module.exports = function (log, dir) {
                 const link = bipf.decode(data.value, pLink)
                 batch.push({
                   type: 'put',
-                  key: ['v', link, shortKey],
+                  key: [link, 'v', shortKey],
                   value: processed,
                 })
               }
@@ -127,8 +127,8 @@ module.exports = function (log, dir) {
     getMessagesByMention: function (key, live, cb) {
       getResults(
         {
-          gte: ['m', key, ''],
-          lte: ['m', key, undefined],
+          gte: [key, 'm', ''],
+          lte: [key, 'm', undefined],
           keyEncoding: jsonCodec,
           keys: false,
         },
@@ -139,8 +139,8 @@ module.exports = function (log, dir) {
     getMessagesByRoot: function (rootId, live, cb) {
       getResults(
         {
-          gte: ['r', rootId, ''],
-          lte: ['r', rootId, undefined],
+          gte: [rootId, 'r', ''],
+          lte: [rootId, 'r', undefined],
           keyEncoding: jsonCodec,
           keys: false,
         },
@@ -151,8 +151,8 @@ module.exports = function (log, dir) {
     getMessagesByVoteLink: function (linkId, live, cb) {
       getResults(
         {
-          gte: ['v', linkId, ''],
-          lte: ['v', linkId, undefined],
+          gte: [linkId, 'v', ''],
+          lte: [linkId, 'v', undefined],
           keyEncoding: jsonCodec,
           keys: false,
         },
