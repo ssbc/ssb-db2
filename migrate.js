@@ -99,7 +99,7 @@ exports.init = function init(sbot, config, newLogMaybe) {
   let retryPeriod = 250
   let timer
 
-  function oldLogMissingRetry(fn) {
+  function oldLogMissingThenRetry(fn) {
     if (!hasCloseHook) {
       sbot.close.hook(function (fn, args) {
         clearTimeout(timer)
@@ -122,7 +122,7 @@ exports.init = function init(sbot, config, newLogMaybe) {
 
   function start() {
     if (started) return
-    if (oldLogMissingRetry(start)) return
+    if (oldLogMissingThenRetry(start)) return
     started = true
     debug('started')
 
