@@ -61,6 +61,14 @@ module.exports = function (
       }
     }
 
+    function liveStream() {
+      isLive = true
+      log.stream({ gt: seq.value, live: true }).pipe({
+        paused: false,
+        write: onData,
+      })
+    }
+
     log.stream({ gt: seq.value }).pipe({
       paused: false,
       write: onData,
@@ -69,16 +77,11 @@ module.exports = function (
           writeBatch((err) => {
             if (err) throw err
             seq.set(unWrittenSeq)
+            liveStream()
           })
-        }
+        } else liveStream()
 
         debug(`index scan time: ${Date.now() - start}ms, items: ${processed}`)
-
-        isLive = true
-        log.stream({ gt: seq.value, live: true }).pipe({
-          paused: false,
-          write: onData,
-        })
       },
     })
   }
