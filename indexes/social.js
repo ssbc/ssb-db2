@@ -37,7 +37,6 @@ module.exports = function (log, dir) {
     p = 0
     p = bipf.seekKey(data.value, p, bValue)
     if (~p) {
-      // content
       const pContent = bipf.seekKey(data.value, p, bContent)
       if (~pContent) {
         const pRoot = bipf.seekKey(data.value, pContent, bRoot)
@@ -46,7 +45,7 @@ module.exports = function (log, dir) {
           if (root) {
             batch.push({
               type: 'put',
-              key: [root, 'r',  shortKey],
+              key: [root, 'r', shortKey],
               value: processed,
             })
           }

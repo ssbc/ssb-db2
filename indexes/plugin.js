@@ -61,8 +61,7 @@ module.exports = function (
       }
     }
 
-    function liveStream()
-    {
+    function liveStream() {
       isLive = true
       log.stream({ gt: seq.value, live: true }).pipe({
         paused: false,
@@ -80,11 +79,10 @@ module.exports = function (
             seq.set(unWrittenSeq)
             liveStream()
           })
-        } else
-          liveStream()
+        } else liveStream()
 
         debug(`index scan time: ${Date.now() - start}ms, items: ${processed}`)
-      }
+      },
     })
   }
 
