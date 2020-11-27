@@ -22,9 +22,13 @@ function skip(count, onDone) {
   })
 }
 
+function fileExists(filename) {
+  return fs.existsSync(filename) && fs.statSync(filename).size > 0
+}
+
 function makeFileExistsObv(filename) {
   const obv = Obv()
-  obv.set(fs.existsSync(filename))
+  obv.set(fileExists(filename))
   return obv
 }
 
@@ -91,15 +95,36 @@ exports.init = function init(sbot, config, newLogMaybe) {
       : 10e3 // seconds
 
   let started = false
+  let hasCloseHook = false
+  let retryPeriod = 250
+  let timer
+
+  function oldLogMissingRetry(fn) {
+    if (!hasCloseHook) {
+      sbot.close.hook(function (fn, args) {
+        clearTimeout(timer)
+        fn.apply(this, args)
+      })
+      hasCloseHook = true
+    }
+    oldLogExists.set(fileExists(oldLogPath(config.path)))
+    if (oldLogExists.value === false) {
+      timer = setTimeout(fn, (retryPeriod = Math.min(retryPeriod * 2, 8000)))
+      return true
+    } else {
+      return false
+    }
+  }
 
   if (config.db2 && config.db2.automigrate) {
     start()
   }
 
   function start() {
-    if (oldLogExists.value === false) return
     if (started) return
+    if (oldLogMissingRetry(start)) return
     started = true
+    debug('started')
 
     const [oldLogStream, oldLogStreamLive, oldSizeStream] = getOldLogStreams(
       sbot,
