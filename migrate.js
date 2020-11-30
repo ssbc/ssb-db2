@@ -82,7 +82,7 @@ function scanAndCount(pushstream, cb) {
 
 exports.name = 'db2migrate'
 
-exports.version = '0.3.0'
+exports.version = '0.4.0'
 
 exports.manifest = {
   start: 'sync',
