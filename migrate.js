@@ -83,6 +83,12 @@ function scanAndCount(pushstream, cb) {
 
 exports.name = 'db2migrate'
 
+exports.version = '0.3.0'
+
+exports.manifest = {
+  start: 'sync',
+}
+
 exports.init = function init(sbot, config, newLogMaybe) {
   const oldLogExists = makeFileExistsObv(oldLogPath(config.path))
   const maxCpu =
