@@ -11,7 +11,7 @@ const { indexesPath } = require('./defaults')
 const Log = require('./log')
 const BaseIndex = require('./indexes/base')
 const Migrate = require('./migrate')
-const Partial = require('./indexes/partial')
+// const Partial = require('./indexes/partial')
 
 function getId(msg) {
   return '%' + hash(JSON.stringify(msg, null, 2))
