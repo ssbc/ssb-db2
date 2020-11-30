@@ -196,13 +196,22 @@ exports.init = function init(sbot, config, newLogMaybe) {
             if (err) return console.error(err)
             debug('done migrating %s msgs from old log', msgCountOldLog)
 
+            let liveMsgCount = 0
+            if (debug.enabled) {
+              setInterval(() => {
+                if (liveMsgCount === 0) return
+                debug('%d msgs synced from old log to new log', liveMsgCount)
+                liveMsgCount = 0
+              }, 2000)
+            }
+
             pull(
               oldLogStreamLive,
               pull.map(updateMigratedSizeAndPluck),
               pull.map(toBIPF),
               pull.asyncMap(writeTo(newLog)),
               pull.drain(() => {
-                debug('1 new msg synced from old log to new log')
+                liveMsgCount++
               })
             )
           }
