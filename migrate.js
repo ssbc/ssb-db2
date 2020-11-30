@@ -1,6 +1,5 @@
 const fs = require('fs')
 const pull = require('pull-stream')
-const drainGently = require('pull-drain-gently')
 const Notify = require('pull-notify')
 const FlumeLog = require('flumelog-offset')
 const AsyncFlumeLog = require('async-flumelog')
@@ -85,14 +84,6 @@ exports.name = 'db2migrate'
 
 exports.init = function init(sbot, config, newLogMaybe) {
   const oldLogExists = makeFileExistsObv(oldLogPath(config.path))
-  const maxCpu =
-    config.db2 && typeof config.db2.migrateMaxCpu === 'number'
-      ? config.db2.migrateMaxCpu
-      : Infinity
-  const maxPause =
-    config.db2 && typeof config.db2.migrateMaxPause === 'number'
-      ? config.db2.migrateMaxPause
-      : 10e3 // seconds
 
   let started = false
   let hasCloseHook = false
@@ -180,16 +171,6 @@ exports.init = function init(sbot, config, newLogMaybe) {
       }
     }
 
-    function drainMaybeGently(op, cb) {
-      if (isFinite(maxCpu)) {
-        debug('reading old log only when CPU is less than ' + maxCpu + '% busy')
-        return drainGently({ ceiling: maxCpu, wait: 60, maxPause }, op, cb)
-      } else {
-        debug('reading old log')
-        return pull.drain(op, cb)
-      }
-    }
-
     updateOldSize(oldSizeStream)
 
     scanAndCount(newLogStream, (err, msgCountNewLog) => {
@@ -207,7 +188,7 @@ exports.init = function init(sbot, config, newLogMaybe) {
         pull.map(updateMigratedSizeAndPluck),
         pull.map(toBIPF),
         pull.asyncMap(writeTo(newLog)),
-        drainMaybeGently(
+        pull.drain(
           () => {
             msgCountOldLog++
           },
