@@ -30,7 +30,7 @@ module.exports = function (dir, config, private) {
     originalGet(seq, (err, res) => {
       if (err && err.code === 'flumelog:deleted') cb()
       else if (err) return cb(err)
-      else cb(null, private.decrypt({ seq, value: res }).value)
+      else cb(null, private.decrypt({ seq, value: res }, false).value)
     })
   }
 
@@ -40,7 +40,7 @@ module.exports = function (dir, config, private) {
     let originalPipe = s.pipe.bind(s)
     s.pipe = function (o) {
       let originalWrite = o.write
-      o.write = (record) => originalWrite(private.decrypt(record))
+      o.write = (record) => originalWrite(private.decrypt(record, true))
       return originalPipe(o)
     }
     return s

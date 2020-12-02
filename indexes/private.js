@@ -91,7 +91,7 @@ module.exports = function (dir, keys) {
     return { seq: data.seq, value: buf }
   }
 
-  function decrypt(data) {
+  function decrypt(data, streaming) {
     if (bsb.eq(canDecrypt, data.seq) !== -1) {
       let p = 0 // note you pass in p!
 
@@ -104,7 +104,8 @@ module.exports = function (dir, keys) {
         }
       }
     } else if (data.seq > latestSeq) {
-      latestSeq = data.seq
+      if (streaming) latestSeq = data.seq
+
       let p = 0 // note you pass in p!
 
       p = bipf.seekKey(data.value, p, bValue)
