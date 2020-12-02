@@ -49,7 +49,8 @@ function isRoot() {
   }
 }
 
-const bTrue = Buffer.from('true')
+let bTrue = Buffer.alloc(1)
+bTrue[0] = 1
 function isPrivate() {
   return {
     type: 'EQUAL',

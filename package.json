@@ -9,13 +9,15 @@
   },
   "dependencies": {
     "async-flumelog": "^1.0.9",
-    "atomic-file": "^2.1.1",
+    "atomically-universal": "^0.1.0",
+    "binary-search-bounds": "^2.0.4",
     "bipf": "^1.3.0",
     "debug": "~4.2.0",
+    "fastintcompression": "0.0.4",
     "flumecodec": "0.0.1",
     "flumelog-offset": "3.4.4",
     "husky": "^4.3.0",
-    "jitdb": "^0.19.0",
+    "jitdb": "^0.20.0",
     "level": "^6.0.1",
     "lodash.debounce": "^4.0.8",
     "mkdirp": "^1.0.4",
@@ -31,7 +33,8 @@
     "ssb-keys": "^8.0.0",
     "ssb-ref": "^2.14.2",
     "ssb-sort": "^1.1.3",
-    "ssb-validate": "^4.1.3"
+    "ssb-validate": "^4.1.3",
+    "typedarray-to-buffer": "^4.0.0"
   },
   "devDependencies": {
     "rimraf": "^3.0.2",

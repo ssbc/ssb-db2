@@ -2,13 +2,14 @@ const bipf = require('bipf')
 const pl = require('pull-level')
 const pull = require('pull-stream')
 const Plugin = require('./plugin')
+const { reEncrypt } = require('./private')
 
 // 3 indexes:
 // - msg key => seq
 // - [author, sequence] => seq (EBT)
 // - author => latest { msg key, sequence timestamp } (validate state & EBT)
 
-module.exports = function (log, dir) {
+module.exports = function (log, dir, private) {
   const bValue = Buffer.from('value')
   const bKey = Buffer.from('key')
   const bAuthor = Buffer.from('author')
@@ -37,7 +38,13 @@ module.exports = function (log, dir) {
   function writeData(cb) {
     level.batch(batchBasic, throwOnError)
     level.batch(batchJsonKey, { keyEncoding: 'json' }, throwOnError)
-    level.batch(batchJson, { keyEncoding: 'json', valueEncoding: 'json' }, cb)
+    level.batch(
+      batchJson,
+      { keyEncoding: 'json', valueEncoding: 'json' },
+      throwOnError
+    )
+
+    private.saveIndexes(cb)
 
     batchBasic = []
     batchJsonKey = []
@@ -110,7 +117,7 @@ module.exports = function (log, dir) {
     level.get(key, (err, seq) => {
       if (err) return cb(err)
       else
-        log.get(seq, (err, data) => {
+        log.get(parseInt(seq, 10), (err, data) => {
           if (err) return cb(err)
           cb(null, bipf.decode(data, 0))
         })
@@ -123,8 +130,13 @@ module.exports = function (log, dir) {
     close: level.close.bind(level),
 
     getMessageFromKey: levelKeyToMessage,
+
+    // this is for EBT so must be not leak private messages
     getMessageFromAuthorSequence: (key, cb) => {
-      levelKeyToMessage(JSON.stringify(key), cb)
+      levelKeyToMessage(JSON.stringify(key), (err, msg) => {
+        if (err) cb(err)
+        else cb(null, reEncrypt(msg))
+      })
     },
 
     // returns { id (msg key), sequence, timestamp }

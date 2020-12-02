@@ -10,6 +10,7 @@ const JITDb = require('jitdb')
 const { indexesPath } = require('./defaults')
 const Log = require('./log')
 const BaseIndex = require('./indexes/base')
+const Private = require('./indexes/private')
 const Migrate = require('./migrate')
 // const Partial = require('./indexes/partial')
 
@@ -18,9 +19,10 @@ function getId(msg) {
 }
 
 exports.init = function (sbot, dir, config) {
-  const log = Log(dir, config)
+  const private = Private(dir, config.keys)
+  const log = Log(dir, config, private)
   const jitdb = JITDb(log, indexesPath(dir))
-  const baseIndex = BaseIndex(log, dir)
+  const baseIndex = BaseIndex(log, dir, private)
   const migrate = Migrate.init(sbot, config, log)
   //const contacts = fullIndex.contacts
   //const partial = Partial(dir)
@@ -82,26 +84,7 @@ exports.init = function (sbot, dir, config) {
 
     baseIndex.getMessageFromKey(id, (err, data) => {
       if (data) cb(null, data.value)
-      else {
-        // store encrypted messages for us unencrypted for views
-        // ebt will turn messages into encrypted ones before sending
-        if (typeof msg.content === 'string') {
-          const decrypted = keys.unbox(msg.content, config.keys.private)
-          if (decrypted) {
-            const cyphertext = msg.content
-
-            msg.content = decrypted
-            msg.meta = {
-              private: 'true',
-              original: {
-                content: cyphertext,
-              },
-            }
-          }
-        }
-
-        log.add(id, msg, cb)
-      }
+      else log.add(id, msg, cb)
     })
   }
 
@@ -161,10 +144,6 @@ exports.init = function (sbot, dir, config) {
         }
       )
     })
-  }
-
-  function decryptMessage(msg) {
-    return keys.unbox(msg.content, config.keys.private)
   }
 
   function validateAndAddOOO(msg, cb) {
@@ -340,6 +319,7 @@ exports.init = function (sbot, dir, config) {
 
     getLatest: baseIndex.getLatest,
     getAllLatest: baseIndex.getAllLatest,
+    // EBT
     getMessageFromAuthorSequence: baseIndex.getMessageFromAuthorSequence,
     migrate,
 
