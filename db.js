@@ -334,7 +334,9 @@ exports.init = function (sbot, dir, config) {
     post,
 
     registerIndex,
-    indexes,
+    getIndexes: function () {
+      return indexes
+    },
 
     getLatest: baseIndex.getLatest,
     getAllLatest: baseIndex.getAllLatest,
