@@ -96,9 +96,9 @@ module.exports = function (dir, keys) {
       let p = 0 // note you pass in p!
 
       p = bipf.seekKey(data.value, p, bValue)
-      if (~p) {
+      if (p >= 0) {
         const pContent = bipf.seekKey(data.value, p, bContent)
-        if (~pContent) {
+        if (pContent >= 0) {
           const content = ssbKeys.unbox(bipf.decode(data.value, pContent), keys)
           if (content) return reconstructMessage(data, content)
         }
@@ -109,9 +109,9 @@ module.exports = function (dir, keys) {
       let p = 0 // note you pass in p!
 
       p = bipf.seekKey(data.value, p, bValue)
-      if (~p) {
+      if (p >= 0) {
         const pContent = bipf.seekKey(data.value, p, bContent)
-        if (~pContent) {
+        if (pContent >= 0) {
           const type = bipf.getEncodedType(data.value, pContent)
           if (type === StringType) {
             encrypted.push(data.seq)
