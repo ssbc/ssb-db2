@@ -268,7 +268,7 @@ exports.init = function (sbot, dir, config) {
 
     if (indexes[index.name]) throw 'Index already exists'
 
-    indexes[index.name] = index
+    this.indexes[index.name] = index
   }
 
   function onDrain(indexName, cb) {
