@@ -57,17 +57,18 @@ test('Base', (t) => {
     signature:
       'StvrZ8jmT8YkwkPzPzj4iKDowRN+UkJnA2HvSqxq0GXZ4AJpTeoG3Brbu4UfAPPVcLmxkngimYpTQM8wwAMMAg==.sig.ed25519',
   }
+  const groupKey = '4uEN6ltQBgSbZlJm+FCAAd0wnEGoJzFc6soeikAVt6g='
 
   db.add(groupInitMsg, () => {
-    db.add(groupMsg, (err, msg) => {
-      db.add(groupInviteMsg, () => {
+    db.add(groupMsg, () => {
+      db.add(groupInviteMsg, (err, imported) => {
         db.onDrain('base', () => {
-          // we should to the group key
-          t.end()
+          db.get(imported.key, (err, msg) => {
+            t.equal(msg.content.groupKey, groupKey, 'extracted key')
+            t.end()
+          })
         })
       })
     })
   })
-
-  //t.equal(postMsg.value.content.text, post.text, 'text correct')
 })

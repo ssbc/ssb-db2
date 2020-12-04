@@ -124,8 +124,6 @@ module.exports = function (dir, keys) {
     })
     if (!read_key) return ''
 
-    console.log('got read key', read_key)
-
     const plaintext = unboxBody(envelope, feed_id, prev_msg_id, read_key)
     if (plaintext) return JSON.parse(plaintext.toString('utf8'))
     else return ''
@@ -139,14 +137,26 @@ module.exports = function (dir, keys) {
     if (bsb.eq(canDecrypt, data.seq) !== -1) {
       let p = 0 // note you pass in p!
 
-      p = bipf.seekKey(data.value, p, bValue)
-      if (p >= 0) {
-        const pContent = bipf.seekKey(data.value, p, bContent)
+      const pValue = bipf.seekKey(data.value, p, bValue)
+      if (pValue >= 0) {
+        const pContent = bipf.seekKey(data.value, pValue, bContent)
         if (pContent >= 0) {
           const ciphertext = bipf.decode(data.value, pContent)
           let content = ''
           if (ciphertext.endsWith('.box'))
             content = decryptBox1(ciphertext, keys)
+          else if (ciphertext.endsWith('.box2')) {
+            const pAuthor = bipf.seekKey(data.value, pValue, bAuthor)
+            if (pAuthor >= 0) {
+              const author = bipf.decode(data.value, pAuthor)
+              const pPrevious = bipf.seekKey(data.value, pValue, bPrevious)
+              if (pPrevious >= 0) {
+                const previousMsg = bipf.decode(data.value, pPrevious)
+                content = decryptBox2(ciphertext, author, previousMsg)
+              }
+            }
+          }
+
           if (content) {
             const originalMsg = reconstructMessage(data, content)
             return originalMsg
@@ -163,7 +173,6 @@ module.exports = function (dir, keys) {
         const pContent = bipf.seekKey(data.value, pValue, bContent)
         if (pContent >= 0) {
           const type = bipf.getEncodedType(data.value, pContent)
-          console.log('decrypting!', type)
           if (type === StringType) {
             encrypted.push(data.seq)
 
@@ -172,17 +181,13 @@ module.exports = function (dir, keys) {
             if (ciphertext.endsWith('.box'))
               content = decryptBox1(ciphertext, keys)
             else if (ciphertext.endsWith('.box2')) {
-              console.log('testing box2')
               const pAuthor = bipf.seekKey(data.value, pValue, bAuthor)
               if (pAuthor >= 0) {
                 const author = bipf.decode(data.value, pAuthor)
                 const pPrevious = bipf.seekKey(data.value, pValue, bPrevious)
                 if (pPrevious >= 0) {
                   const previousMsg = bipf.decode(data.value, pPrevious)
-                  console.log('author', author)
-                  console.log('prev', previousMsg)
                   content = decryptBox2(ciphertext, author, previousMsg)
-                  console.log('content', content)
                 }
               }
             }
