@@ -106,6 +106,46 @@ test('getMessagesByRoot', (t) => {
   })
 })
 
+test('encrypted getMessagesByRoot', (t) => {
+  const post = { type: 'post', text: 'Testing!' }
+  const post2 = { type: 'post', text: 'Testing 2!' }
+
+  db.publish(post, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    db.publish(post2, (err) => {
+      t.error(err, 'no err')
+
+      let threadMsg1 = {
+        type: 'post',
+        text: 'reply',
+        root: postMsg.key,
+        recps: [keys.id],
+      }
+      threadMsg1 = ssbKeys.box(
+        threadMsg1,
+        threadMsg1.recps.map((x) => x.substr(1))
+      )
+
+      db.publish(threadMsg1, (err, privMsg) => {
+        t.error(err, 'no err')
+
+        db.onDrain('social', () => {
+          db.query(
+            and(hasRoot(postMsg.key)),
+            toCallback((err, results) => {
+              t.error(err, 'no err')
+              t.equal(results.length, 1)
+              t.equal(results[0].value.content.text, 'reply')
+              t.end()
+            })
+          )
+        })
+      })
+    })
+  })
+})
+
 test('getMessagesByVoteLink', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 

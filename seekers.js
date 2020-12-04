@@ -37,8 +37,6 @@ module.exports = {
 
   seekPrivate: function (buffer) {
     let p = 0 // note you pass in p!
-    p = seekKey(buffer, p, bValue)
-    if (!~p) return
     p = seekKey(buffer, p, bMeta)
     if (!~p) return
     return seekKey(buffer, p, bPrivate)

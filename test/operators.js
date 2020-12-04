@@ -4,7 +4,7 @@ const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const DB = require('../db')
-const { and, type, toCallback, author } = require('../operators')
+const { and, type, isPrivate, toCallback, author } = require('../operators')
 
 const dir = '/tmp/ssb-db2-operators'
 
@@ -31,6 +31,30 @@ test('execute and(type("post"), author(me))', (t) => {
           t.error(err2, 'no err2')
           t.equal(msgs.length, 1)
           t.equal(msgs[0].value.content.type, 'post')
+          t.end()
+        })
+      )
+    })
+  })
+})
+
+test('execute and(type("post"), isPrivate)', (t) => {
+  let content = { type: 'post', text: 'super secret', recps: [keys.id] }
+  content = ssbKeys.box(
+    content,
+    content.recps.map((x) => x.substr(1))
+  )
+
+  db.publish(content, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    db.onDrain('base', () => {
+      db.query(
+        and(type('post'), isPrivate()),
+        toCallback((err2, msgs) => {
+          t.error(err2, 'no err2')
+          t.equal(msgs.length, 1)
+          t.equal(msgs[0].value.content.text, 'super secret')
           t.end()
         })
       )

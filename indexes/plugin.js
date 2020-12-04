@@ -24,7 +24,7 @@ module.exports = function (
 
   const level = Level(indexPath)
   const META = '\x00'
-  const chunkSize = 512
+  const chunkSize = 2048
   let isLive = false
   let processed = 0
   const seq = Obv()
