@@ -100,8 +100,8 @@ module.exports = function (dir, keys) {
 
   const buildDMKey = directMessageKey.easy(keys)
 
-  function getDMKey(author) {
-    return { key: buildDMKey(author), scheme: keySchemes.private_group }
+  function getDMKey(author, scheme) {
+    return { key: buildDMKey(author), scheme }
   }
 
   function decryptBox2(ciphertext, author, previous) {
@@ -114,7 +114,10 @@ module.exports = function (dir, keys) {
     // FIXME: group keys
     //const trial_group_keys = keystore.author.groupKeys(author)
 
-    const trial_dm_keys = [getDMKey(author), getDMKey(keys.id)]
+    const trial_dm_keys = [
+      getDMKey(author, keySchemes.feed_id_dm),
+      getDMKey(keys.id, keySchemes.feed_id_self)
+    ]
 
     const read_key = unboxKey(envelope, feed_id, prev_msg_id, trial_dm_keys, {
       maxAttempts: 16,
