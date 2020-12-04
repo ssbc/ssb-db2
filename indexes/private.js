@@ -78,6 +78,7 @@ module.exports = function (dir, keys) {
   const bKey = Buffer.from('key')
   const bValue = Buffer.from('value')
   const bAuthor = Buffer.from('author')
+  const bPrevious = Buffer.from('previous')
   const bContent = Buffer.from('content')
   const StringType = 0
 
@@ -131,9 +132,6 @@ module.exports = function (dir, keys) {
     return ssbKeys.unbox(ciphertext, keys)
   }
 
-  // evil hack!
-  let previousMsg = null
-
   function decrypt(data, streaming) {
     if (bsb.eq(canDecrypt, data.seq) !== -1) {
       let p = 0 // note you pass in p!
@@ -175,10 +173,14 @@ module.exports = function (dir, keys) {
               const pAuthor = bipf.seekKey(data.value, pValue, bAuthor)
               if (pAuthor >= 0) {
                 const author = bipf.decode(data.value, pAuthor)
-                console.log('author', author)
-                console.log('prev', previousMsg)
-                content = decryptBox2(ciphertext, author, previousMsg)
-                console.log('content', content)
+                const pPrevious = bipf.seekKey(data.value, pValue, bPrevious)
+                if (pPrevious >= 0) {
+                  const previousMsg = bipf.decode(data.value, pPrevious)
+                  console.log('author', author)
+                  console.log('prev', previousMsg)
+                  content = decryptBox2(ciphertext, author, previousMsg)
+                  console.log('content', content)
+                }
               }
             }
 
@@ -190,9 +192,6 @@ module.exports = function (dir, keys) {
         }
       }
     }
-
-    // ugh
-    previousMsg = bipf.decode(data.value, 0).key
 
     return data
   }

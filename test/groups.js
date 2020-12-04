@@ -60,10 +60,9 @@ test('Base', (t) => {
 
   db.add(groupInitMsg, () => {
     db.add(groupMsg, (err, msg) => {
-      console.log(msg)
-
       db.add(groupInviteMsg, () => {
         db.onDrain('base', () => {
+          // we should to the group key
           t.end()
         })
       })
