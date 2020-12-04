@@ -7,6 +7,11 @@ const ssbKeys = require('ssb-keys')
 const path = require('path')
 const Debug = require('debug')
 
+const { unboxKey, unboxBody } = require('envelope-js')
+const { keySchemes } = require('private-group-spec')
+const { FeedId, MsgId } = require('../tribes-read/cipherlinks')
+const directMessageKey = require('../tribes-read/direct-message-key')
+
 const { indexesPath } = require('../defaults')
 
 module.exports = function (dir, keys) {
@@ -72,6 +77,7 @@ module.exports = function (dir, keys) {
 
   const bKey = Buffer.from('key')
   const bValue = Buffer.from('value')
+  const bAuthor = Buffer.from('author')
   const bContent = Buffer.from('content')
   const StringType = 0
 
@@ -91,6 +97,43 @@ module.exports = function (dir, keys) {
     return { seq: data.seq, value: buf }
   }
 
+  const buildDMKey = directMessageKey.easy(keys)
+
+  function getDMKey(author) {
+    return { key: buildDMKey(author), scheme: keySchemes.private_group }
+  }
+
+  function decryptBox2(ciphertext, author, previous) {
+    const envelope = Buffer.from(ciphertext.replace('.box2', ''), 'base64')
+    const feed_id = new FeedId(author).toTFK()
+    const prev_msg_id = new MsgId(previous).toTFK()
+
+    // FIXME: we need a key store here
+
+    // FIXME: group keys
+    //const trial_group_keys = keystore.author.groupKeys(author)
+
+    const trial_dm_keys = [getDMKey(author), getDMKey(keys.id)]
+
+    const read_key = unboxKey(envelope, feed_id, prev_msg_id, trial_dm_keys, {
+      maxAttempts: 16,
+    })
+    if (!read_key) return ''
+
+    console.log('got read key', read_key)
+
+    const plaintext = unboxBody(envelope, feed_id, prev_msg_id, read_key)
+    if (plaintext) return JSON.parse(plaintext.toString('utf8'))
+    else return ''
+  }
+
+  function decryptBox1(ciphertext, keys) {
+    return ssbKeys.unbox(ciphertext, keys)
+  }
+
+  // evil hack!
+  let previousMsg = null
+
   function decrypt(data, streaming) {
     if (bsb.eq(canDecrypt, data.seq) !== -1) {
       let p = 0 // note you pass in p!
@@ -99,8 +142,14 @@ module.exports = function (dir, keys) {
       if (p >= 0) {
         const pContent = bipf.seekKey(data.value, p, bContent)
         if (pContent >= 0) {
-          const content = ssbKeys.unbox(bipf.decode(data.value, pContent), keys)
-          if (content) return reconstructMessage(data, content)
+          const ciphertext = bipf.decode(data.value, pContent)
+          let content = ''
+          if (ciphertext.endsWith('.box'))
+            content = decryptBox1(ciphertext, keys)
+          if (content) {
+            const originalMsg = reconstructMessage(data, content)
+            return originalMsg
+          }
         }
       }
     } else if (data.seq > latestSeq) {
@@ -108,18 +157,30 @@ module.exports = function (dir, keys) {
 
       let p = 0 // note you pass in p!
 
-      p = bipf.seekKey(data.value, p, bValue)
-      if (p >= 0) {
-        const pContent = bipf.seekKey(data.value, p, bContent)
+      let pValue = bipf.seekKey(data.value, p, bValue)
+      if (pValue >= 0) {
+        const pContent = bipf.seekKey(data.value, pValue, bContent)
         if (pContent >= 0) {
           const type = bipf.getEncodedType(data.value, pContent)
+          console.log('decrypting!', type)
           if (type === StringType) {
             encrypted.push(data.seq)
 
-            const content = ssbKeys.unbox(
-              bipf.decode(data.value, pContent),
-              keys
-            )
+            const ciphertext = bipf.decode(data.value, pContent)
+            let content = ''
+            if (ciphertext.endsWith('.box'))
+              content = decryptBox1(ciphertext, keys)
+            else if (ciphertext.endsWith('.box2')) {
+              console.log('testing box2')
+              const pAuthor = bipf.seekKey(data.value, pValue, bAuthor)
+              if (pAuthor >= 0) {
+                const author = bipf.decode(data.value, pAuthor)
+                console.log('author', author)
+                console.log('prev', previousMsg)
+                content = decryptBox2(ciphertext, author, previousMsg)
+                console.log('content', content)
+              }
+            }
 
             if (content) {
               canDecrypt.push(data.seq)
@@ -129,6 +190,9 @@ module.exports = function (dir, keys) {
         }
       }
     }
+
+    // ugh
+    previousMsg = bipf.decode(data.value, 0).key
 
     return data
   }
