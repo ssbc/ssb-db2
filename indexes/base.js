@@ -20,7 +20,6 @@ module.exports = function (log, dir, private) {
     if (err) throw err
   }
 
-  let batchBasic = []
   let batchJsonKey = []
   let batchJson = []
   let authorLatest = {}
@@ -36,7 +35,6 @@ module.exports = function (log, dir, private) {
   )
 
   function writeData(cb) {
-    level.batch(batchBasic, throwOnError)
     level.batch(batchJsonKey, { keyEncoding: 'json' }, throwOnError)
     level.batch(
       batchJson,
@@ -46,16 +44,13 @@ module.exports = function (log, dir, private) {
 
     private.saveIndexes(cb)
 
-    batchBasic = []
     batchJsonKey = []
     batchJson = []
   }
 
   function handleData(data) {
     let p = 0 // note you pass in p!
-    p = bipf.seekKey(data.value, p, bKey)
-    const key = bipf.decode(data.value, p)
-    batchBasic.push({ type: 'put', key, value: data.seq })
+    const pKey = bipf.seekKey(data.value, p, bKey)
 
     p = 0
     p = bipf.seekKey(data.value, p, bValue)
@@ -76,6 +71,7 @@ module.exports = function (log, dir, private) {
       let latestSequence = 0
       if (authorLatest[author]) latestSequence = authorLatest[author].sequence
       if (sequence > latestSequence) {
+        const key = bipf.decode(data.value, pKey)
         authorLatest[author] = { id: key, sequence, timestamp }
         batchJson.push({
           type: 'put',
@@ -85,7 +81,7 @@ module.exports = function (log, dir, private) {
       }
     }
 
-    if (batchBasic.length) return batchBasic.length
+    if (batchJsonKey.length) return batchJsonKey.length
     else return 0
   }
 
@@ -128,8 +124,6 @@ module.exports = function (log, dir, private) {
     seq,
     remove: level.clear,
     close: level.close.bind(level),
-
-    getMessageFromKey: levelKeyToMessage,
 
     // this is for EBT so must be not leak private messages
     getMessageFromAuthorSequence: (key, cb) => {

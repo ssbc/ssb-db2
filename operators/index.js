@@ -5,6 +5,18 @@ function toBuffer(value) {
   return Buffer.isBuffer(value) ? value : Buffer.from(value)
 }
 
+function key(value) {
+  return {
+    type: 'EQUAL',
+    data: {
+      seek: seekers.seekKey,
+      value: Buffer.from(value),
+      indexType: 'key',
+      prefix: 32
+    },
+  }
+}
+
 function type(value) {
   return {
     type: 'EQUAL',
@@ -66,6 +78,7 @@ module.exports = Object.assign({}, jitdbOperators, {
   type,
   author,
   channel,
+  key,
   isRoot,
   isPrivate,
 })

@@ -1,5 +1,6 @@
 const { seekKey } = require('bipf')
 
+const bKey = Buffer.from('key')
 const bValue = Buffer.from('value')
 const bAuthor = Buffer.from('author')
 const bContent = Buffer.from('content')
@@ -49,5 +50,10 @@ module.exports = {
     p = seekKey(buffer, p, bContent)
     if (!~p) return
     return seekKey(buffer, p, bChannel)
+  },
+
+  seekKey: function (buffer) {
+    var p = 0 // note you pass in p!
+    return seekKey(buffer, p, bKey)
   },
 }

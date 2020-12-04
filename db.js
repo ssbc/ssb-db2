@@ -14,6 +14,8 @@ const Private = require('./indexes/private')
 const Migrate = require('./migrate')
 // const Partial = require('./indexes/partial')
 
+const { and, key, toCallback } = require('./operators')
+
 function getId(msg) {
   return '%' + hash(JSON.stringify(msg, null, 2))
 }
@@ -61,10 +63,14 @@ exports.init = function (sbot, dir, config) {
   }
 
   function get(id, cb) {
-    baseIndex.getMessageFromKey(id, (err, data) => {
-      if (data) cb(null, data.value)
-      else cb(err)
-    })
+    query(
+      and(key(id)),
+      toCallback((err, results) => {
+        if (err) return cb(err)
+        else if (results.length) return cb(null, results[0].value)
+        else return cb()
+      })
+    )
   }
 
   function add(msg, cb) {
@@ -82,8 +88,8 @@ exports.init = function (sbot, dir, config) {
       this problem.
     */
 
-    baseIndex.getMessageFromKey(id, (err, data) => {
-      if (data) cb(null, data.value)
+    get(id, (err, data) => {
+      if (data) cb(null, data)
       else log.add(id, msg, cb)
     })
   }
