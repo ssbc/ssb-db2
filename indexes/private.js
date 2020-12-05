@@ -9,6 +9,7 @@ const Debug = require('debug')
 
 const { unboxKey, unboxBody } = require('envelope-js')
 const { keySchemes } = require('private-group-spec')
+const KeyStore = require('ssb-tribes/key-store')
 const { FeedId, MsgId } = require('ssb-tribes/lib/cipherlinks')
 const directMessageKey = require('ssb-tribes/lib/direct-message-key')
 
@@ -67,6 +68,10 @@ module.exports = function (dir, keys) {
     })
   }
 
+  // FIXME: we need a proper init here
+  const keystore = KeyStore(path.join(dir, 'tribes/keystore'), keys, () => {
+    console.log('loaded keystore')
+  })
   loadIndexes(() => {})
 
   function saveIndexes(cb) {
@@ -98,10 +103,10 @@ module.exports = function (dir, keys) {
     return { seq: data.seq, value: buf }
   }
 
-  const buildDMKey = directMessageKey.easy(keys)
-
-  function getDMKey(author, scheme) {
-    return { key: buildDMKey(author), scheme }
+  function decryptBox2Msg(envelope, feed_id, prev_msg_id, read_key) {
+    const plaintext = unboxBody(envelope, feed_id, prev_msg_id, read_key)
+    if (plaintext) return JSON.parse(plaintext.toString('utf8'))
+    else return ''
   }
 
   function decryptBox2(ciphertext, author, previous) {
@@ -109,25 +114,24 @@ module.exports = function (dir, keys) {
     const feed_id = new FeedId(author).toTFK()
     const prev_msg_id = new MsgId(previous).toTFK()
 
-    // FIXME: we need a key store here
+    const trial_group_keys = keystore.author.groupKeys(author)
+    let read_key = unboxKey(envelope, feed_id, prev_msg_id, trial_group_keys, {
+      maxAttempts: 1,
+    })
 
-    // FIXME: group keys
-    //const trial_group_keys = keystore.author.groupKeys(author)
-
-    // start with group key because they only check the first slot
+    if (read_key)
+      return decryptBox2Msg(envelope, feed_id, prev_msg_id, read_key)
 
     const trial_dm_keys = [
-      getDMKey(author, keySchemes.feed_id_dm),
-      getDMKey(keys.id, keySchemes.feed_id_self),
+      keystore.author.sharedDMKey(author),
+      ...keystore.ownKeys(),
     ]
 
-    const read_key = unboxKey(envelope, feed_id, prev_msg_id, trial_dm_keys, {
+    read_key = unboxKey(envelope, feed_id, prev_msg_id, trial_dm_keys, {
       maxAttempts: 16,
     })
-    if (!read_key) return ''
-
-    const plaintext = unboxBody(envelope, feed_id, prev_msg_id, read_key)
-    if (plaintext) return JSON.parse(plaintext.toString('utf8'))
+    if (read_key)
+      return decryptBox2Msg(envelope, feed_id, prev_msg_id, read_key)
     else return ''
   }
 
