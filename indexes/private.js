@@ -9,8 +9,8 @@ const Debug = require('debug')
 
 const { unboxKey, unboxBody } = require('envelope-js')
 const { keySchemes } = require('private-group-spec')
-const { FeedId, MsgId } = require('../tribes-read/cipherlinks')
-const directMessageKey = require('../tribes-read/direct-message-key')
+const { FeedId, MsgId } = require('ssb-tribes/lib/cipherlinks')
+const directMessageKey = require('ssb-tribes/lib/direct-message-key')
 
 const { indexesPath } = require('../defaults')
 
