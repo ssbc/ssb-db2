@@ -114,9 +114,11 @@ module.exports = function (dir, keys) {
     // FIXME: group keys
     //const trial_group_keys = keystore.author.groupKeys(author)
 
+    // start with group key because they only check the first slot
+
     const trial_dm_keys = [
       getDMKey(author, keySchemes.feed_id_dm),
-      getDMKey(keys.id, keySchemes.feed_id_self)
+      getDMKey(keys.id, keySchemes.feed_id_self),
     ]
 
     const read_key = unboxKey(envelope, feed_id, prev_msg_id, trial_dm_keys, {
@@ -133,6 +135,23 @@ module.exports = function (dir, keys) {
     return ssbKeys.unbox(ciphertext, keys)
   }
 
+  function tryDecryptContent(ciphertext, data, pValue) {
+    let content = ''
+    if (ciphertext.endsWith('.box')) content = decryptBox1(ciphertext, keys)
+    else if (ciphertext.endsWith('.box2')) {
+      const pAuthor = bipf.seekKey(data.value, pValue, bAuthor)
+      if (pAuthor >= 0) {
+        const author = bipf.decode(data.value, pAuthor)
+        const pPrevious = bipf.seekKey(data.value, pValue, bPrevious)
+        if (pPrevious >= 0) {
+          const previousMsg = bipf.decode(data.value, pPrevious)
+          content = decryptBox2(ciphertext, author, previousMsg)
+        }
+      }
+    }
+    return content
+  }
+
   function decrypt(data, streaming) {
     if (bsb.eq(canDecrypt, data.seq) !== -1) {
       let p = 0 // note you pass in p!
@@ -142,20 +161,7 @@ module.exports = function (dir, keys) {
         const pContent = bipf.seekKey(data.value, pValue, bContent)
         if (pContent >= 0) {
           const ciphertext = bipf.decode(data.value, pContent)
-          let content = ''
-          if (ciphertext.endsWith('.box'))
-            content = decryptBox1(ciphertext, keys)
-          else if (ciphertext.endsWith('.box2')) {
-            const pAuthor = bipf.seekKey(data.value, pValue, bAuthor)
-            if (pAuthor >= 0) {
-              const author = bipf.decode(data.value, pAuthor)
-              const pPrevious = bipf.seekKey(data.value, pValue, bPrevious)
-              if (pPrevious >= 0) {
-                const previousMsg = bipf.decode(data.value, pPrevious)
-                content = decryptBox2(ciphertext, author, previousMsg)
-              }
-            }
-          }
+          const content = tryDecryptContent(ciphertext, data, pValue)
 
           if (content) {
             const originalMsg = reconstructMessage(data, content)
@@ -177,20 +183,7 @@ module.exports = function (dir, keys) {
             encrypted.push(data.seq)
 
             const ciphertext = bipf.decode(data.value, pContent)
-            let content = ''
-            if (ciphertext.endsWith('.box'))
-              content = decryptBox1(ciphertext, keys)
-            else if (ciphertext.endsWith('.box2')) {
-              const pAuthor = bipf.seekKey(data.value, pValue, bAuthor)
-              if (pAuthor >= 0) {
-                const author = bipf.decode(data.value, pAuthor)
-                const pPrevious = bipf.seekKey(data.value, pValue, bPrevious)
-                if (pPrevious >= 0) {
-                  const previousMsg = bipf.decode(data.value, pPrevious)
-                  content = decryptBox2(ciphertext, author, previousMsg)
-                }
-              }
-            }
+            const content = tryDecryptContent(ciphertext, data, pValue)
 
             if (content) {
               canDecrypt.push(data.seq)

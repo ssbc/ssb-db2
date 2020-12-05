@@ -12,7 +12,7 @@ function key(value) {
       seek: seekers.seekKey,
       value: Buffer.from(value),
       indexType: 'key',
-      prefix: 32
+      prefix: 32,
     },
   }
 }
