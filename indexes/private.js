@@ -115,6 +115,7 @@ module.exports = function (dir, keys) {
     const prev_msg_id = new MsgId(previous).toTFK()
 
     const trial_group_keys = keystore.author.groupKeys(author)
+
     let read_key = unboxKey(envelope, feed_id, prev_msg_id, trial_group_keys, {
       maxAttempts: 1,
     })
@@ -130,9 +131,19 @@ module.exports = function (dir, keys) {
     read_key = unboxKey(envelope, feed_id, prev_msg_id, trial_dm_keys, {
       maxAttempts: 16,
     })
-    if (read_key)
-      return decryptBox2Msg(envelope, feed_id, prev_msg_id, read_key)
-    else return ''
+
+    if (read_key) {
+      const msg = decryptBox2Msg(envelope, feed_id, prev_msg_id, read_key)
+      // FIXME: if this is a group/add-member msg then add to keystore using:
+
+      // keystore.processAddMember({ groupId, groupKey, root, authors }
+      // where root is tangles.group.root on the add member msg
+      // and groupId can be found in the recps
+
+      // FIXME: try to reindex existing encrypted messages
+
+      return msg
+    } else return ''
   }
 
   function decryptBox1(ciphertext, keys) {
