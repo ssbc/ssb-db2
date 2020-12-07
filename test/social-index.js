@@ -75,7 +75,7 @@ test('getMessagesByMention', (t) => {
   })
 })
 
-test('getMessagesByRoot', (t) => {
+test('hasRoot with prefix index', (t) => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }
 
@@ -106,7 +106,7 @@ test('getMessagesByRoot', (t) => {
   })
 })
 
-test('encrypted getMessagesByRoot', (t) => {
+test('encrypted hasRoot', (t) => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }
 

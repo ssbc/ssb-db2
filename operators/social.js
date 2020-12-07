@@ -2,8 +2,9 @@ const { deferred, equal } = require('jitdb/operators')
 const seekers = require('../seekers')
 
 function hasRoot(msgKey) {
-  return deferred((meta, cb) => {
-    meta.db2.getIndexes().social.getMessagesByRoot(msgKey, meta.live, cb)
+  return equal(seekers.seekRoot, msgKey, {
+    prefix: 32,
+    indexType: 'value_content_root',
   })
 }
 

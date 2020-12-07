@@ -44,10 +44,9 @@ sbot.db.query(
 ```
 
 A index plugin that exposes the most common used social aspects of SSB
-is also available as indexes/social. It has 2 methods:
+is also available as indexes/social. It has one method:
 
  - getMessagesByMention
- - getMessagesByRoot
 
 This plugin is meant as a base for application developers to write
 their own plugins if the functionality of jitdb is not enough. JITDB

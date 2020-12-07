@@ -13,8 +13,6 @@ module.exports = function (log, dir) {
   const bKey = Buffer.from('key')
   const bValue = Buffer.from('value')
   const bContent = Buffer.from('content')
-
-  const bRoot = Buffer.from('root')
   const bMentions = Buffer.from('mentions')
 
   let batch = []
@@ -34,18 +32,6 @@ module.exports = function (log, dir) {
     if (~p) {
       const pContent = bipf.seekKey(data.value, p, bContent)
       if (~pContent) {
-        const pRoot = bipf.seekKey(data.value, pContent, bRoot)
-        if (~pRoot) {
-          const root = bipf.decode(data.value, pRoot)
-          if (root) {
-            batch.push({
-              type: 'put',
-              key: [root, 'r', shortKey],
-              value: processed,
-            })
-          }
-        }
-
         const pMentions = bipf.seekKey(data.value, pContent, bMentions)
         if (~pMentions) {
           const mentionsData = bipf.decode(data.value, pMentions)
@@ -105,18 +91,6 @@ module.exports = function (log, dir) {
         {
           gte: [key, 'm', ''],
           lte: [key, 'm', undefined],
-          keyEncoding: jsonCodec,
-          keys: false,
-        },
-        live,
-        cb
-      )
-    },
-    getMessagesByRoot: function (rootId, live, cb) {
-      getResults(
-        {
-          gte: [rootId, 'r', ''],
-          lte: [rootId, 'r', undefined],
           keyEncoding: jsonCodec,
           keys: false,
         },
