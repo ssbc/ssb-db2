@@ -64,10 +64,16 @@ module.exports = function (dir, keys) {
 
   loadIndexes(() => {})
 
+  let savedTimer
   function saveIndexes(cb) {
-    save(encryptedFile, latestSeq, encrypted, () => {
-      save(canDecryptFile, latestSeq, canDecrypt, cb)
-    })
+    if (!savedTimer) {
+      savedTimer = setTimeout(() => {
+        savedTimer = null
+        save(encryptedFile, latestSeq, encrypted, () => {})
+        save(canDecryptFile, latestSeq, canDecrypt, () => {})
+      }, 1000)
+    }
+    cb()
   }
 
   const bKey = Buffer.from('key')
