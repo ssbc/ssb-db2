@@ -5,10 +5,9 @@ const Plugin = require('./plugin')
 const jsonCodec = require('flumecodec/json')
 const { offsets, liveOffsets } = require('../operators')
 
-// 3 indexes:
+// 2 indexes:
 // - root (msgId) => msg seqs
 // - mentions (msgId) => msg seqs
-// - votes (msgId) => msg seqs
 
 module.exports = function (log, dir) {
   const bKey = Buffer.from('key')
@@ -17,10 +16,6 @@ module.exports = function (log, dir) {
 
   const bRoot = Buffer.from('root')
   const bMentions = Buffer.from('mentions')
-
-  const bType = Buffer.from('type')
-  const bVote = Buffer.from('vote')
-  const bLink = Buffer.from('link')
 
   let batch = []
 
@@ -68,24 +63,6 @@ module.exports = function (log, dir) {
                 })
               }
             })
-          }
-        }
-
-        const pType = bipf.seekKey(data.value, pContent, bType)
-        if (~pType) {
-          if (bipf.compareString(data.value, pType, bVote) === 0) {
-            const pVote = bipf.seekKey(data.value, pContent, bVote)
-            if (~pVote) {
-              const pLink = bipf.seekKey(data.value, pVote, bLink)
-              if (~pLink) {
-                const link = bipf.decode(data.value, pLink)
-                batch.push({
-                  type: 'put',
-                  key: [link, 'v', shortKey],
-                  value: processed,
-                })
-              }
-            }
           }
         }
       }
@@ -140,18 +117,6 @@ module.exports = function (log, dir) {
         {
           gte: [rootId, 'r', ''],
           lte: [rootId, 'r', undefined],
-          keyEncoding: jsonCodec,
-          keys: false,
-        },
-        live,
-        cb
-      )
-    },
-    getMessagesByVoteLink: function (linkId, live, cb) {
-      getResults(
-        {
-          gte: [linkId, 'v', ''],
-          lte: [linkId, 'v', undefined],
           keyEncoding: jsonCodec,
           keys: false,
         },

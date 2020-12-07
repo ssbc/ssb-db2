@@ -1,4 +1,5 @@
-const { deferred } = require('jitdb/operators')
+const { deferred, equal } = require('jitdb/operators')
+const seekers = require('../seekers')
 
 function hasRoot(msgKey) {
   return deferred((meta, cb) => {
@@ -7,8 +8,9 @@ function hasRoot(msgKey) {
 }
 
 function votesFor(msgKey) {
-  return deferred((meta, cb) => {
-    meta.db2.getIndexes().social.getMessagesByVoteLink(msgKey, meta.live, cb)
+  return equal(seekers.seekVoteLink, msgKey, {
+    prefix: 32,
+    indexType: 'value_content_vote_link',
   })
 }
 

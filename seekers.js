@@ -6,6 +6,8 @@ const bAuthor = Buffer.from('author')
 const bContent = Buffer.from('content')
 const bType = Buffer.from('type')
 const bRoot = Buffer.from('root')
+const bVote = Buffer.from('vote')
+const bLink = Buffer.from('link')
 const bMeta = Buffer.from('meta')
 const bPrivate = Buffer.from('private')
 const bChannel = Buffer.from('channel')
@@ -34,6 +36,17 @@ module.exports = {
     p = seekKey(buffer, p, bContent)
     if (!~p) return
     return seekKey(buffer, p, bRoot)
+  },
+
+  seekVoteLink: function (buffer) {
+    let p = 0 // note you pass in p!
+    p = seekKey(buffer, p, bValue)
+    if (!~p) return
+    p = seekKey(buffer, p, bContent)
+    if (!~p) return
+    p = seekKey(buffer, p, bVote)
+    if (!~p) return
+    return seekKey(buffer, p, bLink)
   },
 
   seekPrivate: function (buffer) {

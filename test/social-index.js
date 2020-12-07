@@ -146,7 +146,7 @@ test('encrypted getMessagesByRoot', (t) => {
   })
 })
 
-test('getMessagesByVoteLink', (t) => {
+test('votesFor using prefix indexes', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 
   db.publish(post, (err, postMsg) => {
@@ -193,7 +193,7 @@ test('getMessagesByVoteLink', (t) => {
   })
 })
 
-test('liveMessagesByVoteLink', (t) => {
+test('lives votesFor', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 
   db.publish(post, (err, postMsg) => {
