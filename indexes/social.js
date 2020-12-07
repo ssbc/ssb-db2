@@ -5,8 +5,7 @@ const Plugin = require('./plugin')
 const jsonCodec = require('flumecodec/json')
 const { offsets, liveOffsets } = require('../operators')
 
-// 2 indexes:
-// - root (msgId) => msg seqs
+// 1 index:
 // - mentions (msgId) => msg seqs
 
 module.exports = function (log, dir) {
