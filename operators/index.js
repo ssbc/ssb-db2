@@ -26,7 +26,10 @@ function channel(value) {
 }
 
 function isRoot() {
-  return equal(seekRoot, undefined, { indexType: 'value_content_root' })
+  return equal(seekRoot, null, {
+    prefix: 32,
+    indexType: 'value_content_root',
+  })
 }
 
 let bTrue = Buffer.alloc(1)
