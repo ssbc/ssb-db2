@@ -61,7 +61,7 @@ module.exports = function (log, dir) {
     return parseInt(x, 10)
   }
 
-  const name = 'social'
+  const name = 'mentions'
   const { level, seq } = Plugin(log, dir, name, 1, handleData, writeData)
 
   function getResults(opts, live, cb) {
