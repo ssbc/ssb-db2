@@ -25,77 +25,55 @@ module.exports = function (
   const level = Level(indexPath)
   const META = '\x00'
   const chunkSize = 2048
-  let isLive = false
   let processed = 0
   const seq = Obv()
-  seq.set(-1)
+  let unWrittenSeq = -1
 
-  function updateIndexes() {
-    const start = Date.now()
-
-    let unWrittenSeq = 0
-
-    function writeBatch(cb) {
+  function writeBatch(cb) {
+    if (unWrittenSeq > -1) {
       level.put(
         META,
-        { version, seq: seq.value, processed },
+        { version, seq: unWrittenSeq, processed },
         { valueEncoding: 'json' },
         (err) => {
           if (err) throw err
         }
       )
 
-      writeData(cb)
-    }
-
-    function onData(data) {
-      let unwritten = handleData(data, processed)
-      if (unwritten > 0) unWrittenSeq = data.seq
-      processed++
-
-      if (unwritten > chunkSize || isLive) {
-        writeBatch((err) => {
-          if (err) throw err
-          seq.set(data.seq)
-        })
-      }
-    }
-
-    function liveStream() {
-      isLive = true
-      log.stream({ gt: seq.value, live: true }).pipe({
-        paused: false,
-        write: onData,
+      writeData((err) => {
+        if (err) return cb(err)
+        else {
+          seq.set(unWrittenSeq)
+          cb()
+        }
       })
-    }
+    } else cb()
+  }
 
-    log.stream({ gt: seq.value }).pipe({
-      paused: false,
-      write: onData,
-      end: () => {
-        if (unWrittenSeq > 0) {
-          writeBatch((err) => {
-            if (err) throw err
-            seq.set(unWrittenSeq)
-            liveStream()
-          })
-        } else liveStream()
+  function onData(data, isLive) {
+    // maybe check if for us!
+    let unwritten = handleData(data, processed)
+    if (unwritten > 0) unWrittenSeq = data.seq
+    processed++
 
-        debug(`index scan time: ${Date.now() - start}ms, items: ${processed}`)
-      },
-    })
+    if (unwritten > chunkSize || isLive) writeBatch(() => {})
   }
 
   level.get(META, { valueEncoding: 'json' }, (err, data) => {
     debug(`got index status:`, data)
 
     if (data && data.version == version) {
-      seq.set(data.seq)
       processed = data.processed
-      if (beforeIndexUpdate) beforeIndexUpdate(updateIndexes)
-      else updateIndexes()
-    } else level.clear(updateIndexes)
+      if (beforeIndexUpdate)
+        beforeIndexUpdate(() => {
+          seq.set(data.seq)
+        })
+      else seq.set(data.seq)
+    } else
+      level.clear(() => {
+        seq.set(-1)
+      })
   })
 
-  return { level, seq }
+  return { level, seq, onData, writeBatch }
 }

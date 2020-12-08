@@ -4,8 +4,7 @@ const pull = require('pull-stream')
 const Plugin = require('./plugin')
 const { reEncrypt } = require('./private')
 
-// 3 indexes:
-// - msg key => seq
+// 2 indexes:
 // - [author, sequence] => seq (EBT)
 // - author => latest { msg key, sequence timestamp } (validate state & EBT)
 
@@ -24,7 +23,7 @@ module.exports = function (log, dir, private) {
   let batchJson = []
   let authorLatest = {}
 
-  const { level, seq } = Plugin(
+  const { level, seq, onData, writeBatch } = Plugin(
     log,
     dir,
     'base',
@@ -48,7 +47,9 @@ module.exports = function (log, dir, private) {
     batchJson = []
   }
 
-  function handleData(data) {
+  function handleData(data, processed) {
+    if (data.seq < seq.value) return
+
     let p = 0 // note you pass in p!
     const pKey = bipf.seekKey(data.value, p, bKey)
 
@@ -120,8 +121,11 @@ module.exports = function (log, dir, private) {
     })
   }
 
-  const self = {
+  return {
     seq,
+    onData,
+    writeBatch,
+
     remove: level.clear,
     close: level.close.bind(level),
 
@@ -142,11 +146,8 @@ module.exports = function (log, dir, private) {
       )
     },
     getAllLatest,
-    keyToSeq: level.get, // used by delete
     removeFeedFromLatest: function (feedId) {
       level.del(['a', feedId], { keyEncoding: 'json' }, throwOnError)
     },
   }
-
-  return self
 }

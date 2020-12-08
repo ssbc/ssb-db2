@@ -22,9 +22,10 @@ module.exports = function (log, dir) {
   }
 
   function handleData(data, processed) {
+    if (data.seq < seq.value) return
+
     let p = 0 // note you pass in p!
-    p = bipf.seekKey(data.value, p, bKey)
-    const shortKey = bipf.decode(data.value, p).slice(1, 10)
+    const pKey = bipf.seekKey(data.value, p, bKey)
 
     p = 0
     p = bipf.seekKey(data.value, p, bValue)
@@ -35,6 +36,7 @@ module.exports = function (log, dir) {
         if (~pMentions) {
           const mentionsData = bipf.decode(data.value, pMentions)
           if (Array.isArray(mentionsData)) {
+            const shortKey = bipf.decode(data.value, pKey).slice(1, 10)
             mentionsData.forEach((mention) => {
               if (
                 mention.link &&
@@ -62,7 +64,14 @@ module.exports = function (log, dir) {
   }
 
   const name = 'mentions'
-  const { level, seq } = Plugin(log, dir, name, 1, handleData, writeData)
+  const { level, seq, onData, writeBatch } = Plugin(
+    log,
+    dir,
+    name,
+    1,
+    handleData,
+    writeData
+  )
 
   function getResults(opts, live, cb) {
     pull(
@@ -82,9 +91,13 @@ module.exports = function (log, dir) {
 
   return {
     seq,
+    onData,
+    writeBatch,
+
     name,
     remove: level.clear,
     close: level.close.bind(level),
+
     getMessagesByMention: function (key, live, cb) {
       getResults(
         {
