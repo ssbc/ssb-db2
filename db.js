@@ -266,14 +266,12 @@ exports.init = function (sbot, dir, config) {
     const start = Date.now()
 
     const indexesRun = Object.values(indexes)
-    let isLive = false
 
     function liveStream() {
       debug('live streaming changes')
-      isLive = true
       log.stream({ gt: indexes['base'].seq.value, live: true }).pipe({
         paused: false,
-        write: (data) => indexesRun.forEach((x) => x.onData(data, isLive)),
+        write: (data) => indexesRun.forEach((x) => x.onData(data, true)),
       })
     }
 
@@ -284,12 +282,9 @@ exports.init = function (sbot, dir, config) {
 
     log.stream({ gt: lowestSeq }).pipe({
       paused: false,
-      write: (data) => indexesRun.forEach((x) => x.onData(data, isLive)),
+      write: (data) => indexesRun.forEach((x) => x.onData(data, false)),
       end: () => {
-        const tasks = []
-        indexesRun.forEach((index) => {
-          tasks.push(promisify(index.writeBatch)())
-        })
+        const tasks = indexesRun.map((index) => promisify(index.writeBatch)())
         Promise.all(tasks).then(liveStream)
 
         debug(`index scan time: ${Date.now() - start}ms`)
