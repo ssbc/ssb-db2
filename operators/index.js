@@ -51,7 +51,6 @@ function hasRoot(msgKey) {
 
 function isRoot() {
   return equal(seekRoot, null, {
-    prefix: 32,
     indexType: 'value_content_root',
   })
 }
