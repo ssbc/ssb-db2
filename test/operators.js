@@ -4,7 +4,14 @@ const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const DB = require('../db')
-const { and, type, isPrivate, toCallback, author } = require('../operators')
+const {
+  and,
+  type,
+  isPrivate,
+  toCallback,
+  author,
+  isRoot,
+} = require('../operators')
 
 const dir = '/tmp/ssb-db2-operators'
 
@@ -59,5 +66,30 @@ test('execute and(type("post"), isPrivate)', (t) => {
         })
       )
     })
+  })
+})
+
+test('execute isRoot()', (t) => {
+  db.publish({ type: 'foo', text: 'Testing root!' }, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    db.publish(
+      { type: 'foo', text: 'Testing reply!', root: postMsg.key },
+      (err2) => {
+        t.error(err2, 'no err2')
+
+        db.onDrain('base', () => {
+          db.query(
+            and(type('foo'), isRoot()),
+            toCallback((err3, msgs) => {
+              t.error(err3, 'no err3')
+              t.equal(msgs.length, 1)
+              t.equal(msgs[0].value.content.text, 'Testing root!')
+              t.end()
+            })
+          )
+        })
+      }
+    )
   })
 })
