@@ -5,22 +5,14 @@ const Plugin = require('./plugin')
 const jsonCodec = require('flumecodec/json')
 const { offsets, liveOffsets } = require('../operators')
 
-// 3 indexes:
-// - root (msgId) => msg seqs
+// 1 index:
 // - mentions (msgId) => msg seqs
-// - votes (msgId) => msg seqs
 
 module.exports = function (log, dir) {
   const bKey = Buffer.from('key')
   const bValue = Buffer.from('value')
   const bContent = Buffer.from('content')
-
-  const bRoot = Buffer.from('root')
   const bMentions = Buffer.from('mentions')
-
-  const bType = Buffer.from('type')
-  const bVote = Buffer.from('vote')
-  const bLink = Buffer.from('link')
 
   let batch = []
 
@@ -39,18 +31,6 @@ module.exports = function (log, dir) {
     if (~p) {
       const pContent = bipf.seekKey(data.value, p, bContent)
       if (~pContent) {
-        const pRoot = bipf.seekKey(data.value, pContent, bRoot)
-        if (~pRoot) {
-          const root = bipf.decode(data.value, pRoot)
-          if (root) {
-            batch.push({
-              type: 'put',
-              key: [root, 'r', shortKey],
-              value: processed,
-            })
-          }
-        }
-
         const pMentions = bipf.seekKey(data.value, pContent, bMentions)
         if (~pMentions) {
           const mentionsData = bipf.decode(data.value, pMentions)
@@ -70,24 +50,6 @@ module.exports = function (log, dir) {
             })
           }
         }
-
-        const pType = bipf.seekKey(data.value, pContent, bType)
-        if (~pType) {
-          if (bipf.compareString(data.value, pType, bVote) === 0) {
-            const pVote = bipf.seekKey(data.value, pContent, bVote)
-            if (~pVote) {
-              const pLink = bipf.seekKey(data.value, pVote, bLink)
-              if (~pLink) {
-                const link = bipf.decode(data.value, pLink)
-                batch.push({
-                  type: 'put',
-                  key: [link, 'v', shortKey],
-                  value: processed,
-                })
-              }
-            }
-          }
-        }
       }
     }
 
@@ -99,7 +61,7 @@ module.exports = function (log, dir) {
     return parseInt(x, 10)
   }
 
-  const name = 'social'
+  const name = 'mentions'
   const { level, seq } = Plugin(log, dir, name, 1, handleData, writeData)
 
   function getResults(opts, live, cb) {
@@ -128,30 +90,6 @@ module.exports = function (log, dir) {
         {
           gte: [key, 'm', ''],
           lte: [key, 'm', undefined],
-          keyEncoding: jsonCodec,
-          keys: false,
-        },
-        live,
-        cb
-      )
-    },
-    getMessagesByRoot: function (rootId, live, cb) {
-      getResults(
-        {
-          gte: [rootId, 'r', ''],
-          lte: [rootId, 'r', undefined],
-          keyEncoding: jsonCodec,
-          keys: false,
-        },
-        live,
-        cb
-      )
-    },
-    getMessagesByVoteLink: function (linkId, live, cb) {
-      getResults(
-        {
-          gte: [linkId, 'v', ''],
-          lte: [linkId, 'v', undefined],
           keyEncoding: jsonCodec,
           keys: false,
         },
