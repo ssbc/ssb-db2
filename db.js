@@ -304,10 +304,15 @@ exports.init = function (sbot, dir, config) {
         const index = indexes[indexName]
         if (!index) return cb('Unknown index:' + indexName)
 
+        debug(`drain got log: ${index.seq.value}, index: ${index.seq.value}`)
+
         if (index.seq.value === log.since.value) {
           cb()
         } else {
           const remove = index.seq(() => {
+            debug(
+              `drain seq update got log: ${index.seq.value}, index: ${index.seq.value}`
+            )
             if (index.seq.value === log.since.value) {
               remove()
               cb()
@@ -329,6 +334,7 @@ exports.init = function (sbot, dir, config) {
     onIndexesStateLoaded.promise.then(cb)
   }
 
+  // setTimeout here so we make that extra indexes are also included
   setTimeout(() => {
     onIndexesStateLoaded(updateIndexes)
   })
