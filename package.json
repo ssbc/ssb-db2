@@ -22,6 +22,7 @@
     "lodash.debounce": "^4.0.8",
     "mkdirp": "^1.0.4",
     "obv": "0.0.1",
+    "p-defer": "^3.0.0",
     "prettier": "^2.1.2",
     "pretty-quick": "^3.1.0",
     "promisify-4loc": "1.0.0",
@@ -37,12 +38,12 @@
     "typedarray-to-buffer": "^4.0.0"
   },
   "devDependencies": {
-    "rimraf": "^3.0.2",
-    "ssb-fixtures": "2.2.0",
-    "ssb-db": "20.3.0",
-    "secret-stack": "6.3.1",
     "pull-stream-util": "0.1.2",
+    "rimraf": "^3.0.2",
+    "secret-stack": "6.3.1",
     "ssb-caps": "1.1.0",
+    "ssb-db": "20.3.0",
+    "ssb-fixtures": "2.2.0",
     "tap-spec": "^5.0.0",
     "tape": "^5.0.1"
   },

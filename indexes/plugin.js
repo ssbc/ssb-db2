@@ -2,6 +2,7 @@ const Obv = require('obv')
 const Level = require('level')
 const path = require('path')
 const Debug = require('debug')
+const DeferredPromise = require('p-defer')
 const { indexesPath } = require('../defaults')
 
 module.exports = function (
@@ -27,6 +28,7 @@ module.exports = function (
   const chunkSize = 2048
   let processed = 0
   const seq = Obv()
+  const stateLoaded = DeferredPromise()
   let unWrittenSeq = -1
 
   function writeBatch(cb) {
@@ -64,16 +66,22 @@ module.exports = function (
 
     if (data && data.version == version) {
       processed = data.processed
-      if (beforeIndexUpdate)
+      if (beforeIndexUpdate) {
         beforeIndexUpdate(() => {
           seq.set(data.seq)
+          stateLoaded.resolve()
         })
-      else seq.set(data.seq)
-    } else
+      } else {
+        seq.set(data.seq)
+        stateLoaded.resolve()
+      }
+    } else {
       level.clear(() => {
         seq.set(-1)
+        stateLoaded.resolve()
       })
+    }
   })
 
-  return { level, seq, onData, writeBatch }
+  return { level, seq, onData, writeBatch, stateLoaded: stateLoaded.promise }
 }

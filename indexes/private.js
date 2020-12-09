@@ -5,6 +5,7 @@ const bsb = require('binary-search-bounds')
 const { readFile, writeFile } = require('atomically-universal')
 const toBuffer = require('typedarray-to-buffer')
 const ssbKeys = require('ssb-keys')
+const DeferredPromise = require('p-defer')
 const path = require('path')
 const Debug = require('debug')
 
@@ -12,6 +13,7 @@ const { indexesPath } = require('../defaults')
 
 module.exports = function (dir, keys) {
   let latestSeq = Obv()
+  const stateLoaded = DeferredPromise()
   let encrypted = []
   let canDecrypt = []
 
@@ -44,6 +46,7 @@ module.exports = function (dir, keys) {
     load(encryptedFile, (err, data) => {
       if (err) {
         latestSeq.set(-1)
+        stateLoaded.resolve()
         if (err.code === 'ENOENT') cb()
         else cb(err)
         return
@@ -63,6 +66,7 @@ module.exports = function (dir, keys) {
         }
 
         latestSeq.set(Math.min(seq, canDecryptSeq))
+        stateLoaded.resolve()
         debug('loaded seq', latestSeq.value)
 
         cb()
@@ -152,6 +156,7 @@ module.exports = function (dir, keys) {
     latestSeq,
     decrypt,
     saveIndexes,
+    stateLoaded: stateLoaded.promise,
   }
 }
 
