@@ -32,7 +32,7 @@ module.exports = function (
   let unWrittenSeq = -1
 
   function writeBatch(cb) {
-    if (unWrittenSeq > -1 && level._db.status !== 'closed') {
+    if (unWrittenSeq > -1 && !level.isClosed()) {
       level.put(
         META,
         { version, seq: unWrittenSeq, processed },
