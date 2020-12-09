@@ -20,15 +20,13 @@ module.exports = function (dir, keys) {
   const encryptedFile = path.join(indexesPath(dir), 'encrypted.index')
   const canDecryptFile = path.join(indexesPath(dir), 'canDecrypt.index')
 
-  function save(filename, seq, arr, cb) {
+  function save(filename, arr) {
     const buf = toBuffer(fic.compress(arr))
     const b = Buffer.alloc(4 + buf.length)
-    b.writeInt32LE(seq, 0)
+    b.writeInt32LE(latestSeq.value, 0)
     buf.copy(b, 4)
 
     writeFile(filename, b, { fsyncWait: false })
-      .then(() => cb())
-      .catch((err) => cb(err))
   }
 
   function load(filename, cb) {
@@ -39,14 +37,16 @@ module.exports = function (dir, keys) {
 
         cb(null, { seq, arr: fic.uncompress(body) })
       })
-      .catch((err) => cb(err))
+      .catch(cb)
   }
 
   function loadIndexes(cb) {
     load(encryptedFile, (err, data) => {
       if (err) {
         latestSeq.set(-1)
-        return cb(err)
+        if (err.code === 'ENOENT') cb()
+        else cb(err)
+        return
       }
 
       const { seq, arr } = data
@@ -70,21 +70,22 @@ module.exports = function (dir, keys) {
     })
   }
 
-  loadIndexes(() => {})
+  loadIndexes((err) => {
+    if (err) throw err
+  })
 
   let savedTimer
   function saveIndexes(cb) {
     if (!savedTimer) {
       savedTimer = setTimeout(() => {
         savedTimer = null
-        save(encryptedFile, latestSeq, encrypted, () => {})
-        save(canDecryptFile, latestSeq, canDecrypt, () => {})
+        save(encryptedFile, encrypted)
+        save(canDecryptFile, canDecrypt)
       }, 1000)
     }
     cb()
   }
 
-  const bKey = Buffer.from('key')
   const bValue = Buffer.from('value')
   const bContent = Buffer.from('content')
   const StringType = 0
