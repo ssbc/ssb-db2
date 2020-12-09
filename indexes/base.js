@@ -24,7 +24,6 @@ module.exports = function (log, dir, private) {
   let authorLatest = {}
 
   const { level, seq, stateLoaded, onData, writeBatch } = Plugin(
-    log,
     dir,
     'base',
     1,

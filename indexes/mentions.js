@@ -8,7 +8,7 @@ const { offsets, liveOffsets } = require('../operators')
 // 1 index:
 // - mentions (msgId) => msg seqs
 
-module.exports = function (log, dir) {
+module.exports = function (dir) {
   const bKey = Buffer.from('key')
   const bValue = Buffer.from('value')
   const bContent = Buffer.from('content')
@@ -65,7 +65,6 @@ module.exports = function (log, dir) {
 
   const name = 'mentions'
   const { level, seq, stateLoaded, onData, writeBatch } = Plugin(
-    log,
     dir,
     name,
     1,
