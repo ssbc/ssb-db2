@@ -1,3 +1,4 @@
+const Obv = require('obv')
 const bipf = require('bipf')
 const fic = require('fastintcompression')
 const bsb = require('binary-search-bounds')
@@ -10,7 +11,7 @@ const Debug = require('debug')
 const { indexesPath } = require('../defaults')
 
 module.exports = function (dir, keys) {
-  let latestSeq = -1
+  let latestSeq = Obv()
   let encrypted = []
   let canDecrypt = []
 
@@ -43,19 +44,26 @@ module.exports = function (dir, keys) {
 
   function loadIndexes(cb) {
     load(encryptedFile, (err, data) => {
-      if (err) return cb(err)
+      if (err) {
+        latestSeq.set(-1)
+        return cb(err)
+      }
 
       const { seq, arr } = data
-      latestSeq = seq
       encrypted = arr
 
       debug('encrypted loaded', encrypted.length)
-      debug('latest seq', latestSeq)
 
       load(canDecryptFile, (err, data) => {
-        canDecrypt = data.arr
+        let canDecryptSeq = -1
+        if (!err) {
+          canDecrypt = data.arr
+          canDecryptSeq = data.seq
+          debug('canDecrypt loaded', canDecrypt.length)
+        }
 
-        debug('canDecrypt loaded', canDecrypt.length)
+        latestSeq.set(Math.min(seq, canDecryptSeq))
+        debug('loaded seq', latestSeq.value)
 
         cb()
       })
@@ -103,8 +111,8 @@ module.exports = function (dir, keys) {
           if (content) return reconstructMessage(data, content)
         }
       }
-    } else if (data.seq > latestSeq) {
-      if (streaming) latestSeq = data.seq
+    } else if (data.seq > latestSeq.value) {
+      if (streaming) latestSeq.set(data.seq)
 
       let p = 0 // note you pass in p!
 
@@ -134,6 +142,7 @@ module.exports = function (dir, keys) {
   }
 
   return {
+    latestSeq,
     decrypt,
     saveIndexes,
   }

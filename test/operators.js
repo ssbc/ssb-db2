@@ -4,7 +4,8 @@ const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const pull = require('pull-stream')
-const DB = require('../db')
+const SecretStack = require('secret-stack')
+const caps = require('ssb-caps')
 const {
   and,
   type,
@@ -25,10 +26,11 @@ mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
-const db = DB.init({}, dir, {
-  path: dir,
+const sbot = SecretStack({ appKey: caps.shs }).use(require('../')).call(null, {
   keys,
+  path: dir,
 })
+const db = sbot.db
 
 test('execute and(type("post"), author(me))', (t) => {
   const post = { type: 'post', text: 'Testing!' }
@@ -251,18 +253,21 @@ test('live votesFor', (t) => {
             and(votesFor(postMsg.key)),
             live(),
             toPullStream(),
-            pull.drain((result) => {
-              if (i++ == 0) {
-                t.equal(result.key, v1.key)
+            pull.drain(
+              (result) => {
+                if (i++ == 0) {
+                  t.equal(result.key, v1.key)
 
-                db.publish(voteMsg2, (err, v2) => {
-                  t.error(err, 'no err')
-                })
-              } else {
-                t.equal(result.value.content.vote.value, -1)
-                t.end()
-              }
-            })
+                  db.publish(voteMsg2, (err, v2) => {
+                    t.error(err, 'no err')
+                  })
+                } else {
+                  t.equal(result.value.content.vote.value, -1)
+                  sbot.close(t.end)
+                }
+              },
+              () => {}
+            )
           )
         )
       })

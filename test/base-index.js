@@ -7,7 +7,8 @@ const ssbKeys = require('ssb-keys')
 const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
-const DB = require('../db')
+const SecretStack = require('secret-stack')
+const caps = require('ssb-caps')
 
 const dir = '/tmp/ssb-db2-base-index'
 
@@ -16,10 +17,11 @@ mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
-const db = DB.init({}, dir, {
-  path: dir,
+const sbot = SecretStack({ appKey: caps.shs }).use(require('../')).call(null, {
   keys,
+  path: dir,
 })
+const db = sbot.db
 
 test('drain', (t) => {
   const post = { type: 'post', text: 'Testing!' }
@@ -166,7 +168,7 @@ test('db.close', (t) => {
 
     db.onDrain('base', () => {
       db.close(() => {
-        t.end()
+        sbot.close(t.end)
       })
     })
   })
