@@ -255,7 +255,7 @@ exports.init = function (sbot, dir, config) {
   }
 
   function registerIndex(Index) {
-    const index = Index(log, dir)
+    const index = Index(dir)
 
     if (indexes[index.name]) throw 'Index already exists'
 

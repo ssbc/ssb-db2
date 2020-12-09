@@ -6,7 +6,6 @@ const DeferredPromise = require('p-defer')
 const { indexesPath } = require('../defaults')
 
 module.exports = function (
-  log,
   dir,
   name,
   version,
