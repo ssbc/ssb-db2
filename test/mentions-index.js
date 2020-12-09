@@ -3,8 +3,8 @@ const ssbKeys = require('ssb-keys')
 const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
-const DB = require('../db')
-const Mentions = require('../indexes/mentions')
+const SecretStack = require('secret-stack')
+const caps = require('ssb-caps')
 const { and, toCallback } = require('../operators')
 const mentions = require('../operators/mentions')
 
@@ -15,12 +15,14 @@ mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
-const db = DB.init({}, dir, {
-  path: dir,
-  keys,
-})
-
-db.registerIndex(Mentions)
+const sbot = SecretStack({ appKey: caps.shs })
+  .use(require('../'))
+  .use(require('../mentions'))
+  .call(null, {
+    keys,
+    path: dir,
+  })
+const db = sbot.db
 
 test('getMessagesByMention', (t) => {
   const post = { type: 'post', text: 'Testing!' }
@@ -64,6 +66,7 @@ test('getMessagesByMention', (t) => {
                   t.equal(results2.length, 1)
                   t.equal(results2[0].value.content.text, mentionMsg.text)
                   t.end()
+                  sbot.close()
                 })
               )
             })

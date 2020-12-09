@@ -4,8 +4,8 @@ const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const validate = require('ssb-validate')
-const DB = require('../db')
-const EBTCompat = require('../compat/ebt')
+const SecretStack = require('secret-stack')
+const caps = require('ssb-caps')
 
 const dir = '/tmp/ssb-db2-ebt'
 
@@ -14,14 +14,14 @@ mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
-const db = DB.init({}, dir, {
-  path: dir,
-  keys,
-})
-
-// simulate secret stack
-const sbot = { db }
-EBTCompat.init(sbot)
+const sbot = SecretStack({ appKey: caps.shs })
+  .use(require('../'))
+  .use(require('../compat/ebt'))
+  .call(null, {
+    keys,
+    path: dir,
+  })
+const db = sbot.db
 
 test('Base', (t) => {
   const post = { type: 'post', text: 'Testing!' }
@@ -51,7 +51,7 @@ test('Encrypted', (t) => {
     db.onDrain('base', () => {
       sbot.getAtSequence([keys.id, 2], (err, msg) => {
         t.equal(msg.value.content, content)
-        t.end()
+        sbot.close(t.end)
       })
     })
   })

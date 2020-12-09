@@ -66,7 +66,7 @@ exports.init = function (sbot, dir, config) {
   }
 
   function get(id, cb) {
-    onIndexesReady(() => {
+    onIndexesStateLoaded(() => {
       query(
         and(key(id)),
         toCallback((err, results) => {
@@ -299,28 +299,30 @@ exports.init = function (sbot, dir, config) {
       indexName = 'base'
     }
 
-    log.onDrain(() => {
-      const index = indexes[indexName]
-      if (!index) return cb('Unknown index:' + indexName)
+    onIndexesStateLoaded(() => {
+      log.onDrain(() => {
+        const index = indexes[indexName]
+        if (!index) return cb('Unknown index:' + indexName)
 
-      if (index.seq.value === log.since.value) {
-        cb()
-      } else {
-        const remove = index.seq(() => {
-          if (index.seq.value === log.since.value) {
-            remove()
-            cb()
-          }
-        })
-      }
+        if (index.seq.value === log.since.value) {
+          cb()
+        } else {
+          const remove = index.seq(() => {
+            if (index.seq.value === log.since.value) {
+              remove()
+              cb()
+            }
+          })
+        }
+      })
     })
   }
 
-  let indexesReady = Obv()
-  indexesReady.once(updateIndexes)
+  let indexesStateLoaded = Obv()
+  indexesStateLoaded.once(updateIndexes)
   let closing = false
 
-  function checkIndexesReady() {
+  function checkIndexesStateLoaded() {
     let allOk = private.latestSeq.value !== undefined
     debug(`private seq: ${private.latestSeq.value}`)
     for (var index in indexes) {
@@ -328,15 +330,15 @@ exports.init = function (sbot, dir, config) {
       debug(`${index} seq: ${indexes[index].seq.value}`)
     }
 
-    if (allOk) indexesReady.set(true)
-    else if (!closing) setTimeout(checkIndexesReady, 250)
+    if (allOk) indexesStateLoaded.set(true)
+    else if (!closing) setTimeout(checkIndexesStateLoaded, 250)
   }
 
-  checkIndexesReady()
+  checkIndexesStateLoaded()
 
-  function onIndexesReady(cb) {
-    if (indexesReady.value === true) cb()
-    else indexesReady.once(cb)
+  function onIndexesStateLoaded(cb) {
+    if (indexesStateLoaded.value === true) cb()
+    else indexesStateLoaded.once(cb)
   }
 
   function close(cb) {
