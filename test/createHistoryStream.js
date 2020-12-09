@@ -5,8 +5,8 @@ const test = require('tape')
 const pull = require('pull-stream')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
-const DB = require('../db')
-const HistoryCompat = require('../compat/history-stream')
+const SecretStack = require('secret-stack')
+const caps = require('ssb-caps')
 
 const dir = '/tmp/ssb-db2-history-stream'
 
@@ -14,14 +14,15 @@ rimraf.sync(dir)
 mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
-const db = DB.init({}, dir, {
-  path: dir,
-  keys,
-})
 
-// simulate secret stack
-const sbot = { db }
-HistoryCompat.init(sbot)
+const sbot = SecretStack({ appKey: caps.shs })
+  .use(require('../'))
+  .use(require('../compat/history-stream'))
+  .call(null, {
+    keys,
+    path: dir,
+  })
+const db = sbot.db
 
 test('Base', (t) => {
   const post = { type: 'post', text: 'Testing!' }
@@ -158,7 +159,7 @@ test('Encrypted', (t) => {
         pull.collect((err, results) => {
           t.equal(results.length, 4)
           t.equal(typeof results[3].content, 'string')
-          t.end()
+          sbot.close(t.end)
         })
       )
     })

@@ -43,33 +43,31 @@ sbot.db.query(
 )
 ```
 
-A index plugin that exposes the most common used social aspects of SSB
-is also available as indexes/social. It has 3 methods:
+An extra index plugin that is commonly needed in SSB communities is the `mentions` index. It has one method:
 
  - getMessagesByMention
- - getMessagesByRoot
- - getMessagesByVoteLink
 
-This plugin is meant as a base for application developers to write
-their own plugins if the functionality of jitdb is not enough. JITDB
+This plugin is meant as an example for application developers to write
+their own plugins if the functionality of JITDB is not enough. JITDB
 is good for indexing specific values, like type `post`, whereas for
 root messages where there are a lot of keys and only a few results for
 each, a specialized index makes more sense.
 
-To get the post messages of a specific root, you can do:
+To get the post messages that mention Alice, you can do:
 
 ```js
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const {query, and, type, author, toCallback} = require('ssb-db2/operators')
+const mentions = require('ssb-db2/operators/mentions')
 
 const sbot = SecretStack({appKey: caps.shs})
   .use(require('ssb-db2'))
-  .use(require('ssb-db2/social')) // include index
+  .use(require('ssb-db2/mentions')) // include index
   .call(null, {})
 
 sbot.db.query(
-  and(hasRoot(msgKey), type('post')),
+  and(mentions(alice.id), type('post')),
   toCallback((err, msgs) => {
     console.log('There are ' + msgs.length + ' messages')
     sbot.close()

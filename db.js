@@ -6,6 +6,7 @@ const Obv = require('obv')
 const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
 const JITDb = require('jitdb')
+const Debug = require('debug')
 
 const { indexesPath } = require('./defaults')
 const Log = require('./log')
@@ -28,6 +29,8 @@ exports.init = function (sbot, dir, config) {
   const migrate = Migrate.init(sbot, config, log)
   //const contacts = fullIndex.contacts
   //const partial = Partial(dir)
+
+  const debug = Debug('ssb:db2')
 
   const indexes = {
     base: baseIndex,
@@ -63,14 +66,16 @@ exports.init = function (sbot, dir, config) {
   }
 
   function get(id, cb) {
-    query(
-      and(key(id)),
-      toCallback((err, results) => {
-        if (err) return cb(err)
-        else if (results.length) return cb(null, results[0].value)
-        else return cb()
-      })
-    )
+    onIndexesStateLoaded(() => {
+      query(
+        and(key(id)),
+        toCallback((err, results) => {
+          if (err) return cb(err)
+          else if (results.length) return cb(null, results[0].value)
+          else return cb()
+        })
+      )
+    })
   }
 
   function add(msg, cb) {
@@ -110,6 +115,7 @@ exports.init = function (sbot, dir, config) {
     const guard = guardAgainstDuplicateLogs('del()')
     if (guard) return cb(guard)
 
+    // FIXME: this doesn't work anymore after changing base index
     baseIndex.keyToSeq(key, (err, seq) => {
       if (err) return cb(err)
       if (seq == null) return cb(new Error('seq is null!'))
@@ -256,6 +262,36 @@ exports.init = function (sbot, dir, config) {
     indexes[index.name] = index
   }
 
+  function updateIndexes() {
+    const start = Date.now()
+
+    const indexesRun = Object.values(indexes)
+
+    function liveStream() {
+      debug('live streaming changes')
+      log.stream({ gt: indexes['base'].seq.value, live: true }).pipe({
+        paused: false,
+        write: (data) => indexesRun.forEach((x) => x.onData(data, true)),
+      })
+    }
+
+    const lowestSeq = Math.min(
+      ...Object.values(indexes).map((x) => x.seq.value)
+    )
+    debug(`lowest seq for all indexes ${lowestSeq}`)
+
+    log.stream({ gt: lowestSeq }).pipe({
+      paused: false,
+      write: (data) => indexesRun.forEach((x) => x.onData(data, false)),
+      end: () => {
+        const tasks = indexesRun.map((index) => promisify(index.writeBatch)())
+        Promise.all(tasks).then(liveStream)
+
+        debug(`index scan time: ${Date.now() - start}ms`)
+      },
+    })
+  }
+
   function onDrain(indexName, cb) {
     if (!cb) {
       // default
@@ -263,24 +299,50 @@ exports.init = function (sbot, dir, config) {
       indexName = 'base'
     }
 
-    log.onDrain(() => {
-      const index = indexes[indexName]
-      if (!index) return cb('Unknown index:' + indexName)
+    onIndexesStateLoaded(() => {
+      log.onDrain(() => {
+        const index = indexes[indexName]
+        if (!index) return cb('Unknown index:' + indexName)
 
-      if (index.seq.value === log.since.value) {
-        cb()
-      } else {
-        const remove = index.seq(() => {
-          if (index.seq.value === log.since.value) {
-            remove()
-            cb()
-          }
-        })
-      }
+        if (index.seq.value === log.since.value) {
+          cb()
+        } else {
+          const remove = index.seq(() => {
+            if (index.seq.value === log.since.value) {
+              remove()
+              cb()
+            }
+          })
+        }
+      })
     })
   }
 
+  let indexesStateLoaded = Obv()
+  indexesStateLoaded.once(updateIndexes)
+  let closing = false
+
+  function checkIndexesStateLoaded() {
+    let allOk = private.latestSeq.value !== undefined
+    debug(`private seq: ${private.latestSeq.value}`)
+    for (var index in indexes) {
+      if (indexes[index].seq.value === undefined) allOk = false
+      debug(`${index} seq: ${indexes[index].seq.value}`)
+    }
+
+    if (allOk) indexesStateLoaded.set(true)
+    else if (!closing) setTimeout(checkIndexesStateLoaded, 250)
+  }
+
+  checkIndexesStateLoaded()
+
+  function onIndexesStateLoaded(cb) {
+    if (indexesStateLoaded.value === true) cb()
+    else indexesStateLoaded.once(cb)
+  }
+
   function close(cb) {
+    closing = true
     const tasks = []
     tasks.push(promisify(log.close)())
     for (const indexName in indexes) {
