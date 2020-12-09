@@ -23,7 +23,7 @@ module.exports = function (log, dir, private) {
   let batchJson = []
   let authorLatest = {}
 
-  const { level, seq, onData, writeBatch } = Plugin(
+  const { level, seq, stateLoaded, onData, writeBatch } = Plugin(
     log,
     dir,
     'base',
@@ -123,6 +123,7 @@ module.exports = function (log, dir, private) {
 
   return {
     seq,
+    stateLoaded,
     onData,
     writeBatch,
 

@@ -318,31 +318,22 @@ exports.init = function (sbot, dir, config) {
     })
   }
 
-  let indexesStateLoaded = Obv()
-  indexesStateLoaded.once(updateIndexes)
-  let closing = false
-
-  function checkIndexesStateLoaded() {
-    let allOk = private.latestSeq.value !== undefined
-    debug(`private seq: ${private.latestSeq.value}`)
-    for (var index in indexes) {
-      if (indexes[index].seq.value === undefined) allOk = false
-      debug(`${index} seq: ${indexes[index].seq.value}`)
-    }
-
-    if (allOk) indexesStateLoaded.set(true)
-    else if (!closing) setTimeout(checkIndexesStateLoaded, 250)
-  }
-
-  checkIndexesStateLoaded()
-
   function onIndexesStateLoaded(cb) {
-    if (indexesStateLoaded.value === true) cb()
-    else indexesStateLoaded.once(cb)
+    if (!onIndexesStateLoaded.promise) {
+      const stateLoadedPromises = [private.stateLoaded]
+      for (var index in indexes) {
+        stateLoadedPromises.push(indexes[index].stateLoaded)
+      }
+      onIndexesStateLoaded.promise = Promise.all(stateLoadedPromises)
+    }
+    onIndexesStateLoaded.promise.then(cb)
   }
+
+  setTimeout(() => {
+    onIndexesStateLoaded(updateIndexes)
+  })
 
   function close(cb) {
-    closing = true
     const tasks = []
     tasks.push(promisify(log.close)())
     for (const indexName in indexes) {

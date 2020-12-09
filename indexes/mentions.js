@@ -64,7 +64,7 @@ module.exports = function (log, dir) {
   }
 
   const name = 'mentions'
-  const { level, seq, onData, writeBatch } = Plugin(
+  const { level, seq, stateLoaded, onData, writeBatch } = Plugin(
     log,
     dir,
     name,
@@ -91,6 +91,7 @@ module.exports = function (log, dir) {
 
   return {
     seq,
+    stateLoaded,
     onData,
     writeBatch,
 
