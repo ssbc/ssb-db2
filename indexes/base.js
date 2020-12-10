@@ -37,10 +37,11 @@ module.exports = function (log, dir, private) {
     level.batch(
       batchJson,
       { keyEncoding: 'json', valueEncoding: 'json' },
-      throwOnError
+      (err) => {
+        if (err) return cb(err)
+        else private.saveIndexes(cb)
+      }
     )
-
-    private.saveIndexes(cb)
 
     batchJsonKey = []
     batchJson = []
