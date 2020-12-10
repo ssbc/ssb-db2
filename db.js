@@ -329,6 +329,7 @@ exports.init = function (sbot, dir, config) {
     onIndexesStateLoaded.promise.then(cb)
   }
 
+  // setTimeout here so we make that extra indexes are also included
   setTimeout(() => {
     onIndexesStateLoaded(updateIndexes)
   })
