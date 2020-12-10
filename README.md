@@ -71,7 +71,7 @@ An extra index plugin that is commonly needed in SSB communities is the **full-m
 
 Although this accomplishes the same as the previous `mentions()` example, this plugin is meant as an example for application developers to write
 their own plugins if the functionality of JITDB is not enough. JITDB
-is good for indexing specific values, like `mentions(alice.id)` will gets its own dedidated JITDB index for `alice.id`, so that querying mentions of several feeds or several messages creates many indexes, so a specialized index makes more sense.
+is good for indexing specific values, like `mentions(alice.id)` will gets its own dedidated JITDB index for `alice.id`. But when querying mentions of several feeds or several messages, this would creates many indexes, so a specialized index makes more sense.
 
 What `full-mentions` does is index all possible mentionable items at once, using Leveldb instead of JITDB. You can include it and use it like this:
 
