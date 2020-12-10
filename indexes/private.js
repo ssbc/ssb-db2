@@ -1,5 +1,5 @@
 const Obv = require('obv')
-const bipf = require('bipf')
+const bipf = require('@staltz/bipf')
 const fic = require('fastintcompression')
 const bsb = require('binary-search-bounds')
 const { readFile, writeFile } = require('atomically-universal')
