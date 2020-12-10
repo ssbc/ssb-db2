@@ -7,6 +7,7 @@ const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
 const JITDb = require('jitdb')
 const Debug = require('debug')
+const DeferredPromise = require('p-defer')
 
 const { indexesPath } = require('./defaults')
 const Log = require('./log')
@@ -37,6 +38,7 @@ exports.init = function (sbot, dir, config) {
   }
   const post = Obv()
   const hmac_key = null
+  const stateFeedsReady = DeferredPromise()
   let state = validate.initial()
 
   // restore current state
@@ -51,6 +53,8 @@ exports.init = function (sbot, dir, config) {
         queue: [],
       }
     }
+    debug('getAllLatest is done setting up initial validate state')
+    stateFeedsReady.resolve()
   })
 
   function guardAgainstDuplicateLogs(methodName) {
@@ -93,9 +97,11 @@ exports.init = function (sbot, dir, config) {
       this problem.
     */
 
-    get(id, (err, data) => {
-      if (data) cb(null, data)
-      else log.add(id, msg, cb)
+    stateFeedsReady.promise.then(() => {
+      get(id, (err, data) => {
+        if (data) cb(null, data)
+        else log.add(id, msg, cb)
+      })
     })
   }
 
