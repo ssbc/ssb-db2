@@ -3,7 +3,6 @@ const ssbKeys = require('ssb-keys')
 const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
-const validate = require('ssb-validate')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 
@@ -38,6 +37,31 @@ test('Base', (t) => {
   })
 })
 
+test('author seq', (t) => {
+  const post = { type: 'post', text: 'Testing!' }
+  const post2 = { type: 'post', text: 'Testing 2!' }
+
+  db.publish(post, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    db.publish(post2, (err, postMsg2) => {
+      t.error(err, 'no err')
+
+      db.onDrain('ebt', () => {
+        db.getIndexes().ebt.getMessageFromAuthorSequence(
+          [keys.id, postMsg2.value.sequence],
+          (err, msg) => {
+            t.error(err, 'no err')
+            t.equal(msg.value.content.text, post2.text, 'correct msg')
+
+            t.end()
+          }
+        )
+      })
+    })
+  })
+})
+
 test('Encrypted', (t) => {
   let content = { type: 'post', text: 'super secret', recps: [keys.id] }
   content = ssbKeys.box(
@@ -49,7 +73,7 @@ test('Encrypted', (t) => {
     t.error(err, 'no err')
 
     db.onDrain('base', () => {
-      sbot.getAtSequence([keys.id, 2], (err, msg) => {
+      sbot.getAtSequence([keys.id, 4], (err, msg) => {
         t.equal(msg.value.content, content)
         sbot.close(t.end)
       })

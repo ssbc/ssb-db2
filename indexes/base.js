@@ -2,10 +2,8 @@ const bipf = require('@staltz/bipf')
 const pl = require('pull-level')
 const pull = require('pull-stream')
 const Plugin = require('./plugin')
-const { reEncrypt } = require('./private')
 
-// 2 indexes:
-// - [author, sequence] => seq (EBT)
+// 1 index:
 // - author => latest { msg key, sequence timestamp } (validate state & EBT)
 
 module.exports = function (log, dir, private) {
@@ -19,9 +17,9 @@ module.exports = function (log, dir, private) {
     if (err) throw err
   }
 
-  let batchJsonKey = []
-  let batchJson = []
+  let batch = []
   let authorLatest = {}
+  const META = '\x00'
 
   const { level, seq, stateLoaded, onData, writeBatch } = Plugin(
     dir,
@@ -33,18 +31,12 @@ module.exports = function (log, dir, private) {
   )
 
   function writeData(cb) {
-    level.batch(batchJsonKey, { keyEncoding: 'json' }, throwOnError)
-    level.batch(
-      batchJson,
-      { keyEncoding: 'json', valueEncoding: 'json' },
-      (err) => {
-        if (err) return cb(err)
-        else private.saveIndexes(cb)
-      }
-    )
+    level.batch(batch, { valueEncoding: 'json' }, (err) => {
+      if (err) return cb(err)
+      else private.saveIndexes(cb)
+    })
 
-    batchJsonKey = []
-    batchJson = []
+    batch = []
   }
 
   function handleData(data, processed) {
@@ -63,27 +55,20 @@ module.exports = function (log, dir, private) {
       const p4 = bipf.seekKey(data.value, p, bTimestamp)
       const timestamp = bipf.decode(data.value, p4)
 
-      batchJsonKey.push({
-        type: 'put',
-        key: [author, sequence],
-        value: data.seq,
-      })
-
       let latestSequence = 0
       if (authorLatest[author]) latestSequence = authorLatest[author].sequence
       if (sequence > latestSequence) {
         const key = bipf.decode(data.value, pKey)
         authorLatest[author] = { id: key, sequence, timestamp }
-        batchJson.push({
+        batch.push({
           type: 'put',
-          key: ['a', author],
+          key: author,
           value: authorLatest[author],
         })
       }
     }
 
-    if (batchJsonKey.length) return batchJsonKey.length
-    else return 0
+    return batch.length
   }
 
   function beforeIndexUpdate(cb) {
@@ -96,29 +81,18 @@ module.exports = function (log, dir, private) {
   function getAllLatest(cb) {
     pull(
       pl.read(level, {
-        gte: '["a",',
+        gt: META,
         valueEncoding: 'json',
       }),
       pull.collect((err, data) => {
         if (err) return cb(err)
         const result = {}
         data.forEach((d) => {
-          result[JSON.parse(d.key)[1]] = d.value
+          result[d.key] = d.value
         })
         cb(null, result)
       })
     )
-  }
-
-  function levelKeyToMessage(key, cb) {
-    level.get(key, (err, seq) => {
-      if (err) return cb(err)
-      else
-        log.get(parseInt(seq, 10), (err, data) => {
-          if (err) return cb(err)
-          cb(null, bipf.decode(data, 0))
-        })
-    })
   }
 
   return {
@@ -130,25 +104,13 @@ module.exports = function (log, dir, private) {
     remove: level.clear,
     close: level.close.bind(level),
 
-    // this is for EBT so must be not leak private messages
-    getMessageFromAuthorSequence: (key, cb) => {
-      levelKeyToMessage(JSON.stringify(key), (err, msg) => {
-        if (err) cb(err)
-        else cb(null, reEncrypt(msg))
-      })
-    },
-
     // returns { id (msg key), sequence, timestamp }
     getLatest: function (feedId, cb) {
-      level.get(
-        ['a', feedId],
-        { keyEncoding: 'json', valueEncoding: 'json' },
-        cb
-      )
+      level.get(feedId, { valueEncoding: 'json' }, cb)
     },
     getAllLatest,
     removeFeedFromLatest: function (feedId) {
-      level.del(['a', feedId], { keyEncoding: 'json' }, throwOnError)
+      level.del(feedId, throwOnError)
     },
   }
 }

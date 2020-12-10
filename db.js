@@ -261,7 +261,7 @@ exports.init = function (sbot, dir, config) {
   }
 
   function registerIndex(Index) {
-    const index = Index(dir)
+    const index = Index(log, dir)
 
     if (indexes[index.name]) throw 'Index already exists'
 
@@ -385,8 +385,6 @@ exports.init = function (sbot, dir, config) {
 
     getLatest: baseIndex.getLatest,
     getAllLatest: baseIndex.getAllLatest,
-    // EBT
-    getMessageFromAuthorSequence: baseIndex.getMessageFromAuthorSequence,
     migrate,
 
     // FIXME: contacts & profiles
