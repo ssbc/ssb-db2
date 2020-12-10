@@ -14,6 +14,7 @@ const {
   author,
   isRoot,
   votesFor,
+  mentions,
   hasRoot,
   live,
   toPullStream,
@@ -164,6 +165,55 @@ test('hasRoot() outputs encrypted replies too', (t) => {
               t.equal(results.length, 1)
               t.equal(results[0].value.content.text, 'encrypted reply')
               t.end()
+            })
+          )
+        })
+      })
+    })
+  })
+})
+
+test('execute mentions(feedid) and mentions(msgkey)', (t) => {
+  const post = { type: 'post', text: 'Testing!' }
+  const feedId = '@abc'
+  const mentionFeed = {
+    type: 'post',
+    text: 'Hello @abc',
+    mentions: [{ link: feedId }],
+  }
+
+  db.publish(post, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    db.publish(mentionFeed, (err) => {
+      t.error(err, 'no err')
+
+      const mentionMsg = {
+        type: 'post',
+        text: `What is [this](${postMsg.key})`,
+        mentions: [{ link: postMsg.key }],
+      }
+
+      db.publish(mentionMsg, (err) => {
+        t.error(err, 'no err')
+
+        db.onDrain(() => {
+          db.query(
+            and(mentions(feedId)),
+            toCallback((err, results) => {
+              t.error(err, 'no err')
+              t.equal(results.length, 1)
+              t.equal(results[0].value.content.text, mentionFeed.text)
+
+              db.query(
+                and(mentions(postMsg.key)),
+                toCallback((err2, results2) => {
+                  t.error(err2, 'no err')
+                  t.equal(results2.length, 1)
+                  t.equal(results2[0].value.content.text, mentionMsg.text)
+                  t.end()
+                })
+              )
             })
           )
         })

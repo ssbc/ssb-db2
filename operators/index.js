@@ -7,8 +7,10 @@ const {
   seekRoot,
   seekPrivate,
   seekVoteLink,
+  seekMentions,
+  pluckLink,
 } = require('../seekers')
-const { equal } = jitdbOperators
+const { equal, includes } = jitdbOperators
 
 function key(value) {
   return equal(seekKey, value, {
@@ -42,6 +44,13 @@ function votesFor(msgKey) {
   })
 }
 
+function mentions(key) {
+  return includes(seekMentions, key, {
+    pluck: pluckLink,
+    indexType: 'value_content_mentions_link',
+  })
+}
+
 function hasRoot(msgKey) {
   return equal(seekRoot, msgKey, {
     prefix: 32,
@@ -66,6 +75,7 @@ module.exports = Object.assign({}, jitdbOperators, {
   channel,
   key,
   votesFor,
+  mentions,
   hasRoot,
   isRoot,
   isPrivate,

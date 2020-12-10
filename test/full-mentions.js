@@ -6,7 +6,7 @@ const mkdirp = require('mkdirp')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const { and, toCallback } = require('../operators')
-const mentions = require('../operators/mentions')
+const mentions = require('../operators/full-mentions')
 
 const dir = '/tmp/ssb-db2-mentions-index'
 
@@ -17,7 +17,7 @@ const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
 const sbot = SecretStack({ appKey: caps.shs })
   .use(require('../'))
-  .use(require('../mentions'))
+  .use(require('../full-mentions'))
   .call(null, {
     keys,
     path: dir,
@@ -48,9 +48,9 @@ test('getMessagesByMention', (t) => {
       db.publish(mentionMsg, (err) => {
         t.error(err, 'no err')
 
-        db.onDrain('mentions', () => {
+        db.onDrain('fullMentions', () => {
           const status = db.getStatus()
-          t.equal(status.indexes['mentions'], 780, 'index in sync')
+          t.equal(status.indexes['fullMentions'], 780, 'index in sync')
 
           db.query(
             and(mentions(feedId)),

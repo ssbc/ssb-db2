@@ -43,37 +43,59 @@ sbot.db.query(
 )
 ```
 
-An extra index plugin that is commonly needed in SSB communities is the `mentions` index. It has one method:
-
- - getMessagesByMention
-
-This plugin is meant as an example for application developers to write
-their own plugins if the functionality of JITDB is not enough. JITDB
-is good for indexing specific values, like type `post`, whereas for
-root messages where there are a lot of keys and only a few results for
-each, a specialized index makes more sense.
-
-To get the post messages that mention Alice, you can do:
+To get post messages that mention Alice, you can do:
 
 ```js
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
-const {query, and, type, author, toCallback} = require('ssb-db2/operators')
-const mentions = require('ssb-db2/operators/mentions')
+const {query, and, type, author, mentions, toCallback} = require('ssb-db2/operators')
 
 const sbot = SecretStack({appKey: caps.shs})
   .use(require('ssb-db2'))
-  .use(require('ssb-db2/mentions')) // include index
   .call(null, {})
 
 sbot.db.query(
-  and(mentions(alice.id), type('post')),
+  and(type('post'), mentions(alice.id))),
   toCallback((err, msgs) => {
     console.log('There are ' + msgs.length + ' messages')
     sbot.close()
   })
 )
 ```
+
+### Extra plugins
+
+An extra index plugin that is commonly needed in SSB communities is the **full-mentions** index. It has one method:
+
+ - getMessagesByMention
+
+Although this accomplishes the same as the previous `mentions()` example, this plugin is meant as an example for application developers to write
+their own plugins if the functionality of JITDB is not enough. JITDB
+is good for indexing specific values, like `mentions(alice.id)` will gets its own dedidated JITDB index for `alice.id`, so that querying mentions of several feeds or several messages creates many indexes, so a specialized index makes more sense.
+
+What `full-mentions` does is index all possible mentionable items at once, using Leveldb instead of JITDB. You can include it and use it like this:
+
+```js
+const SecretStack = require('secret-stack')
+const caps = require('ssb-caps')
+const {query, and, type, author, toCallback} = require('ssb-db2/operators')
+const mentions = require('ssb-db2/operators/full-mentions')
+
+const sbot = SecretStack({appKey: caps.shs})
+  .use(require('ssb-db2'))
+  .use(require('ssb-db2/full-mentions')) // include index
+  .call(null, {})
+
+sbot.db.query(
+  and(type('post'), mentions(alice.id))),
+  toCallback((err, msgs) => {
+    console.log('There are ' + msgs.length + ' messages')
+    sbot.close()
+  })
+)
+```
+
+### Compatibility plugins
 
 SSB DB2 includes a couple of plugins for backwards compatibility,
 including legacy replication, ebt and publish. They can be loaded as:

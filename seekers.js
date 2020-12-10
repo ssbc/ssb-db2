@@ -1,4 +1,4 @@
-const { seekKey } = require('bipf')
+const { seekKey } = require('@staltz/bipf')
 
 const bKey = Buffer.from('key')
 const bValue = Buffer.from('value')
@@ -11,6 +11,7 @@ const bLink = Buffer.from('link')
 const bMeta = Buffer.from('meta')
 const bPrivate = Buffer.from('private')
 const bChannel = Buffer.from('channel')
+const bMentions = Buffer.from('mentions')
 
 module.exports = {
   seekAuthor: function (buffer) {
@@ -46,6 +47,20 @@ module.exports = {
     if (!~p) return
     p = seekKey(buffer, p, bVote)
     if (!~p) return
+    return seekKey(buffer, p, bLink)
+  },
+
+  seekMentions: function (buffer) {
+    let p = 0 // note you pass in p!
+    p = seekKey(buffer, p, bValue)
+    if (!~p) return
+    p = seekKey(buffer, p, bContent)
+    if (!~p) return
+    return seekKey(buffer, p, bMentions)
+  },
+
+  pluckLink: function (buffer, start) {
+    let p = start
     return seekKey(buffer, p, bLink)
   },
 

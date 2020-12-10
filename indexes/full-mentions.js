@@ -1,4 +1,4 @@
-const bipf = require('bipf')
+const bipf = require('@staltz/bipf')
 const pl = require('pull-level')
 const pull = require('pull-stream')
 const Plugin = require('./plugin')
@@ -63,7 +63,7 @@ module.exports = function (dir) {
     return parseInt(x, 10)
   }
 
-  const name = 'mentions'
+  const name = 'fullMentions'
   const { level, seq, stateLoaded, onData, writeBatch } = Plugin(
     dir,
     name,
