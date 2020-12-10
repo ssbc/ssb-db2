@@ -78,31 +78,6 @@ test('getsync', (t) => {
   })
 })
 
-test('author seq', (t) => {
-  const post = { type: 'post', text: 'Testing!' }
-  const post2 = { type: 'post', text: 'Testing 2!' }
-
-  db.publish(post, (err, postMsg) => {
-    t.error(err, 'no err')
-
-    db.publish(post2, (err, postMsg2) => {
-      t.error(err, 'no err')
-
-      db.onDrain('base', () => {
-        db.getMessageFromAuthorSequence(
-          [keys.id, postMsg2.value.sequence],
-          (err, msg) => {
-            t.error(err, 'no err')
-            t.equal(msg.value.content.text, post2.text, 'correct msg')
-
-            t.end()
-          }
-        )
-      })
-    })
-  })
-})
-
 test('get latest', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 

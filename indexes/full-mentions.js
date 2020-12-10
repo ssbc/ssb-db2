@@ -8,13 +8,22 @@ const { offsets, liveOffsets } = require('../operators')
 // 1 index:
 // - mentions (msgId) => msg seqs
 
-module.exports = function (dir) {
+module.exports = function (log, dir) {
   const bKey = Buffer.from('key')
   const bValue = Buffer.from('value')
   const bContent = Buffer.from('content')
   const bMentions = Buffer.from('mentions')
 
   let batch = []
+
+  const name = 'fullMentions'
+  const { level, seq, stateLoaded, onData, writeBatch } = Plugin(
+    dir,
+    name,
+    1,
+    handleData,
+    writeData
+  )
 
   function writeData(cb) {
     level.batch(batch, { keyEncoding: jsonCodec }, cb)
@@ -55,22 +64,12 @@ module.exports = function (dir) {
       }
     }
 
-    if (batch.length) return batch.length
-    else return 0
+    return batch.length
   }
 
   function parseInt10(x) {
     return parseInt(x, 10)
   }
-
-  const name = 'fullMentions'
-  const { level, seq, stateLoaded, onData, writeBatch } = Plugin(
-    dir,
-    name,
-    1,
-    handleData,
-    writeData
-  )
 
   function getResults(opts, live, cb) {
     pull(
