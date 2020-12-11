@@ -57,25 +57,6 @@ test('get', (t) => {
   })
 })
 
-test('getsync', (t) => {
-  const post = { type: 'post', text: 'Testing!' }
-  const post2 = { type: 'post', text: 'Testing 2!' }
-
-  db.publish(post, (err, postMsg) => {
-    t.error(err, 'no err')
-
-    db.publish(post2, (err, postMsg2) => {
-      t.error(err, 'no err')
-
-      db.getSync(postMsg.key, (err, msg) => {
-        t.equal(msg.content.text, post.text, 'correct msg')
-
-        t.end()
-      })
-    })
-  })
-})
-
 test('get latest', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 

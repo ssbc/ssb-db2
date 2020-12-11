@@ -360,11 +360,6 @@ exports.init = function (sbot, dir, config) {
 
   return {
     get,
-    getSync: function (id, cb) {
-      onDrain('base', () => {
-        get(id, cb)
-      })
-    },
     add,
     publish,
     del,
