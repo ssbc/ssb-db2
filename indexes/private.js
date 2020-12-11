@@ -9,6 +9,12 @@ const DeferredPromise = require('p-defer')
 const path = require('path')
 const Debug = require('debug')
 
+const { unboxKey, unboxBody } = require('envelope-js')
+const { keySchemes } = require('private-group-spec')
+const KeyStore = require('ssb-tribes/key-store')
+const { FeedId, MsgId } = require('ssb-tribes/lib/cipherlinks')
+const directMessageKey = require('ssb-tribes/lib/direct-message-key')
+
 const { indexesPath } = require('../defaults')
 
 module.exports = function (dir, keys) {
@@ -74,9 +80,11 @@ module.exports = function (dir, keys) {
     })
   }
 
-  loadIndexes((err) => {
-    if (err) throw err
+  // FIXME: we need a proper init here
+  const keystore = KeyStore(path.join(dir, 'tribes/keystore'), keys, () => {
+    console.log('loaded keystore')
   })
+  loadIndexes((err) => { if (err) throw err })
 
   let savedTimer
   function saveIndexes(cb) {
@@ -91,6 +99,8 @@ module.exports = function (dir, keys) {
   }
 
   const bValue = Buffer.from('value')
+  const bAuthor = Buffer.from('author')
+  const bPrevious = Buffer.from('previous')
   const bContent = Buffer.from('content')
   const StringType = 0
 
@@ -110,16 +120,85 @@ module.exports = function (dir, keys) {
     return { seq: data.seq, value: buf }
   }
 
+  function decryptBox2Msg(envelope, feed_id, prev_msg_id, read_key) {
+    const plaintext = unboxBody(envelope, feed_id, prev_msg_id, read_key)
+    if (plaintext) return JSON.parse(plaintext.toString('utf8'))
+    else return ''
+  }
+
+  function decryptBox2(ciphertext, author, previous) {
+    const envelope = Buffer.from(ciphertext.replace('.box2', ''), 'base64')
+    const feed_id = new FeedId(author).toTFK()
+    const prev_msg_id = new MsgId(previous).toTFK()
+
+    const trial_group_keys = keystore.author.groupKeys(author)
+
+    let read_key = unboxKey(envelope, feed_id, prev_msg_id, trial_group_keys, {
+      maxAttempts: 1,
+    })
+
+    if (read_key)
+      return decryptBox2Msg(envelope, feed_id, prev_msg_id, read_key)
+
+    const trial_dm_keys = [
+      keystore.author.sharedDMKey(author),
+      ...keystore.ownKeys(),
+    ]
+
+    read_key = unboxKey(envelope, feed_id, prev_msg_id, trial_dm_keys, {
+      maxAttempts: 16,
+    })
+
+    if (read_key) {
+      const msg = decryptBox2Msg(envelope, feed_id, prev_msg_id, read_key)
+      // FIXME: if this is a group/add-member msg then add to keystore using:
+
+      // keystore.processAddMember({ groupId, groupKey, root, authors }
+      // where root is tangles.group.root on the add member msg
+      // and groupId can be found in the recps
+
+      // FIXME: try to reindex existing encrypted messages
+
+      return msg
+    } else return ''
+  }
+
+  function decryptBox1(ciphertext, keys) {
+    return ssbKeys.unbox(ciphertext, keys)
+  }
+
+  function tryDecryptContent(ciphertext, data, pValue) {
+    let content = ''
+    if (ciphertext.endsWith('.box')) content = decryptBox1(ciphertext, keys)
+    else if (ciphertext.endsWith('.box2')) {
+      const pAuthor = bipf.seekKey(data.value, pValue, bAuthor)
+      if (pAuthor >= 0) {
+        const author = bipf.decode(data.value, pAuthor)
+        const pPrevious = bipf.seekKey(data.value, pValue, bPrevious)
+        if (pPrevious >= 0) {
+          const previousMsg = bipf.decode(data.value, pPrevious)
+          content = decryptBox2(ciphertext, author, previousMsg)
+        }
+      }
+    }
+    return content
+  }
+  
   function decrypt(data, streaming) {
     if (bsb.eq(canDecrypt, data.seq) !== -1) {
       let p = 0 // note you pass in p!
 
-      p = bipf.seekKey(data.value, p, bValue)
-      if (p >= 0) {
-        const pContent = bipf.seekKey(data.value, p, bContent)
+      const pValue = bipf.seekKey(data.value, p, bValue)
+      if (pValue >= 0) {
+        const pContent = bipf.seekKey(data.value, pValue, bContent)
         if (pContent >= 0) {
-          const content = ssbKeys.unbox(bipf.decode(data.value, pContent), keys)
-          if (content) return reconstructMessage(data, content)
+          const ciphertext = bipf.decode(data.value, pContent)
+          const content = tryDecryptContent(ciphertext, data, pValue)
+
+          if (content) {
+            const originalMsg = reconstructMessage(data, content)
+            return originalMsg
+          }
         }
       }
     } else if (data.seq > latestSeq.value) {
@@ -127,18 +206,16 @@ module.exports = function (dir, keys) {
 
       let p = 0 // note you pass in p!
 
-      p = bipf.seekKey(data.value, p, bValue)
-      if (p >= 0) {
-        const pContent = bipf.seekKey(data.value, p, bContent)
+      let pValue = bipf.seekKey(data.value, p, bValue)
+      if (pValue >= 0) {
+        const pContent = bipf.seekKey(data.value, pValue, bContent)
         if (pContent >= 0) {
           const type = bipf.getEncodedType(data.value, pContent)
           if (type === StringType) {
             encrypted.push(data.seq)
 
-            const content = ssbKeys.unbox(
-              bipf.decode(data.value, pContent),
-              keys
-            )
+            const ciphertext = bipf.decode(data.value, pContent)
+            const content = tryDecryptContent(ciphertext, data, pValue)
 
             if (content) {
               canDecrypt.push(data.seq)
