@@ -292,12 +292,9 @@ test('live votesFor', (t) => {
             (result) => {
               if (i++ == 0) {
                 t.equal(result.key, v1.key)
-
-                setTimeout(() => {
-                  db.publish(voteMsg2, (err, v2) => {
-                    t.error(err, 'no err')
-                  })
-                }, 1000)
+                db.publish(voteMsg2, (err, v2) => {
+                  t.error(err, 'no err')
+                })
               } else {
                 t.equal(result.value.content.vote.value, -1)
                 sbot.close(t.end)
