@@ -1,4 +1,4 @@
-const bipf = require('@staltz/bipf')
+const bipf = require('bipf')
 const pl = require('pull-level')
 const pull = require('pull-stream')
 const Plugin = require('./plugin')

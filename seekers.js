@@ -1,4 +1,4 @@
-const { seekKey } = require('@staltz/bipf')
+const { seekKey } = require('bipf')
 
 const bKey = Buffer.from('key')
 const bValue = Buffer.from('value')

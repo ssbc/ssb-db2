@@ -1,4 +1,4 @@
-const bipf = require('@staltz/bipf')
+const bipf = require('bipf')
 const Plugin = require('./plugin')
 const { reEncrypt } = require('./private')
 

@@ -1,5 +1,5 @@
 const OffsetLog = require('async-flumelog')
-const bipf = require('@staltz/bipf')
+const bipf = require('bipf')
 const { BLOCK_SIZE, newLogPath } = require('./defaults')
 
 module.exports = function (dir, config, private) {
