@@ -1,7 +1,6 @@
 const push = require('push-stream')
 const hash = require('ssb-keys/util').hash
 const validate = require('ssb-validate')
-const keys = require('ssb-keys')
 const Obv = require('obv')
 const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
@@ -16,7 +15,7 @@ const Private = require('./indexes/private')
 const Migrate = require('./migrate')
 // const Partial = require('./indexes/partial')
 
-const { and, key, toCallback } = require('./operators')
+const { and, fromDB, key, deferred, toCallback } = require('./operators')
 
 function getId(msg) {
   return '%' + hash(JSON.stringify(msg, null, 2))
@@ -70,16 +69,14 @@ exports.init = function (sbot, dir, config) {
   }
 
   function get(id, cb) {
-    onIndexesStateLoaded(() => {
-      query(
-        and(key(id)),
-        toCallback((err, results) => {
-          if (err) return cb(err)
-          else if (results.length) return cb(null, results[0].value)
-          else return cb()
-        })
-      )
-    })
+    query(
+      and(key(id)),
+      toCallback((err, results) => {
+        if (err) return cb(err)
+        else if (results.length) return cb(null, results[0].value)
+        else return cb()
+      })
+    )
   }
 
   function add(msg, cb) {
@@ -335,7 +332,7 @@ exports.init = function (sbot, dir, config) {
     onIndexesStateLoaded.promise.then(cb)
   }
 
-  // setTimeout here so we make that extra indexes are also included
+  // setTimeout to make sure extra indexes from secret-stack are also included
   setTimeout(() => {
     onIndexesStateLoaded(updateIndexes)
   })
@@ -351,12 +348,13 @@ exports.init = function (sbot, dir, config) {
 
   // override query() from jitdb to implicitly call fromDB()
   function query(first, ...rest) {
+    const waitForDrain = and(deferred((meta, cb) => log.onDrain(cb)))
     if (!first.meta) {
-      const ops = jitdbOperators.fromDB(jitdb)
+      const ops = fromDB(jitdb)
       ops.meta.db2 = this
-      return jitdbOperators.query(ops, first, ...rest)
+      return jitdbOperators.query(ops, waitForDrain, first, ...rest)
     } else {
-      return jitdbOperators.query(first, ...rest)
+      return jitdbOperators.query(first, waitForDrain, ...rest)
     }
   }
 
@@ -374,6 +372,7 @@ exports.init = function (sbot, dir, config) {
     validateAndAdd,
     validateAndAddOOO,
     getStatus,
+    log,
     close,
 
     post,

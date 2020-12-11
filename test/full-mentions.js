@@ -48,30 +48,25 @@ test('getMessagesByMention', (t) => {
       db.publish(mentionMsg, (err) => {
         t.error(err, 'no err')
 
-        db.onDrain('fullMentions', () => {
-          const status = db.getStatus()
-          t.equal(status.indexes['fullMentions'], 780, 'index in sync')
+        db.query(
+          and(mentions(feedId)),
+          toCallback((err, results) => {
+            t.error(err, 'no err')
+            t.equal(results.length, 1)
+            t.equal(results[0].value.content.text, mentionFeed.text)
 
-          db.query(
-            and(mentions(feedId)),
-            toCallback((err, results) => {
-              t.error(err, 'no err')
-              t.equal(results.length, 1)
-              t.equal(results[0].value.content.text, mentionFeed.text)
-
-              db.query(
-                and(mentions(postMsg.key)),
-                toCallback((err2, results2) => {
-                  t.error(err2, 'no err')
-                  t.equal(results2.length, 1)
-                  t.equal(results2[0].value.content.text, mentionMsg.text)
-                  t.end()
-                  sbot.close()
-                })
-              )
-            })
-          )
-        })
+            db.query(
+              and(mentions(postMsg.key)),
+              toCallback((err2, results2) => {
+                t.error(err2, 'no err')
+                t.equal(results2.length, 1)
+                t.equal(results2[0].value.content.text, mentionMsg.text)
+                t.end()
+                sbot.close()
+              })
+            )
+          })
+        )
       })
     })
   })
