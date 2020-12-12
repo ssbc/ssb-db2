@@ -34,17 +34,15 @@ test('Base', (t) => {
   state = validate.appendNew(state, null, otherKeys, otherMsg, Date.now())
   db.add(state.queue[0].value, (err) => {
     db.publish(post, (err, postMsg) => {
-      db.onDrain('base', () => {
-        pull(
-          sbot.createHistoryStream({ id: keys.id, keys: false }),
-          pull.collect((err, results) => {
-            t.equal(results.length, 1)
-            // values directly
-            t.equal(results[0].content.text, post.text)
-            t.end()
-          })
-        )
-      })
+      pull(
+        sbot.createHistoryStream({ id: keys.id, keys: false }),
+        pull.collect((err, results) => {
+          t.equal(results.length, 1)
+          // values directly
+          t.equal(results[0].content.text, post.text)
+          t.end()
+        })
+      )
     })
   })
 })
@@ -84,30 +82,28 @@ test('Seq', (t) => {
 
           const post = { type: 'post', text: 'Testing 2' }
           db.publish(post, (err, postMsg) => {
-            db.onDrain(() => {
-              pull(
-                sbot.createHistoryStream({ id: keys.id, keys: false, seq: 2 }),
-                pull.collect((err, results) => {
-                  t.equal(results.length, 1)
-                  t.equal(results[0].content.text, post.text)
+            pull(
+              sbot.createHistoryStream({ id: keys.id, keys: false, seq: 2 }),
+              pull.collect((err, results) => {
+                t.equal(results.length, 1)
+                t.equal(results[0].content.text, post.text)
 
-                  pull(
-                    sbot.createHistoryStream({
-                      id: keys.id,
-                      keys: false,
-                      seq: 1,
-                      limit: 1,
-                    }),
-                    pull.collect((err, results) => {
-                      t.equal(results.length, 1)
-                      t.equal(results[0].content.text, 'Testing!')
+                pull(
+                  sbot.createHistoryStream({
+                    id: keys.id,
+                    keys: false,
+                    seq: 1,
+                    limit: 1,
+                  }),
+                  pull.collect((err, results) => {
+                    t.equal(results.length, 1)
+                    t.equal(results[0].content.text, 'Testing!')
 
-                      t.end()
-                    })
-                  )
-                })
-              )
-            })
+                    t.end()
+                  })
+                )
+              })
+            )
           })
         })
       )
@@ -116,7 +112,7 @@ test('Seq', (t) => {
 })
 
 test('limit', (t) => {
-  db.publish({ type: 'post', text: 'Testing 2' }, (err, postMsg) => {
+  db.publish({ type: 'post', text: 'Testing 3' }, (err, postMsg) => {
     pull(
       sbot.createHistoryStream({ id: keys.id, limit: 1 }),
       pull.collect((err, results) => {
@@ -126,7 +122,7 @@ test('limit', (t) => {
         pull(
           sbot.createHistoryStream({ id: keys.id }),
           pull.collect((err, results) => {
-            t.equal(results.length, 2)
+            t.equal(results.length, 3)
             t.end()
           })
         )
@@ -153,15 +149,13 @@ test('Encrypted', (t) => {
   )
 
   db.publish(content, (err, privateMsg) => {
-    db.onDrain(() => {
-      pull(
-        sbot.createHistoryStream({ id: keys.id, keys: false }),
-        pull.collect((err, results) => {
-          t.equal(results.length, 4)
-          t.equal(typeof results[3].content, 'string')
-          sbot.close(t.end)
-        })
-      )
-    })
+    pull(
+      sbot.createHistoryStream({ id: keys.id, keys: false }),
+      pull.collect((err, results) => {
+        t.equal(results.length, 4)
+        t.equal(typeof results[3].content, 'string')
+        sbot.close(t.end)
+      })
+    )
   })
 })

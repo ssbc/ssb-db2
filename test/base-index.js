@@ -48,28 +48,7 @@ test('get', (t) => {
     db.publish(post2, (err, postMsg2) => {
       t.error(err, 'no err')
 
-      db.onDrain('base', () => {
-        db.get(postMsg.key, (err, msg) => {
-          t.equal(msg.content.text, post.text, 'correct msg')
-
-          t.end()
-        })
-      })
-    })
-  })
-})
-
-test('getsync', (t) => {
-  const post = { type: 'post', text: 'Testing!' }
-  const post2 = { type: 'post', text: 'Testing 2!' }
-
-  db.publish(post, (err, postMsg) => {
-    t.error(err, 'no err')
-
-    db.publish(post2, (err, postMsg2) => {
-      t.error(err, 'no err')
-
-      db.getSync(postMsg.key, (err, msg) => {
+      db.get(postMsg.key, (err, msg) => {
         t.equal(msg.content.text, post.text, 'correct msg')
 
         t.end()
@@ -126,11 +105,9 @@ test('encrypted', (t) => {
   db.publish(content, (err, privateMsg) => {
     t.error(err, 'no err')
 
-    db.onDrain('base', () => {
-      db.get(privateMsg.key, (err, msg) => {
-        t.equal(msg.content.text, 'super secret')
-        t.end()
-      })
+    db.get(privateMsg.key, (err, msg) => {
+      t.equal(msg.content.text, 'super secret')
+      t.end()
     })
   })
 })
@@ -141,10 +118,8 @@ test('db.close', (t) => {
   db.publish(post, (err, postMsg) => {
     t.error(err, 'no err')
 
-    db.onDrain('base', () => {
-      db.close(() => {
-        sbot.close(t.end)
-      })
+    db.close(() => {
+      sbot.close(t.end)
     })
   })
 })

@@ -61,24 +61,20 @@ test('migrate moves msgs from old log to new log', (t) => {
     fromEvent('ssb:db2:migrate:progress', sbot),
     pull.filter((x) => x === 1),
     pull.take(1),
+    // we need to make sure async-flumelog has written the data
+    pull.asyncMap((_, cb) => sbot.db.log.onDrain(cb)),
     pull.drain(() => {
-      // we need to make sure async-flumelog has written the data
-      sbot.db.onDrain(() => {
-        t.true(
-          fs.existsSync(path.join(dir, 'db2', 'log.bipf')),
-          'migration done'
-        )
-        sbot.db.query(
-          toCallback((err1, msgs) => {
-            t.error(err1, 'no err')
-            t.equal(msgs.length, TOTAL)
-            t.true(progressEventsReceived, 'progress events received')
-            sbot.close(() => {
-              t.end()
-            })
+      t.true(fs.existsSync(path.join(dir, 'db2', 'log.bipf')), 'migration done')
+      sbot.db.query(
+        toCallback((err1, msgs) => {
+          t.error(err1, 'no err')
+          t.equal(msgs.length, TOTAL)
+          t.true(progressEventsReceived, 'progress events received')
+          sbot.close(() => {
+            t.end()
           })
-        )
-      })
+        })
+      )
     })
   )
 })
@@ -102,46 +98,36 @@ test('migrate keeps new log synced with old log being updated', (t) => {
     pull.filter((x) => x === 1),
     pull.take(1),
     pull.drain(() => {
-      sbot.db.onDrain(() => {
-        t.true(
-          fs.existsSync(path.join(dir, 'db2', 'log.bipf')),
-          'migration done'
-        )
-        sbot.db.query(
-          toCallback((err1, msgs) => {
-            t.error(err1, '1st query suceeded')
-            t.equal(msgs.length, TOTAL, `${TOTAL} msgs`)
+      t.true(fs.existsSync(path.join(dir, 'db2', 'log.bipf')), 'migration done')
+      sbot.db.query(
+        toCallback((err1, msgs) => {
+          t.error(err1, '1st query suceeded')
+          t.equal(msgs.length, TOTAL, `${TOTAL} msgs`)
 
-            // This should run after the sbot.publish completes
-            pull(
-              fromEvent('ssb:db2:migrate:progress', sbot),
-              pull.filter((x) => x === 1),
-              pull.take(1),
-              pull.drain(() => {
-                sbot.db.onDrain(() => {
-                  sbot.db.query(
-                    toCallback((err3, msgs2) => {
-                      t.error(err3, '2nd query suceeded')
-                      t.equal(msgs2.length, TOTAL + 1, `${TOTAL + 1} msgs`)
-                      sbot.close(() => {
-                        t.end()
-                      })
-                    })
-                  )
+          // This should run after the sbot.publish completes
+          pull(
+            fromEvent('ssb:db2:migrate:progress', sbot),
+            pull.filter((x) => x === 1),
+            pull.take(1),
+            pull.drain(() => {
+              sbot.db.query(
+                toCallback((err3, msgs2) => {
+                  t.error(err3, '2nd query suceeded')
+                  t.equal(msgs2.length, TOTAL + 1, `${TOTAL + 1} msgs`)
+                  sbot.close(() => {
+                    t.end()
+                  })
                 })
-              })
-            )
+              )
+            })
+          )
 
-            sbot.publish(
-              { type: 'post', text: 'Extra post' },
-              (err2, posted) => {
-                t.error(err2, 'publish suceeded')
-                t.equals(posted.value.content.type, 'post', 'msg posted')
-              }
-            )
+          sbot.publish({ type: 'post', text: 'Extra post' }, (err2, posted) => {
+            t.error(err2, 'publish suceeded')
+            t.equals(posted.value.content.type, 'post', 'msg posted')
           })
-        )
-      })
+        })
+      )
     })
   )
 })
