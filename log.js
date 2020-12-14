@@ -7,6 +7,14 @@ module.exports = function (dir, config, private) {
 
   const log = OffsetLog(newLogPath(dir), {
     blockSize: BLOCK_SIZE,
+    validateRecord: (d) => {
+      try {
+        bipf.decode(d, 0)
+        return true
+      } catch (ex) {
+        return false
+      }
+    },
   })
 
   log.add = function (id, msg, cb) {
