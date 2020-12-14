@@ -1,7 +1,7 @@
 {
   "name": "ssb-db2",
-  "description": "",
-  "version": "0.5.0",
+  "description": "A new database for SSB",
+  "version": "0.6.0",
   "homepage": "https://github.com/arj03/ssb-db2",
   "repository": {
     "type": "git",
