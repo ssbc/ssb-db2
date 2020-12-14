@@ -21,6 +21,17 @@ function getId(msg) {
   return '%' + hash(JSON.stringify(msg, null, 2))
 }
 
+exports.version = '0.6.0'
+
+exports.manifest = {
+  get: 'async',
+  add: 'async',
+  publish: 'async',
+  validateAndAdd: 'async',
+  validateAndAddOOO: 'async',
+  query: 'sync',
+}
+
 exports.init = function (sbot, dir, config) {
   const private = Private(dir, config.keys)
   const log = Log(dir, config, private)
