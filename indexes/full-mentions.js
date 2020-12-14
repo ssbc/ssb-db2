@@ -3,7 +3,7 @@ const pl = require('pull-level')
 const pull = require('pull-stream')
 const Plugin = require('./plugin')
 const jsonCodec = require('flumecodec/json')
-const { offsets, liveOffsets } = require('../operators')
+const { or, offsets, liveOffsets } = require('../operators')
 
 // 1 index:
 // - mentions (msgId) => msg seqs
@@ -81,7 +81,7 @@ module.exports = function (log, dir) {
             pl.read(level, Object.assign({}, opts, { live, old: false })),
             pull.map(parseInt10)
           )
-          cb(null, liveOffsets(data.map(parseInt10), ps))
+          cb(null, or(offsets(data.map(parseInt10)), liveOffsets(ps)))
         } else cb(null, offsets(data.map(parseInt10)))
       })
     )
