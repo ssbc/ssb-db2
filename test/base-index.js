@@ -107,18 +107,6 @@ test('encrypted', (t) => {
 
     db.get(privateMsg.key, (err, msg) => {
       t.equal(msg.content.text, 'super secret')
-      t.end()
-    })
-  })
-})
-
-test('db.close', (t) => {
-  const post = { type: 'post', text: 'Testing!' }
-
-  db.publish(post, (err, postMsg) => {
-    t.error(err, 'no err')
-
-    db.close(() => {
       sbot.close(t.end)
     })
   })

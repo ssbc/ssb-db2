@@ -12,7 +12,6 @@ const { indexesPath } = require('./defaults')
 const Log = require('./log')
 const BaseIndex = require('./indexes/base')
 const Private = require('./indexes/private')
-const Migrate = require('./migrate')
 // const Partial = require('./indexes/partial')
 
 const { and, fromDB, key, deferred, toCallback } = require('./operators')
@@ -21,12 +20,34 @@ function getId(msg) {
   return '%' + hash(JSON.stringify(msg, null, 2))
 }
 
-exports.init = function (sbot, dir, config) {
+exports.name = 'db'
+
+exports.version = '0.6.2'
+
+exports.manifest = {
+  get: 'async',
+  add: 'async',
+  publish: 'async',
+  del: 'async',
+  deleteFeed: 'async',
+  validateAndAdd: 'async',
+  validateAndAddOOO: 'async',
+  getStatus: 'sync',
+
+  // `query` should be `sync`, but secret-stack is automagically converting it
+  // to async because of secret-stack/utils.js#hookOptionalCB. Eventually we
+  // should include an option `synconly` in secret-stack that bypasses the hook,
+  // but for now we leave the `query` API *implicitly* available in the plugin:
+
+  // query: 'sync',
+}
+
+exports.init = function (sbot, config) {
+  const dir = config.path
   const private = Private(dir, config.keys)
   const log = Log(dir, config, private)
   const jitdb = JITDb(log, indexesPath(dir))
   const baseIndex = BaseIndex(log, dir, private)
-  const migrate = Migrate.init(sbot, config, log)
   //const contacts = fullIndex.contacts
   //const partial = Partial(dir)
 
@@ -39,6 +60,12 @@ exports.init = function (sbot, dir, config) {
   const hmac_key = null
   const stateFeedsReady = DeferredPromise()
   let state = validate.initial()
+
+  sbot.close.hook(function (fn, args) {
+    close(() => {
+      fn.apply(this, args)
+    })
+  })
 
   // restore current state
   baseIndex.getAllLatest((err, last) => {
@@ -57,7 +84,7 @@ exports.init = function (sbot, dir, config) {
   })
 
   function guardAgainstDuplicateLogs(methodName) {
-    if (migrate.oldLogExists.value === true) {
+    if (sbot.db2migrate && sbot.db2migrate.doesOldLogExist()) {
       return new Error(
         'ssb-db2: refusing to ' +
           methodName +
@@ -335,7 +362,7 @@ exports.init = function (sbot, dir, config) {
   // setTimeout to make sure extra indexes from secret-stack are also included
   setTimeout(() => {
     onIndexesStateLoaded(updateIndexes)
-  })
+  }).unref()
 
   function close(cb) {
     const tasks = []
@@ -359,41 +386,26 @@ exports.init = function (sbot, dir, config) {
   }
 
   return {
+    // API:
     get,
     add,
     publish,
+    query,
     del,
     deleteFeed,
     validateAndAdd,
     validateAndAddOOO,
     getStatus,
-    log,
-    close,
 
+    // needed primarily internally by other plugins in this project:
     post,
-
-    registerIndex,
-    getIndexes: function () {
-      return indexes
-    },
-
     getLatest: baseIndex.getLatest,
     getAllLatest: baseIndex.getAllLatest,
-    migrate,
-
-    // FIXME: contacts & profiles
-
-    jitdb,
-    onDrain,
-    query,
-
-    // hack
-    state,
-
-    // debugging
+    getLog: () => log,
+    registerIndex,
+    getIndexes: () => indexes,
     clearIndexes,
-
-    // partial stuff
-    //partial
+    onDrain,
+    getJITDB: () => jitdb,
   }
 }

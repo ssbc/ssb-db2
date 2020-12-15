@@ -1,13 +1,4 @@
-const DB = require('./db')
+const dbPlugin = require('./db')
+const migratePlugin = require('./migrate')
 
-exports.name = 'db'
-
-exports.init = function (sbot, config) {
-  const db = DB.init(sbot, config.path, config)
-  sbot.close.hook(function (fn, args) {
-    db.close(() => {
-      fn.apply(this, args)
-    })
-  })
-  return db
-}
+module.exports = [dbPlugin, migratePlugin]

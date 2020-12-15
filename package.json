@@ -27,7 +27,6 @@
     "promisify-4loc": "1.0.0",
     "pull-cont": "^0.1.1",
     "pull-level": "^2.0.4",
-    "pull-notify": "~0.1.1",
     "pull-stream": "^3.6.14",
     "push-stream": "^11.0.0",
     "ssb-keys": "^8.0.0",

@@ -1,6 +1,5 @@
 const fs = require('fs')
 const pull = require('pull-stream')
-const Notify = require('pull-notify')
 const FlumeLog = require('flumelog-offset')
 const AsyncFlumeLog = require('async-flumelog')
 const bipf = require('bipf')
@@ -98,22 +97,21 @@ exports.version = '0.4.0'
 
 exports.manifest = {
   start: 'sync',
+  doesOldLogExist: 'sync',
 }
 
-exports.init = function init(sbot, config, newLogMaybe) {
+exports.init = function init(sbot, config) {
   const oldLogExists = makeFileExistsObv(oldLogPath(config.path))
 
   let started = false
   let hasCloseHook = false
   let retryPeriod = 250
-  let retryTimer
-  let liveDebugTimer
+  let drainAborter = null
 
   function oldLogMissingThenRetry(fn) {
     if (!hasCloseHook) {
       sbot.close.hook(function (fn, args) {
-        clearTimeout(retryTimer)
-        clearInterval(liveDebugTimer)
+        if (drainAborter) drainAborter.abort()
         fn.apply(this, args)
       })
       hasCloseHook = true
@@ -121,7 +119,7 @@ exports.init = function init(sbot, config, newLogMaybe) {
     oldLogExists.set(fileExists(oldLogPath(config.path)))
     if (oldLogExists.value === false) {
       retryPeriod = Math.min(retryPeriod * 2, 8000)
-      retryTimer = setTimeout(fn, retryPeriod)
+      setTimeout(fn, retryPeriod).unref()
       return true
     } else {
       return false
@@ -143,8 +141,8 @@ exports.init = function init(sbot, config, newLogMaybe) {
       config
     )
     const newLog =
-      newLogMaybe && newLogMaybe.stream
-        ? newLogMaybe
+      sbot.db && sbot.db.getLog() && sbot.db.getLog().stream
+        ? sbot.db.getLog()
         : AsyncFlumeLog(newLogPath(config.path), { blockSize: BLOCK_SIZE })
     const newLogStream = newLog.stream({ gte: 0 })
 
@@ -202,7 +200,7 @@ exports.init = function init(sbot, config, newLogMaybe) {
         pull.map(updateMigratedSizeAndPluck),
         pull.map(toBIPF),
         pull.asyncMap(writeTo(newLog)),
-        pull.drain(
+        (drainAborter = pull.drain(
           () => {
             msgCountOldLog++
           },
@@ -212,11 +210,11 @@ exports.init = function init(sbot, config, newLogMaybe) {
 
             let liveMsgCount = 0
             if (debug.enabled) {
-              liveDebugTimer = setInterval(() => {
+              setInterval(() => {
                 if (liveMsgCount === 0) return
                 debug('%d msgs synced from old log to new log', liveMsgCount)
                 liveMsgCount = 0
-              }, 2000)
+              }, 2000).unref()
             }
 
             pull(
@@ -224,19 +222,19 @@ exports.init = function init(sbot, config, newLogMaybe) {
               pull.map(updateMigratedSizeAndPluck),
               pull.map(toBIPF),
               pull.asyncMap(writeTo(newLog)),
-              pull.drain(() => {
+              (drainAborter = pull.drain(() => {
                 liveMsgCount++
-              })
+              }))
             )
           }
-        )
+        ))
       )
     })
   }
 
   return {
     start,
-    oldLogExists,
+    doesOldLogExist: () => oldLogExists.value,
     // dangerouslyKillOldLog, // FIXME: implement this
   }
 }
