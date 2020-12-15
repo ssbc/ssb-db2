@@ -14,7 +14,14 @@ const BaseIndex = require('./indexes/base')
 const Private = require('./indexes/private')
 // const Partial = require('./indexes/partial')
 
-const { and, fromDB, key, deferred, toCallback } = require('./operators')
+const {
+  and,
+  fromDB,
+  key,
+  author,
+  deferred,
+  toCallback,
+} = require('./operators')
 
 function getId(msg) {
   return '%' + hash(JSON.stringify(msg, null, 2))
@@ -141,16 +148,15 @@ exports.init = function (sbot, config) {
     })
   }
 
-  function del(key, cb) {
+  function del(msgId, cb) {
     const guard = guardAgainstDuplicateLogs('del()')
     if (guard) return cb(guard)
 
-    // FIXME: this doesn't work anymore after changing base index
-    baseIndex.keyToSeq(key, (err, seq) => {
+    jitdb.all(key(msgId), 0, false, true, (err, results) => {
       if (err) return cb(err)
-      if (seq == null) return cb(new Error('seq is null!'))
+      if (results.length === 0) return cb(new Error('seq is null!'))
 
-      log.del(seq, cb)
+      log.del(results[0], cb)
     })
   }
 
@@ -158,32 +164,19 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('deleteFeed()')
     if (guard) return cb(guard)
 
-    // FIXME: doesn't work, need test
-    jitdb.onReady(() => {
-      jitdb.query(
-        {
-          type: 'EQUAL',
-          data: {
-            seek: jitdb.seekAuthor,
-            value: feedId,
-            indexType: 'author',
-          },
-        },
-        (err, results) => {
-          push(
-            push.values(results),
-            push.asyncMap((msg, cb) => {
-              del(msg.key, cb)
-            }),
-            push.collect((err) => {
-              if (!err) {
-                delete state.feeds[feedId]
-                baseIndex.removeFeedFromLatest(feedId)
-              }
-              cb(err)
-            })
-          )
-        }
+    jitdb.all(author(feedId), 0, false, true, (err, results) => {
+      push(
+        push.values(results),
+        push.asyncMap((seq, cb) => {
+          log.del(seq, cb)
+        }),
+        push.collect((err) => {
+          if (!err) {
+            delete state.feeds[feedId]
+            baseIndex.removeFeedFromLatest(feedId)
+          }
+          cb(err)
+        })
       )
     })
   }

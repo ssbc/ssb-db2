@@ -36,8 +36,7 @@ module.exports = function (dir, config, private) {
   let originalGet = log.get
   log.get = function (seq, cb) {
     originalGet(seq, (err, res) => {
-      if (err && err.code === 'flumelog:deleted') cb()
-      else if (err) return cb(err)
+      if (err) return cb(err)
       else cb(null, private.decrypt({ seq, value: res }, false).value)
     })
   }
