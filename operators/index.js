@@ -9,8 +9,9 @@ const {
   seekVoteLink,
   seekMentions,
   pluckLink,
+  seekContact,
 } = require('../seekers')
-const { equal, includes } = jitdbOperators
+const { and, equal, includes } = jitdbOperators
 
 function key(value) {
   return equal(seekKey, value, {
@@ -38,10 +39,23 @@ function channel(value) {
 }
 
 function votesFor(msgKey) {
-  return equal(seekVoteLink, msgKey, {
-    prefix: 32,
-    indexType: 'value_content_vote_link',
-  })
+  return and(
+    type('vote'),
+    equal(seekVoteLink, msgKey, {
+      prefix: 32,
+      indexType: 'value_content_vote_link',
+    })
+  )()
+}
+
+function contact(feedId) {
+  return and(
+    type('contact'),
+    equal(seekContact, feedId, {
+      prefix: 32,
+      indexType: 'value_content_contact',
+    })
+  )()
 }
 
 function mentions(key) {
@@ -75,6 +89,7 @@ module.exports = Object.assign({}, jitdbOperators, {
   channel,
   key,
   votesFor,
+  contact,
   mentions,
   hasRoot,
   isRoot,
