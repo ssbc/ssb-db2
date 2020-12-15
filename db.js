@@ -396,7 +396,6 @@ exports.init = function (sbot, config) {
     validateAndAdd,
     validateAndAddOOO,
     getStatus,
-    // close,
 
     // needed primarily internally by other plugins in this project:
     post,
