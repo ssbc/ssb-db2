@@ -32,29 +32,41 @@ function makeFileExistsObv(filename) {
 }
 
 function getOldLogStreams(sbot, config) {
-  if (sbot.createRawLogStream && sbot.createSequenceStream) {
+  if (sbot.createRawLogStream && sbot.status) {
     const logStream = sbot.createRawLogStream({ old: true, live: false })
     const logStreamLive = sbot.createRawLogStream({ old: false, live: true })
-    const sizeStream = pull(
-      sbot.createSequenceStream(),
-      pull.filter((x) => x >= 0)
-    )
-    return [logStream, logStreamLive, sizeStream]
+    const getSize = () => sbot.status().sync.since
+    return [logStream, logStreamLive, getSize]
+  }
+  if (sbot.createLogStream && sbot.status) {
+    const logStream = sbot.createLogStream({
+      raw: true,
+      old: true,
+      live: false,
+    })
+    const logStreamLive = sbot.createLogStream({
+      raw: true,
+      old: false,
+      live: true,
+    })
+    const getSize = () => sbot.status().sync.since
+    return [logStream, logStreamLive, getSize]
   } else {
     const oldLog = FlumeLog(oldLogPath(config.path), {
       blockSize: BLOCK_SIZE,
       codec: jsonCodec,
     })
-    const opts = { seqs: true, codec: jsonCodec }
+    const opts = {
+      keys: true,
+      seqs: true,
+      value: true,
+      sync: false,
+      codec: jsonCodec,
+    }
     const logStream = oldLog.stream({ old: true, live: false, ...opts })
     const logStreamLive = oldLog.stream({ old: false, live: true, ...opts })
-    const notify = Notify()
-    oldLog.since(notify)
-    const sizeStream = pull(
-      notify.listen(),
-      pull.filter((x) => x >= 0)
-    )
-    return [logStream, logStreamLive, sizeStream]
+    const getSize = () => oldLog.since.value
+    return [logStream, logStreamLive, getSize]
   }
 }
 
@@ -126,7 +138,7 @@ exports.init = function init(sbot, config, newLogMaybe) {
     started = true
     debug('started')
 
-    const [oldLogStream, oldLogStreamLive, oldSizeStream] = getOldLogStreams(
+    const [oldLogStream, oldLogStreamLive, getOldSize] = getOldLogStreams(
       sbot,
       config
     )
@@ -136,18 +148,8 @@ exports.init = function init(sbot, config, newLogMaybe) {
         : AsyncFlumeLog(newLogPath(config.path), { blockSize: BLOCK_SIZE })
     const newLogStream = newLog.stream({ gte: 0 })
 
-    let oldSize = null
     let migratedSize = null
     let progressCalls = 0
-
-    function updateOldSize(read) {
-      read(null, function next(end, data) {
-        if (end === true) return
-        if (end) throw end
-        oldSize = data
-        read(null, next)
-      })
-    }
 
     function updateMigratedSize(obj) {
       migratedSize = obj.seq
@@ -159,9 +161,14 @@ exports.init = function init(sbot, config, newLogMaybe) {
     }
 
     function emitProgressEvent() {
-      if (oldSize !== null && migratedSize !== null) {
-        if (progressCalls < 100 || progressCalls++ % 1000 == 0) {
-          const progress = migratedSize / oldSize
+      const oldSize = getOldSize()
+      if (oldSize > 0 && migratedSize !== null) {
+        const progress = migratedSize / oldSize
+        if (
+          progress === 1 ||
+          progressCalls < 100 ||
+          progressCalls++ % 1000 === 0
+        ) {
           sbot.emit('ssb:db2:migrate:progress', progress)
         }
       }
@@ -179,8 +186,6 @@ exports.init = function init(sbot, config, newLogMaybe) {
         else cb()
       }
     }
-
-    updateOldSize(oldSizeStream)
 
     scanAndCount(newLogStream, (err, msgCountNewLog) => {
       if (err) return console.error(err)
