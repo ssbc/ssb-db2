@@ -106,15 +106,11 @@ exports.init = function init(sbot, config) {
   let started = false
   let hasCloseHook = false
   let retryPeriod = 250
-  let retryTimer
-  let liveDebugTimer
   let drainAborter = null
 
   function oldLogMissingThenRetry(fn) {
     if (!hasCloseHook) {
       sbot.close.hook(function (fn, args) {
-        clearTimeout(retryTimer)
-        clearInterval(liveDebugTimer)
         if (drainAborter) drainAborter.abort()
         fn.apply(this, args)
       })
@@ -123,7 +119,7 @@ exports.init = function init(sbot, config) {
     oldLogExists.set(fileExists(oldLogPath(config.path)))
     if (oldLogExists.value === false) {
       retryPeriod = Math.min(retryPeriod * 2, 8000)
-      retryTimer = setTimeout(fn, retryPeriod)
+      setTimeout(fn, retryPeriod).unref()
       return true
     } else {
       return false
@@ -214,11 +210,11 @@ exports.init = function init(sbot, config) {
 
             let liveMsgCount = 0
             if (debug.enabled) {
-              liveDebugTimer = setInterval(() => {
+              setInterval(() => {
                 if (liveMsgCount === 0) return
                 debug('%d msgs synced from old log to new log', liveMsgCount)
                 liveMsgCount = 0
-              }, 2000)
+              }, 2000).unref()
             }
 
             pull(
