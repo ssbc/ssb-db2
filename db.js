@@ -22,7 +22,7 @@ function getId(msg) {
 
 exports.name = 'db'
 
-exports.version = '0.6.2'
+exports.version = '0.7.0'
 
 exports.manifest = {
   get: 'async',
