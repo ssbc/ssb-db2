@@ -40,7 +40,7 @@ test('migrate moves msgs from old log to new log', (t) => {
     .use(require('../'))
     .call(null, { keys, path: dir })
 
-  sbot.db.migrate.start()
+  sbot.db2migrate.start()
 
   let progressEventsReceived = false
   pull(
@@ -62,7 +62,7 @@ test('migrate moves msgs from old log to new log', (t) => {
     pull.filter((x) => x === 1),
     pull.take(1),
     // we need to make sure async-flumelog has written the data
-    pull.asyncMap((_, cb) => sbot.db.log.onDrain(cb)),
+    pull.asyncMap((_, cb) => sbot.db.getLog().onDrain(cb)),
     pull.drain(() => {
       t.true(fs.existsSync(path.join(dir, 'db2', 'log.bipf')), 'migration done')
       sbot.db.query(
@@ -169,7 +169,7 @@ test('migrate does nothing when there is no old log', (t) => {
     .use(require('../index'))
     .call(null, { keys: ssbKeys.generate(), path: emptyDir })
 
-  sbot.db.migrate.start()
+  sbot.db2migrate.start()
 
   setTimeout(() => {
     t.pass('did nothing')

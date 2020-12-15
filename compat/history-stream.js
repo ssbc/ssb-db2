@@ -50,15 +50,17 @@ exports.init = function (sbot, config) {
 
     return pull(
       pullCont(function (cb) {
-        sbot.db.log.onDrain(() => {
+        sbot.db.getLog().onDrain(() => {
           if (!ref.isFeed(opts.id)) return cb(opts.id + ' is not a feed')
 
           if (limit) {
-            sbot.db.jitdb.paginate(query, 0, limit, false, (err, answer) => {
-              cb(err, pull.values(answer.results.map(formatMsg)))
-            })
+            sbot.db
+              .getJITDB()
+              .paginate(query, 0, limit, false, (err, answer) => {
+                cb(err, pull.values(answer.results.map(formatMsg)))
+              })
           } else {
-            sbot.db.jitdb.all(query, 0, false, (err, results) => {
+            sbot.db.getJITDB().all(query, 0, false, (err, results) => {
               cb(err, pull.values(results.map(formatMsg)))
             })
           }

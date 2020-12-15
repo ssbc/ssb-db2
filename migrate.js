@@ -98,9 +98,10 @@ exports.version = '0.4.0'
 
 exports.manifest = {
   start: 'sync',
+  doesOldLogExist: 'sync',
 }
 
-exports.init = function init(sbot, config, newLogMaybe) {
+exports.init = function init(sbot, config) {
   const oldLogExists = makeFileExistsObv(oldLogPath(config.path))
 
   let started = false
@@ -108,12 +109,14 @@ exports.init = function init(sbot, config, newLogMaybe) {
   let retryPeriod = 250
   let retryTimer
   let liveDebugTimer
+  let drainAborter = null
 
   function oldLogMissingThenRetry(fn) {
     if (!hasCloseHook) {
       sbot.close.hook(function (fn, args) {
         clearTimeout(retryTimer)
         clearInterval(liveDebugTimer)
+        if (drainAborter) drainAborter.abort()
         fn.apply(this, args)
       })
       hasCloseHook = true
@@ -143,8 +146,8 @@ exports.init = function init(sbot, config, newLogMaybe) {
       config
     )
     const newLog =
-      newLogMaybe && newLogMaybe.stream
-        ? newLogMaybe
+      sbot.db && sbot.db.getLog() && sbot.db.getLog().stream
+        ? sbot.db.getLog()
         : AsyncFlumeLog(newLogPath(config.path), { blockSize: BLOCK_SIZE })
     const newLogStream = newLog.stream({ gte: 0 })
 
@@ -202,7 +205,7 @@ exports.init = function init(sbot, config, newLogMaybe) {
         pull.map(updateMigratedSizeAndPluck),
         pull.map(toBIPF),
         pull.asyncMap(writeTo(newLog)),
-        pull.drain(
+        (drainAborter = pull.drain(
           () => {
             msgCountOldLog++
           },
@@ -224,19 +227,19 @@ exports.init = function init(sbot, config, newLogMaybe) {
               pull.map(updateMigratedSizeAndPluck),
               pull.map(toBIPF),
               pull.asyncMap(writeTo(newLog)),
-              pull.drain(() => {
+              (drainAborter = pull.drain(() => {
                 liveMsgCount++
-              })
+              }))
             )
           }
-        )
+        ))
       )
     })
   }
 
   return {
     start,
-    oldLogExists,
+    doesOldLogExist: () => oldLogExists.value,
     // dangerouslyKillOldLog, // FIXME: implement this
   }
 }
