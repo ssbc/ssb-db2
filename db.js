@@ -154,7 +154,10 @@ exports.init = function (sbot, config) {
 
     jitdb.all(key(msgId), 0, false, true, (err, results) => {
       if (err) return cb(err)
-      if (results.length === 0) return cb(new Error('seq is null!'))
+      if (results.length === 0)
+        return cb(
+          new Error('cannot delete ' + msgId + ' because it was not found')
+        )
 
       log.del(results[0], cb)
     })
