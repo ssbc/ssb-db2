@@ -1,6 +1,5 @@
 const fs = require('fs')
 const pull = require('pull-stream')
-const Notify = require('pull-notify')
 const FlumeLog = require('flumelog-offset')
 const AsyncFlumeLog = require('async-flumelog')
 const bipf = require('bipf')
