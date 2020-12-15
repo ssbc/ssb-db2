@@ -171,11 +171,11 @@ exports.init = function (sbot, config) {
           log.del(seq, cb)
         }),
         push.collect((err) => {
-          if (!err) {
+          if (err) cb(err)
+          else {
             delete state.feeds[feedId]
             baseIndex.removeFeedFromLatest(feedId)
           }
-          cb(err)
         })
       )
     })
