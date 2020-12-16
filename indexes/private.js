@@ -230,6 +230,7 @@ module.exports = function (dir, keys) {
   }
 
   return {
+    close: keystore.close,
     latestSeq,
     decrypt,
     saveIndexes,

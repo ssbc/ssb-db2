@@ -374,6 +374,7 @@ exports.init = function (sbot, config) {
   function close(cb) {
     const tasks = []
     tasks.push(promisify(log.close)())
+    tasks.push(promisify(private.close)())
     for (const indexName in indexes) {
       tasks.push(promisify(indexes[indexName].close)())
     }
