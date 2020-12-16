@@ -3,7 +3,8 @@ const ssbKeys = require('ssb-keys')
 const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
-const DB = require('../db')
+const SecretStack = require('secret-stack')
+const caps = require('ssb-caps')
 
 const dir = '/tmp/ssb-db2-group'
 
@@ -18,10 +19,17 @@ const keys = {
   id: '@hw+2CI4p9kOt4orwcl/4HrTLTZLXQ8r6RUCB78bX1pQ=.ed25519',
 }
 
-const db = DB.init({}, dir, {
-  path: dir,
-  keys,
-})
+rimraf.sync(dir)
+mkdirp.sync(dir)
+
+const sbot = SecretStack({ appKey: caps.shs })
+  .use(require('../'))
+  .use(require('../compat/ebt'))
+  .call(null, {
+    keys,
+    path: dir,
+  })
+const db = sbot.db
 
 test('Base', (t) => {
   const groupInitMsg = {
@@ -65,7 +73,7 @@ test('Base', (t) => {
         db.onDrain('base', () => {
           db.get(imported.key, (err, msg) => {
             t.equal(msg.content.groupKey, groupKey, 'extracted key')
-            t.end()
+            sbot.close(t.end)
           })
         })
       })
