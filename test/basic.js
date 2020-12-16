@@ -37,7 +37,7 @@ test('Base', (t) => {
     pull.asyncMap(db.publish),
     pull.asyncMap((postMsg, cb) => {
       if (j++ % 3 === 0) {
-        db.onDrain('base', () => {
+        db.onDrain('ebt', () => {
           sbot.getAtSequence([keys.id, j], (err, msg) => {
             t.error(err, 'no err')
             t.equal(msg.key, postMsg.key)
