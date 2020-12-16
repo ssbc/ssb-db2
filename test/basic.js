@@ -85,14 +85,14 @@ test('delete all', (t) => {
     db.publish(post2, (err) => {
       t.error(err, 'no err')
 
-      db.jitdb.all(author(keys.id), 0, false, false, (err, results) => {
+      db.getJITDB().all(author(keys.id), 0, false, false, (err, results) => {
         t.error(err, 'no err')
         t.equal(results.length, 30 + 2, 'got both new messages')
 
         db.deleteFeed(keys.id, (err) => {
           t.error(err, 'no err')
 
-          db.jitdb.all(author(keys.id), 0, false, false, (err, results) => {
+          db.getJITDB().all(author(keys.id), 0, false, false, (err, results) => {
             t.error(err, 'no err')
             t.equal(results.length, 0, 'gone')
             sbot.close(t.end)

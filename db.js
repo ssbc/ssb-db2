@@ -178,6 +178,7 @@ exports.init = function (sbot, config) {
           else {
             delete state.feeds[feedId]
             baseIndex.removeFeedFromLatest(feedId)
+            cb()
           }
         })
       )
