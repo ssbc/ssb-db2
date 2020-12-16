@@ -56,11 +56,11 @@ exports.init = function (sbot, config) {
           if (limit) {
             sbot.db
               .getJITDB()
-              .paginate(query, 0, limit, false, (err, answer) => {
+              .paginate(query, 0, limit, false, false, (err, answer) => {
                 cb(err, pull.values(answer.results.map(formatMsg)))
               })
           } else {
-            sbot.db.getJITDB().all(query, 0, false, (err, results) => {
+            sbot.db.getJITDB().all(query, 0, false, false, (err, results) => {
               cb(err, pull.values(results.map(formatMsg)))
             })
           }

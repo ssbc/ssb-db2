@@ -32,6 +32,7 @@ module.exports = function (log, dir) {
 
   function handleData(data, processed) {
     if (data.seq < seq.value) return
+    if (!data.value) return // deleted
 
     let p = 0 // note you pass in p!
     const pKey = bipf.seekKey(data.value, p, bKey)
