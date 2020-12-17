@@ -310,7 +310,7 @@ test('live votesFor', (t) => {
       pull(
         db.query(
           and(votesFor(postMsg.key)),
-          live(),
+          live({ old: true }),
           toPullStream(),
           pull.drain(
             (result) => {
