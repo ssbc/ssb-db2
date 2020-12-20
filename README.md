@@ -208,11 +208,6 @@ sbot.db2migrate.start()
 
 Get a particular message by message id.
 
-### publish(msg, cb)
-
-Convinience method for validating and adding a message to the database
-written by the feed running the secret-stack.
-
 ### del(msgId, cb)
 
 Delete a specific message given the message id from the
@@ -226,23 +221,28 @@ this method unless you know exactly what you are doing.
 Delete all messages of a specific feedId. Compared to `del` this
 method is safe to use.
 
+### publish(msg, cb)
+
+Convinience method for validating and adding a message to the database
+written by the feed running the secret-stack.
+
 ### add(msg, cb)
 
-Add a raw message (without id and timestamp) to the database. In the
-callback will be the stored message (id, timestamp, value = original
-message) or err. Please note this does not validate the message.
+Validate and add a raw message (without id and timestamp) to the
+database. In the callback will be the stored message (id, timestamp,
+value = original message) or err.
 
-### validateAndAdd(msg, cb)
+### addOOOStrictOrder(msg, cb)
 
-Works like `add` except the message will be validated first. If the
-author is not yet known, the message is validated without checking if
-the previous link is correct, otherwise normal validation. This makes
-it possible to use for partial replication.
+Works quite similar to `add`. If the author is not yet known, the
+message is validated without checking if the previous link is correct,
+otherwise normal validation. This makes it possible to use for partial
+replication to add say latest 25 messages from a feed.
 
-### validateAndAddOOO(msg, cb)
+### addOOO(msg, cb)
 
-Same as `validateAndAdd` except this will never check the previous
-link. Useful for partial replication.
+Validate without checking the previous link and add to db. Useful for
+partial replication.
 
 ### getStatus
 
