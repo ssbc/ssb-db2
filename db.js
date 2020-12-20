@@ -37,8 +37,8 @@ exports.manifest = {
   publish: 'async',
   del: 'async',
   deleteFeed: 'async',
-  validateAndAdd: 'async',
-  validateAndAddOOO: 'async',
+  addOOO: 'async',
+  addOOOStrictOrder: 'async',
   getStatus: 'sync',
 
   // `query` should be `sync`, but secret-stack is automagically converting it
@@ -150,7 +150,7 @@ exports.init = function (sbot, config) {
   }
 
   function addOOO(msg, cb) {
-    const guard = guardAgainstDuplicateLogs('validateAndAddOOO()')
+    const guard = guardAgainstDuplicateLogs('addOOO()')
     if (guard) return cb(guard)
 
     try {
@@ -166,7 +166,7 @@ exports.init = function (sbot, config) {
   }
 
   function addOOOStrictOrder(msg, cb) {
-    const guard = guardAgainstDuplicateLogs('validateAndAddOOOStrictOrder()')
+    const guard = guardAgainstDuplicateLogs('addOOOStrictOrder()')
     if (guard) return cb(guard)
 
     const knownAuthor = msg.author in state.feeds
