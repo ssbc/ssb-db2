@@ -65,15 +65,21 @@ sbot.db.query(
 
 ### Extra plugins
 
-An extra index plugin that is commonly needed in SSB communities is the **full-mentions** index. It has one method:
+An extra index plugin that is commonly needed in SSB communities is
+the **full-mentions** index. It has one method: getMessagesByMention.
 
- - getMessagesByMention
+Although this accomplishes the same as the previous `mentions()`
+example, this plugin is meant as an example for application developers
+to write their own plugins if the functionality of JITDB is not
+enough. JITDB is good for indexing specific values, like
+`mentions(alice.id)` which gets its own dedidated JITDB index for
+`alice.id`. But when querying mentions of several feeds or several
+messages, this creates many indexes, so a specialized index makes more
+sense.
 
-Although this accomplishes the same as the previous `mentions()` example, this plugin is meant as an example for application developers to write
-their own plugins if the functionality of JITDB is not enough. JITDB
-is good for indexing specific values, like `mentions(alice.id)` will gets its own dedidated JITDB index for `alice.id`. But when querying mentions of several feeds or several messages, this would creates many indexes, so a specialized index makes more sense.
-
-What `full-mentions` does is index all possible mentionable items at once, using Leveldb instead of JITDB. You can include it and use it like this:
+What `full-mentions` does is index all possible mentionable items at
+once, using Leveldb instead of JITDB. You can include it and use it
+like this:
 
 ```js
 const SecretStack = require('secret-stack')
@@ -124,9 +130,12 @@ const sbot = SecretStack({appKey: caps.shs})
 
 ## Migrating from ssb-db
 
-The flumelog used underneath ssb-db2 is different than that one in ssb-db, this means we need to scan over the old log and copy all messages onto the new log, if you wish to use ssb-db2 to make queries.
+The flumelog used underneath ssb-db2 is different than that one in
+ssb-db, this means we need to scan over the old log and copy all
+messages onto the new log, if you wish to use ssb-db2 to make queries.
 
-ssb-db2 comes with migration methods built-in, you can enable them (they are off by default!) in your config file (or object):
+ssb-db2 comes with migration methods built-in, you can enable them
+(they are off by default!) in your config file (or object):
 
 ```js
 const SecretStack = require('secret-stack')
@@ -144,13 +153,17 @@ const sbot = SecretStack({appKey: caps.shs})
   .call(null, config)
 ```
 
-The above script will initiate migration as soon as the plugins are loaded. If you wish the manually dictate when the migration starts, don't use the `automigrate` config above, instead, call the `migrate.start()` method yourself:
+The above script will initiate migration as soon as the plugins are
+loaded. If you wish the manually dictate when the migration starts,
+don't use the `automigrate` config above, instead, call the
+`migrate.start()` method yourself:
 
 ```js
 sbot.db.migrate.start()
 ```
 
-Note, it is acceptable to load both ssb-db and ssb-db2 plugins, the system will still function correctly and migrate correctly:
+Note, it is acceptable to load both ssb-db and ssb-db2 plugins, the
+system will still function correctly and migrate correctly:
 
 ```js
 const sbot = SecretStack({appKey: caps.shs})
@@ -160,11 +173,21 @@ const sbot = SecretStack({appKey: caps.shs})
   .call(null, config)
 ```
 
-However, note that while the old log exists, it will be continously migrated to the new log, and ssb-db2 forbids you to use its database-writing APIs such as `add()`, `publish()`, `del()` and so forth, to prevent the two logs from diverging into inconsistent states. The old log will remain the source of truth and keep getting copied into the new log, until the old log file does not exist anymore.
+However, note that while the old log exists, it will be continously
+migrated to the new log, and ssb-db2 forbids you to use its
+database-writing APIs such as `add()`, `publish()`, `del()` and so
+forth, to prevent the two logs from diverging into inconsistent
+states. The old log will remain the source of truth and keep getting
+copied into the new log, until the old log file does not exist
+anymore.
 
 ### Migrating without including ssb-db2
 
-Because ssb-db2 also begins indexing basic metadata once it's included as a plugin, this may cost more (precious) CPU time. **If you are not yet using db2 APIs** but would like to migrate the log anyway, in preparation for later activating db2, then you can include only the migration plugin, like this:
+Because ssb-db2 also begins indexing basic metadata once it's included
+as a plugin, this may cost more (precious) CPU time. **If you are not
+yet using db2 APIs** but would like to migrate the log anyway, in
+preparation for later activating db2, then you can include only the
+migration plugin, like this:
 
 ```js
 const sbot = SecretStack({appKey: caps.shs})
@@ -172,7 +195,8 @@ const sbot = SecretStack({appKey: caps.shs})
   .call(null, config)
 ```
 
-Note that the `start` behavior is the same: you can either start it automatically using `config.db2.automigrate` or manually like this:
+Note that the `start` behavior is the same: you can either start it
+automatically using `config.db2.automigrate` or manually like this:
 
 ```js
 sbot.db2migrate.start()
@@ -180,7 +204,50 @@ sbot.db2migrate.start()
 
 ## Methods
 
-FIXME: add documentation for these
+### get(msgId, cb)
+
+Get a particular message by message id.
+
+### publish(msg, cb)
+
+Convinience method for validating and adding a message to the database
+written by the feed running the secret-stack.
+
+### del(msgId, cb)
+
+Delete a specific message given the message id from the
+database. Please note that this will break replication for anything
+trying to get that message, like createHistoryStream for the author or
+EBT. Because of this, it is not recommended to delete message with
+this method unless you know exactly what you are doing.
+
+### deleteFeed(feedId, cb)
+
+Delete all messages of a specific feedId. Compared to `del` this
+method is safe to use.
+
+### add(msg, cb)
+
+Add a raw message (without id and timestamp) to the database. In the
+callback will be the stored message (id, timestamp, value = original
+message) or err. Please note this does not validate the message.
+
+### validateAndAdd(msg, cb)
+
+Works like `add` except the message will be validated first. If the
+author is not yet known, the message is validated without checking if
+the previous link is correct, otherwise normal validation. This makes
+it possible to use for partial replication.
+
+### validateAndAddOOO(msg, cb)
+
+Same as `validateAndAdd` except this will never check the previous
+link. Useful for partial replication.
+
+### getStatus
+
+Gets the current db status, same functionality as
+[db.status](https://github.com/ssbc/ssb-db#dbstatus) in ssb-db.
 
 [ssb-db]: https://github.com/ssbc/ssb-db/
 [bipf]: https://github.com/ssbc/bipf/
