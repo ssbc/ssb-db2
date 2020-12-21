@@ -29,9 +29,9 @@ const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const {and, type, author, toCallback} = require('ssb-db2/operators')
 
-const sbot = SecretStack({appKey: caps.shs})
+const sbot = SecretStack({ caps })
   .use(require('ssb-db2'))
-  .call(null, {})
+  .call(null, { path: './' })
 
 sbot.db.query(
   and(type('post')),
@@ -50,9 +50,9 @@ const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const {query, and, type, author, mentions, toCallback} = require('ssb-db2/operators')
 
-const sbot = SecretStack({appKey: caps.shs})
+const sbot = SecretStack({ caps })
   .use(require('ssb-db2'))
-  .call(null, {})
+  .call(null, { path: './' })
 
 sbot.db.query(
   and(type('post'), mentions(alice.id))),
@@ -87,10 +87,10 @@ const caps = require('ssb-caps')
 const {query, and, type, author, toCallback} = require('ssb-db2/operators')
 const mentions = require('ssb-db2/operators/full-mentions')
 
-const sbot = SecretStack({appKey: caps.shs})
+const sbot = SecretStack({ caps })
   .use(require('ssb-db2'))
   .use(require('ssb-db2/full-mentions')) // include index
-  .call(null, {})
+  .call(null, { path: './' })
 
 sbot.db.query(
   and(type('post'), mentions(alice.id))),
@@ -109,7 +109,7 @@ including legacy replication, ebt and publish. They can be loaded as:
 ```js
 const SecretStack = require('secret-stack')
 
-const sbot = SecretStack({appKey: caps.shs})
+const sbot = SecretStack({ caps })
   .use(require('ssb-db2'))
   .use(require('ssb-db2/compat')) // include all compatibility plugins
   .call(null, {})
@@ -120,7 +120,7 @@ or specifically:
 ```js
 const SecretStack = require('secret-stack')
 
-const sbot = SecretStack({appKey: caps.shs})
+const sbot = SecretStack({ caps })
   .use(require('ssb-db2'))
   .use(require('ssb-db2/compat/db')) // basic db compatibility
   .use(require('ssb-db2/compat/history-stream')) // legacy replication
@@ -147,7 +147,7 @@ const config = {
   }
 }
 
-const sbot = SecretStack({appKey: caps.shs})
+const sbot = SecretStack({ caps })
   .use(require('ssb-db2'))
   .use(require('ssb-db2/compat'))
   .call(null, config)
@@ -166,7 +166,7 @@ Note, it is acceptable to load both ssb-db and ssb-db2 plugins, the
 system will still function correctly and migrate correctly:
 
 ```js
-const sbot = SecretStack({appKey: caps.shs})
+const sbot = SecretStack({ caps })
   .use(require('ssb-db'))
   .use(require('ssb-db2'))
   .use(require('ssb-db2/compat'))
