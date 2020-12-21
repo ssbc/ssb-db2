@@ -37,8 +37,8 @@ exports.manifest = {
   publish: 'async',
   del: 'async',
   deleteFeed: 'async',
-  validateAndAdd: 'async',
-  validateAndAddOOO: 'async',
+  addOOO: 'async',
+  addOOOStrictOrder: 'async',
   getStatus: 'sync',
 
   // `query` should be `sync`, but secret-stack is automagically converting it
@@ -113,10 +113,7 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function add(msg, cb) {
-    const guard = guardAgainstDuplicateLogs('add()')
-    if (guard) return cb(guard)
-
+  function rawAdd(msg, cb) {
     const id = getId(msg)
 
     /*
@@ -136,13 +133,60 @@ exports.init = function (sbot, config) {
     })
   }
 
+  function add(msg, cb) {
+    const guard = guardAgainstDuplicateLogs('add()')
+    if (guard) return cb(guard)
+
+    try {
+      state = validate.append(state, hmac_key, msg)
+      if (state.error) return cb(state.error)
+      rawAdd(msg, cb)
+    } catch (ex) {
+      return cb(ex)
+    }
+  }
+
+  function addOOO(msg, cb) {
+    const guard = guardAgainstDuplicateLogs('addOOO()')
+    if (guard) return cb(guard)
+
+    try {
+      let oooState = validate.initial()
+      validate.appendOOO(oooState, hmac_key, msg)
+
+      if (oooState.error) return cb(oooState.error)
+
+      rawAdd(msg, cb)
+    } catch (ex) {
+      return cb(ex)
+    }
+  }
+
+  function addOOOStrictOrder(msg, cb) {
+    const guard = guardAgainstDuplicateLogs('addOOOStrictOrder()')
+    if (guard) return cb(guard)
+
+    const knownAuthor = msg.author in state.feeds
+
+    try {
+      if (!knownAuthor) state = validate.appendOOO(state, hmac_key, msg)
+      else state = validate.append(state, hmac_key, msg)
+
+      if (state.error) return cb(state.error)
+
+      rawAdd(msg, cb)
+    } catch (ex) {
+      return cb(ex)
+    }
+  }
+
   function publish(msg, cb) {
     const guard = guardAgainstDuplicateLogs('publish()')
     if (guard) return cb(guard)
 
     state.queue = []
     state = validate.appendNew(state, null, config.keys, msg, Date.now())
-    add(state.queue[0].value, (err, data) => {
+    rawAdd(state.queue[0].value, (err, data) => {
       post.set(data)
       cb(err, data)
     })
@@ -183,40 +227,6 @@ exports.init = function (sbot, config) {
         })
       )
     })
-  }
-
-  function validateAndAddOOO(msg, cb) {
-    const guard = guardAgainstDuplicateLogs('validateAndAddOOO()')
-    if (guard) return cb(guard)
-
-    try {
-      let oooState = validate.initial()
-      validate.appendOOO(oooState, hmac_key, msg)
-
-      if (oooState.error) return cb(oooState.error)
-
-      add(msg, cb)
-    } catch (ex) {
-      return cb(ex)
-    }
-  }
-
-  function validateAndAdd(msg, cb) {
-    const guard = guardAgainstDuplicateLogs('validateAndAdd()')
-    if (guard) return cb(guard)
-
-    const knownAuthor = msg.author in state.feeds
-
-    try {
-      if (!knownAuthor) state = validate.appendOOO(state, hmac_key, msg)
-      else state = validate.append(state, hmac_key, msg)
-
-      if (state.error) return cb(state.error)
-
-      add(msg, cb)
-    } catch (ex) {
-      return cb(ex)
-    }
   }
 
   function getStatus() {
@@ -385,13 +395,13 @@ exports.init = function (sbot, config) {
   return {
     // API:
     get,
-    add,
-    publish,
     query,
     del,
     deleteFeed,
-    validateAndAdd,
-    validateAndAddOOO,
+    add,
+    publish,
+    addOOO,
+    addOOOStrictOrder,
     getStatus,
 
     // needed primarily internally by other plugins in this project:
