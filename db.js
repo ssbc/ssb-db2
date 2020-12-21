@@ -114,9 +114,6 @@ exports.init = function (sbot, config) {
   }
 
   function rawAdd(msg, cb) {
-    const guard = guardAgainstDuplicateLogs('add()')
-    if (guard) return cb(guard)
-
     const id = getId(msg)
 
     /*

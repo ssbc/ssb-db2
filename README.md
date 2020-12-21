@@ -223,12 +223,12 @@ method is safe to use.
 
 ### publish(msg, cb)
 
-Convinience method for validating and adding a message to the database
+Convenience method for validating and adding a message to the database
 written by the feed running the secret-stack.
 
 ### add(msg, cb)
 
-Validate and add a raw message (without id and timestamp) to the
+Validate and add a message value (without id and timestamp) to the
 database. In the callback will be the stored message (id, timestamp,
 value = original message) or err.
 
