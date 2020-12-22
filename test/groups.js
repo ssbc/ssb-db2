@@ -73,7 +73,12 @@ test('Base', (t) => {
         db.onDrain('base', () => {
           db.get(imported.key, (err, msg) => {
             t.equal(msg.content.groupKey, groupKey, 'extracted key')
-            sbot.close(t.end)
+            db.private.onDrain(() => {
+              db.get('%smnqZPO9Jzat+TGx5hc90w1/pUh3TgG6JesBfe3BvCk=.sha256', (err, msg) => {
+                t.equal(msg.content.content, 'a test message', 'can read group message')
+                sbot.close(t.end)
+              })
+            })
           })
         })
       })

@@ -14,14 +14,18 @@ const { keySchemes } = require('private-group-spec')
 const KeyStore = require('ssb-tribes/key-store')
 const { FeedId, MsgId } = require('ssb-tribes/lib/cipherlinks')
 const directMessageKey = require('ssb-tribes/lib/direct-message-key')
+const { isFeed, isCloakedMsg } = require('ssb-ref')
 
 const { indexesPath } = require('../defaults')
 
-module.exports = function (dir, keys) {
+module.exports = function (dir, keys, reindex) {
   let latestSeq = Obv()
   const stateLoaded = DeferredPromise()
   let encrypted = []
   let canDecrypt = []
+
+  let tasks = []
+  const tasksCompleted = DeferredPromise()
 
   const debug = Debug('ssb:db2:private')
 
@@ -52,7 +56,6 @@ module.exports = function (dir, keys) {
     load(encryptedFile, (err, data) => {
       if (err) {
         latestSeq.set(-1)
-        stateLoaded.resolve()
         if (err.code === 'ENOENT') cb()
         else cb(err)
         return
@@ -72,7 +75,6 @@ module.exports = function (dir, keys) {
         }
 
         latestSeq.set(Math.min(seq, canDecryptSeq))
-        stateLoaded.resolve()
         debug('loaded seq', latestSeq.value)
 
         cb()
@@ -80,11 +82,17 @@ module.exports = function (dir, keys) {
     })
   }
 
-  // FIXME: we need a proper init here
-  const keystore = KeyStore(path.join(dir, 'tribes/keystore'), keys, () => {
-    console.log('loaded keystore')
+  let keystore
+  loadIndexes((err) => {
+    if (err) throw err
+
+    keystore = KeyStore(path.join(dir, 'tribes/keystore'), keys, (err) => {
+      if (err) throw err
+
+      console.log('loaded keystore')
+      stateLoaded.resolve()
+    })
   })
-  loadIndexes((err) => { if (err) throw err })
 
   let savedTimer
   function saveIndexes(cb) {
@@ -126,6 +134,23 @@ module.exports = function (dir, keys) {
     else return ''
   }
 
+  function maybeAddGroupMember(msg, author, cb) {
+    if (msg && msg.type === 'group/add-member')
+    {
+      const authors = [
+        author,
+        ...msg.recps.filter(isFeed)
+      ]
+
+      keystore.processAddMember({
+        groupId: msg.recps.filter(isCloakedMsg)[0],
+        groupKey: msg.groupKey,
+        root:  msg.tangles.group.root,
+        authors
+      }, cb)
+    }
+  }
+
   function decryptBox2(ciphertext, author, previous) {
     const envelope = Buffer.from(ciphertext.replace('.box2', ''), 'base64')
     const feed_id = new FeedId(author).toTFK()
@@ -137,8 +162,14 @@ module.exports = function (dir, keys) {
       maxAttempts: 1,
     })
 
-    if (read_key)
-      return decryptBox2Msg(envelope, feed_id, prev_msg_id, read_key)
+    if (read_key) {
+      const msg = decryptBox2Msg(envelope, feed_id, prev_msg_id, read_key)
+      maybeAddGroupMember(msg, author, (err, result) => {
+        if (err) console.error(err)
+      })
+      //console.log("decrypted a msg using group key!", msg)
+      return msg
+    }
 
     const trial_dm_keys = [
       keystore.author.sharedDMKey(author),
@@ -151,14 +182,16 @@ module.exports = function (dir, keys) {
 
     if (read_key) {
       const msg = decryptBox2Msg(envelope, feed_id, prev_msg_id, read_key)
-      // FIXME: if this is a group/add-member msg then add to keystore using:
-
-      // keystore.processAddMember({ groupId, groupKey, root, authors }
-      // where root is tangles.group.root on the add member msg
-      // and groupId can be found in the recps
-
-      // FIXME: try to reindex existing encrypted messages
-
+      maybeAddGroupMember(msg, author, (err, newAuthors) => {
+        if (err) console.error(err)
+        if (author !== keys.id && newAuthors.indexOf(keys.id) != -1)
+        {
+          const toDecrypt = encrypted.filter(x => !canDecrypt.includes(x))
+          reindex(toDecrypt, (err) => {
+            tasksCompleted.resolve()
+          })
+        }
+      })
       return msg
     } else return ''
   }
@@ -201,7 +234,7 @@ module.exports = function (dir, keys) {
           }
         }
       }
-    } else if (data.seq > latestSeq.value) {
+    } else if (data.seq > latestSeq.value || !streaming) {
       if (streaming) latestSeq.set(data.seq)
 
       let p = 0 // note you pass in p!
@@ -212,13 +245,15 @@ module.exports = function (dir, keys) {
         if (pContent >= 0) {
           const type = bipf.getEncodedType(data.value, pContent)
           if (type === StringType) {
-            encrypted.push(data.seq)
+            if (streaming)
+              encrypted.push(data.seq)
 
             const ciphertext = bipf.decode(data.value, pContent)
             const content = tryDecryptContent(ciphertext, data, pValue)
 
             if (content) {
               canDecrypt.push(data.seq)
+              if (!streaming) saveIndexes(() => {})
               return reconstructMessage(data, content)
             }
           }
@@ -230,7 +265,8 @@ module.exports = function (dir, keys) {
   }
 
   return {
-    close: keystore.close,
+    onDrain: (cb) => tasksCompleted.promise.then(cb), // FIXME: more complicated
+    close: (cb) => keystore ? keystore.close(cb) : cb(),
     latestSeq,
     decrypt,
     saveIndexes,

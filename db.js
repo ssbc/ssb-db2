@@ -51,7 +51,7 @@ exports.manifest = {
 
 exports.init = function (sbot, config) {
   const dir = config.path
-  const private = Private(dir, config.keys)
+  const private = Private(dir, config.keys, reindexEncrypted)
   const log = Log(dir, config, private)
   const jitdb = JITDb(log, indexesPath(dir))
   const baseIndex = BaseIndex(log, dir, private)
@@ -73,6 +73,14 @@ exports.init = function (sbot, config) {
       fn.apply(this, args)
     })
   })
+
+  function reindexEncrypted(seqs, cb) {
+    const tasks = []
+    //tasks.push(promisify(jitdb.reindex)(seqs))
+    for (const indexName in indexes)
+      tasks.push(promisify(indexes[indexName].reindex)(seqs))
+    return Promise.all(tasks).then(cb)
+  }
 
   // restore current state
   baseIndex.getAllLatest((err, last) => {
@@ -415,5 +423,6 @@ exports.init = function (sbot, config) {
     clearIndexes,
     onDrain,
     getJITDB: () => jitdb,
+    private,
   }
 }

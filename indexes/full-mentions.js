@@ -1,6 +1,7 @@
 const bipf = require('bipf')
 const pl = require('pull-level')
 const pull = require('pull-stream')
+const push = require('push-stream')
 const Plugin = require('./plugin')
 const jsonCodec = require('flumecodec/json')
 const { or, offsets, liveOffsets } = require('../operators')
@@ -30,8 +31,7 @@ module.exports = function (log, dir) {
     batch = []
   }
 
-  function handleData(data, processed) {
-    if (data.seq < seq.value) return
+  function processData(data) {
     if (!data.value) return // deleted
 
     let p = 0 // note you pass in p!
@@ -68,6 +68,11 @@ module.exports = function (log, dir) {
     return batch.length
   }
 
+  function handleData(data, processed) {
+    if (data.seq < seq.value) return
+    else return processData(data)
+  }
+
   function parseInt10(x) {
     return parseInt(x, 10)
   }
@@ -88,6 +93,20 @@ module.exports = function (log, dir) {
     )
   }
 
+  function reindex(seqs, cb)
+  {
+    push(
+      push.values(seqs),
+      push.asyncMap((seq, cb) => {
+        log.get(seq, (err, data) => {
+          if (err) return cb(err)
+          else cb(null, processData(data))
+        })
+      }),
+      push.collect(cb)
+    )
+  }
+
   return {
     seq,
     stateLoaded,
@@ -97,6 +116,8 @@ module.exports = function (log, dir) {
     name,
     remove: level.clear,
     close: level.close.bind(level),
+
+    reindex,
 
     getMessagesByMention: function (key, live, cb) {
       getResults(

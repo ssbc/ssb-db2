@@ -1,6 +1,7 @@
 const bipf = require('bipf')
 const pl = require('pull-level')
 const pull = require('pull-stream')
+const push = require('push-stream')
 const Plugin = require('./plugin')
 
 // 1 index:
@@ -39,8 +40,7 @@ module.exports = function (log, dir, private) {
     batch = []
   }
 
-  function handleData(data, processed) {
-    if (data.seq < seq.value) return
+  function processData(data) {
     if (!data.value) return // deleted
 
     let p = 0 // note you pass in p!
@@ -72,6 +72,11 @@ module.exports = function (log, dir, private) {
     return batch.length
   }
 
+  function handleData(data, processed) {
+    if (data.seq < seq.value) return
+    else return processData(data)
+  }
+
   function beforeIndexUpdate(cb) {
     getAllLatest((err, latest) => {
       authorLatest = latest
@@ -96,6 +101,20 @@ module.exports = function (log, dir, private) {
     )
   }
 
+  function reindex(seqs, cb)
+  {
+    push(
+      push.values(seqs),
+      push.asyncMap((seq, cb) => {
+        log.get(seq, (err, data) => {
+          if (err) return cb(err)
+          else cb(null, processData(data))
+        })
+      }),
+      push.collect(cb)
+    )
+  }
+
   return {
     seq,
     stateLoaded,
@@ -104,6 +123,8 @@ module.exports = function (log, dir, private) {
 
     remove: level.clear,
     close: level.close.bind(level),
+
+    reindex,
 
     // returns { id (msg key), sequence, timestamp }
     getLatest: function (feedId, cb) {

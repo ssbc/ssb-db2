@@ -1,6 +1,7 @@
 const bipf = require('bipf')
 const Plugin = require('./plugin')
 const { reEncrypt } = require('./private')
+const push = require('push-stream')
 
 // 1 index:
 // - [author, sequence] => seq (EBT)
@@ -26,8 +27,7 @@ module.exports = function (log, dir) {
     batch = []
   }
 
-  function handleData(data, processed) {
-    if (data.seq < seq.value) return
+  function processData(data) {
     if (!data.value) return // deleted
 
     let p = 0 // note you pass in p!
@@ -48,6 +48,11 @@ module.exports = function (log, dir) {
     return batch.length
   }
 
+  function handleData(data, processed) {
+    if (data.seq < seq.value) return
+    else return processData(data)
+  }
+
   function levelKeyToMessage(key, cb) {
     level.get(key, (err, seq) => {
       if (err) return cb(err)
@@ -59,6 +64,20 @@ module.exports = function (log, dir) {
     })
   }
 
+  function reindex(seqs, cb)
+  {
+    push(
+      push.values(seqs),
+      push.asyncMap((seq, cb) => {
+        log.get(seq, (err, data) => {
+          if (err) return cb(err)
+          else cb(null, processData(data))
+        })
+      }),
+      push.collect(cb)
+    )
+  }
+
   return {
     seq,
     stateLoaded,
@@ -68,6 +87,8 @@ module.exports = function (log, dir) {
 
     remove: level.clear,
     close: level.close.bind(level),
+
+    reindex,
 
     // this is for EBT so must be not leak private messages
     getMessageFromAuthorSequence: (key, cb) => {
