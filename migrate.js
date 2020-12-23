@@ -150,6 +150,7 @@ exports.init = function init(sbot, config) {
     let progressCalls = 0
 
     function updateMigratedSize(obj) {
+      // "seq" in flumedb is an abstract num, here it actually means "offset"
       migratedSize = obj.seq
     }
 

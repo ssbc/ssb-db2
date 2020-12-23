@@ -17,14 +17,14 @@ exports.permissions = {
 exports.init = function (sbot, config) {
   sbot.createHistoryStream = function (opts) {
     // default values
-    const seq = opts.sequence || opts.seq || 0
+    const sequence = opts.sequence || opts.seq || 0
     const limit = opts.limit
     const keys = opts.keys === false ? false : true
     const values = opts.values === false ? false : true
 
     let query = author(opts.id)
 
-    if (seq) {
+    if (sequence) {
       query = {
         type: 'AND',
         data: [
@@ -33,7 +33,7 @@ exports.init = function (sbot, config) {
             type: 'GTE',
             data: {
               indexName: 'sequence',
-              value: seq,
+              value: sequence,
             },
           },
         ],

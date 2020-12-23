@@ -34,10 +34,14 @@ module.exports = function (dir, config, private) {
   // add automatic decrypt
 
   let originalGet = log.get
-  log.get = function (seq, cb) {
-    originalGet(seq, (err, res) => {
+  log.get = function (offset, cb) {
+    originalGet(offset, (err, buffer) => {
       if (err) return cb(err)
-      else cb(null, private.decrypt({ seq, value: res }, false).value)
+      else {
+        // "seq" in flumedb is an abstract num, here it actually means "offset"
+        const record = { seq: offset, value: buffer }
+        cb(null, private.decrypt(record, false).value)
+      }
     })
   }
 

@@ -3,10 +3,10 @@ const pl = require('pull-level')
 const pull = require('pull-stream')
 const Plugin = require('./plugin')
 const jsonCodec = require('flumecodec/json')
-const { or, offsets, liveOffsets } = require('../operators')
+const { or, seqs, liveSeqs } = require('../operators')
 
 // 1 index:
-// - mentions (msgId) => msg seqs
+// - mentions (msgId) => msg offsets
 
 module.exports = function (log, dir) {
   const bKey = Buffer.from('key')
@@ -17,7 +17,7 @@ module.exports = function (log, dir) {
   let batch = []
 
   const name = 'fullMentions'
-  const { level, seq, stateLoaded, onData, writeBatch } = Plugin(
+  const { level, offset, stateLoaded, onData, writeBatch } = Plugin(
     dir,
     name,
     1,
@@ -30,23 +30,26 @@ module.exports = function (log, dir) {
     batch = []
   }
 
-  function handleData(data, processed) {
-    if (data.seq < seq.value) return
-    if (!data.value) return // deleted
+  function handleData(record, processed) {
+    const recOffset = record.seq // "seq" is abstract, here it means "offset"
+    const recBuffer = record.value
+
+    if (recOffset < offset.value) return
+    if (!recBuffer) return // deleted
 
     let p = 0 // note you pass in p!
-    const pKey = bipf.seekKey(data.value, p, bKey)
+    const pKey = bipf.seekKey(recBuffer, p, bKey)
 
     p = 0
-    p = bipf.seekKey(data.value, p, bValue)
+    p = bipf.seekKey(recBuffer, p, bValue)
     if (~p) {
-      const pContent = bipf.seekKey(data.value, p, bContent)
+      const pContent = bipf.seekKey(recBuffer, p, bContent)
       if (~pContent) {
-        const pMentions = bipf.seekKey(data.value, pContent, bMentions)
+        const pMentions = bipf.seekKey(recBuffer, pContent, bMentions)
         if (~pMentions) {
-          const mentionsData = bipf.decode(data.value, pMentions)
+          const mentionsData = bipf.decode(recBuffer, pMentions)
           if (Array.isArray(mentionsData)) {
-            const shortKey = bipf.decode(data.value, pKey).slice(1, 10)
+            const shortKey = bipf.decode(recBuffer, pKey).slice(1, 10)
             mentionsData.forEach((mention) => {
               if (
                 mention.link &&
@@ -82,14 +85,14 @@ module.exports = function (log, dir) {
             pl.read(level, Object.assign({}, opts, { live, old: false })),
             pull.map(parseInt10)
           )
-          cb(null, or(offsets(data.map(parseInt10)), liveOffsets(ps)))
-        } else cb(null, offsets(data.map(parseInt10)))
+          cb(null, or(seqs(data.map(parseInt10)), liveSeqs(ps)))
+        } else cb(null, seqs(data.map(parseInt10)))
       })
     )
   }
 
   return {
-    seq,
+    offset,
     stateLoaded,
     onData,
     writeBatch,

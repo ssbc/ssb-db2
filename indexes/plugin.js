@@ -25,16 +25,16 @@ module.exports = function (
   const level = Level(indexPath)
   const META = '\x00'
   const chunkSize = 2048
-  let processed = 0 // processed "offset"
-  const seq = Obv()
+  let processed = 0 // processed "seq"
+  const offset = Obv()
   const stateLoaded = DeferredPromise()
-  let unWrittenSeq = -1
+  let unWrittenOffset = -1
 
   function writeBatch(cb) {
-    if (unWrittenSeq > -1 && !level.isClosed()) {
+    if (unWrittenOffset > -1 && !level.isClosed()) {
       level.put(
         META,
-        { version, seq: unWrittenSeq, processed },
+        { version, offset: unWrittenOffset, processed },
         { valueEncoding: 'json' },
         (err) => {
           if (err) throw err
@@ -44,17 +44,17 @@ module.exports = function (
       writeData((err) => {
         if (err) return cb(err)
         else {
-          seq.set(unWrittenSeq)
+          offset.set(unWrittenOffset)
           cb()
         }
       })
     } else cb()
   }
 
-  function onData(data, isLive) {
+  function onData(record, isLive) {
     // maybe check if for us!
-    let unwritten = handleData(data, processed)
-    if (unwritten > 0) unWrittenSeq = data.seq
+    let unwritten = handleData(record, processed)
+    if (unwritten > 0) unWrittenOffset = record.seq
     processed++
 
     if (unwritten > chunkSize || isLive) writeBatch(() => {})
@@ -67,20 +67,20 @@ module.exports = function (
       processed = data.processed
       if (beforeIndexUpdate) {
         beforeIndexUpdate(() => {
-          seq.set(data.seq)
+          offset.set(data.offset)
           stateLoaded.resolve()
         })
       } else {
-        seq.set(data.seq)
+        offset.set(data.offset)
         stateLoaded.resolve()
       }
     } else {
       level.clear(() => {
-        seq.set(-1)
+        offset.set(-1)
         stateLoaded.resolve()
       })
     }
   })
 
-  return { level, seq, onData, writeBatch, stateLoaded: stateLoaded.promise }
+  return { level, offset, onData, writeBatch, stateLoaded: stateLoaded.promise }
 }

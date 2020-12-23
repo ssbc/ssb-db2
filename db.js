@@ -211,11 +211,11 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('deleteFeed()')
     if (guard) return cb(guard)
 
-    jitdb.all(author(feedId), 0, false, true, (err, results) => {
+    jitdb.all(author(feedId), 0, false, true, (err, offsets) => {
       push(
-        push.values(results),
-        push.asyncMap((seq, cb) => {
-          log.del(seq, cb)
+        push.values(offsets),
+        push.asyncMap((offset, cb) => {
+          log.del(offset, cb)
         }),
         push.collect((err) => {
           if (err) cb(err)
@@ -281,7 +281,7 @@ exports.init = function (sbot, config) {
     }
 
     for (const indexName in indexes) {
-      result.indexes[indexName] = indexes[indexName].seq.value
+      result.indexes[indexName] = indexes[indexName].offset.value
     }
 
     return result
@@ -306,18 +306,18 @@ exports.init = function (sbot, config) {
 
     function liveStream() {
       debug('live streaming changes')
-      log.stream({ gt: indexes['base'].seq.value, live: true }).pipe({
+      log.stream({ gt: indexes['base'].offset.value, live: true }).pipe({
         paused: false,
         write: (data) => indexesRun.forEach((x) => x.onData(data, true)),
       })
     }
 
-    const lowestSeq = Math.min(
-      ...Object.values(indexes).map((x) => x.seq.value)
+    const lowestOffset = Math.min(
+      ...Object.values(indexes).map((x) => x.offset.value)
     )
-    debug(`lowest seq for all indexes ${lowestSeq}`)
+    debug(`lowest offset for all indexes is ${lowestOffset}`)
 
-    log.stream({ gt: lowestSeq }).pipe({
+    log.stream({ gt: lowestOffset }).pipe({
       paused: false,
       write: (data) => indexesRun.forEach((x) => x.onData(data, false)),
       end: () => {
@@ -341,11 +341,11 @@ exports.init = function (sbot, config) {
         const index = indexes[indexName]
         if (!index) return cb('Unknown index:' + indexName)
 
-        if (index.seq.value === log.since.value) {
+        if (index.offset.value === log.since.value) {
           cb()
         } else {
-          const remove = index.seq(() => {
-            if (index.seq.value === log.since.value) {
+          const remove = index.offset(() => {
+            if (index.offset.value === log.since.value) {
               remove()
               cb()
             }

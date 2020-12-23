@@ -12,7 +12,7 @@ const Debug = require('debug')
 const { indexesPath } = require('../defaults')
 
 module.exports = function (dir, keys) {
-  let latestSeq = Obv()
+  let latestOffset = Obv()
   const stateLoaded = DeferredPromise()
   let encrypted = []
   let canDecrypt = []
@@ -25,7 +25,7 @@ module.exports = function (dir, keys) {
   function save(filename, arr) {
     const buf = toBuffer(fic.compress(arr))
     const b = Buffer.alloc(4 + buf.length)
-    b.writeInt32LE(latestSeq.value, 0)
+    b.writeInt32LE(latestOffset.value, 0)
     buf.copy(b, 4)
 
     writeFile(filename, b, { fsyncWait: false })
@@ -34,10 +34,10 @@ module.exports = function (dir, keys) {
   function load(filename, cb) {
     readFile(filename)
       .then((buf) => {
-        const seq = buf.readInt32LE(0)
+        const offset = buf.readInt32LE(0)
         const body = buf.slice(4)
 
-        cb(null, { seq, arr: fic.uncompress(body) })
+        cb(null, { offset, arr: fic.uncompress(body) })
       })
       .catch(cb)
   }
@@ -45,29 +45,29 @@ module.exports = function (dir, keys) {
   function loadIndexes(cb) {
     load(encryptedFile, (err, data) => {
       if (err) {
-        latestSeq.set(-1)
+        latestOffset.set(-1)
         stateLoaded.resolve()
         if (err.code === 'ENOENT') cb()
         else cb(err)
         return
       }
 
-      const { seq, arr } = data
+      const { offset, arr } = data
       encrypted = arr
 
       debug('encrypted loaded', encrypted.length)
 
       load(canDecryptFile, (err, data) => {
-        let canDecryptSeq = -1
+        let canDecryptOffset = -1
         if (!err) {
           canDecrypt = data.arr
-          canDecryptSeq = data.seq
+          canDecryptOffset = data.offset
           debug('canDecrypt loaded', canDecrypt.length)
         }
 
-        latestSeq.set(Math.min(seq, canDecryptSeq))
+        latestOffset.set(Math.min(offset, canDecryptOffset))
         stateLoaded.resolve()
-        debug('loaded seq', latestSeq.value)
+        debug('loaded offset', latestOffset.value)
 
         cb()
       })
@@ -94,8 +94,8 @@ module.exports = function (dir, keys) {
   const bContent = Buffer.from('content')
   const StringType = 0
 
-  function reconstructMessage(data, unboxedContent) {
-    let msg = bipf.decode(data.value, 0)
+  function reconstructMessage(record, unboxedContent) {
+    let msg = bipf.decode(record.value, 0)
     const originalContent = msg.value.content
     msg.value.content = unboxedContent
     msg.meta = {
@@ -107,53 +107,56 @@ module.exports = function (dir, keys) {
     const buf = Buffer.alloc(len)
     bipf.encode(msg, buf, 0)
 
-    return { seq: data.seq, value: buf }
+    return { seq: record.seq, value: buf }
   }
 
-  function decrypt(data, streaming) {
-    if (bsb.eq(canDecrypt, data.seq) !== -1) {
+  function decrypt(record, streaming) {
+    const recOffset = record.seq // "seq" is abstract, here it means "offset"
+    const recBuffer = record.value
+
+    if (bsb.eq(canDecrypt, recOffset) !== -1) {
       let p = 0 // note you pass in p!
 
-      p = bipf.seekKey(data.value, p, bValue)
+      p = bipf.seekKey(recBuffer, p, bValue)
       if (p >= 0) {
-        const pContent = bipf.seekKey(data.value, p, bContent)
+        const pContent = bipf.seekKey(recBuffer, p, bContent)
         if (pContent >= 0) {
-          const content = ssbKeys.unbox(bipf.decode(data.value, pContent), keys)
-          if (content) return reconstructMessage(data, content)
+          const content = ssbKeys.unbox(bipf.decode(recBuffer, pContent), keys)
+          if (content) return reconstructMessage(record, content)
         }
       }
-    } else if (data.seq > latestSeq.value) {
-      if (streaming) latestSeq.set(data.seq)
+    } else if (recOffset > latestOffset.value) {
+      if (streaming) latestOffset.set(recOffset)
 
       let p = 0 // note you pass in p!
 
-      p = bipf.seekKey(data.value, p, bValue)
+      p = bipf.seekKey(recBuffer, p, bValue)
       if (p >= 0) {
-        const pContent = bipf.seekKey(data.value, p, bContent)
+        const pContent = bipf.seekKey(recBuffer, p, bContent)
         if (pContent >= 0) {
-          const type = bipf.getEncodedType(data.value, pContent)
+          const type = bipf.getEncodedType(recBuffer, pContent)
           if (type === StringType) {
-            encrypted.push(data.seq)
+            encrypted.push(recOffset)
 
             const content = ssbKeys.unbox(
-              bipf.decode(data.value, pContent),
+              bipf.decode(recBuffer, pContent),
               keys
             )
 
             if (content) {
-              canDecrypt.push(data.seq)
-              return reconstructMessage(data, content)
+              canDecrypt.push(recOffset)
+              return reconstructMessage(record, content)
             }
           }
         }
       }
     }
 
-    return data
+    return record
   }
 
   return {
-    latestSeq,
+    latestOffset,
     decrypt,
     saveIndexes,
     stateLoaded: stateLoaded.promise,

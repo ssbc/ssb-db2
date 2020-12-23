@@ -21,7 +21,7 @@ module.exports = function (log, dir, private) {
   let authorLatest = {}
   const META = '\x00'
 
-  const { level, seq, stateLoaded, onData, writeBatch } = Plugin(
+  const { level, offset, stateLoaded, onData, writeBatch } = Plugin(
     dir,
     'base',
     1,
@@ -39,27 +39,30 @@ module.exports = function (log, dir, private) {
     batch = []
   }
 
-  function handleData(data, processed) {
-    if (data.seq < seq.value) return
-    if (!data.value) return // deleted
+  function handleData(record, processed) {
+    const recOffset = record.seq // "seq" is abstract, here means "offset"
+    const recBuffer = record.value
+
+    if (recOffset < offset.value) return
+    if (!recBuffer) return // deleted
 
     let p = 0 // note you pass in p!
-    const pKey = bipf.seekKey(data.value, p, bKey)
+    const pKey = bipf.seekKey(recBuffer, p, bKey)
 
     p = 0
-    p = bipf.seekKey(data.value, p, bValue)
+    p = bipf.seekKey(recBuffer, p, bValue)
     if (~p) {
-      const p2 = bipf.seekKey(data.value, p, bAuthor)
-      const author = bipf.decode(data.value, p2)
-      const p3 = bipf.seekKey(data.value, p, bSequence)
-      const sequence = bipf.decode(data.value, p3)
-      const p4 = bipf.seekKey(data.value, p, bTimestamp)
-      const timestamp = bipf.decode(data.value, p4)
+      const p2 = bipf.seekKey(recBuffer, p, bAuthor)
+      const author = bipf.decode(recBuffer, p2)
+      const p3 = bipf.seekKey(recBuffer, p, bSequence)
+      const sequence = bipf.decode(recBuffer, p3)
+      const p4 = bipf.seekKey(recBuffer, p, bTimestamp)
+      const timestamp = bipf.decode(recBuffer, p4)
 
       let latestSequence = 0
       if (authorLatest[author]) latestSequence = authorLatest[author].sequence
       if (sequence > latestSequence) {
-        const key = bipf.decode(data.value, pKey)
+        const key = bipf.decode(recBuffer, pKey)
         authorLatest[author] = { id: key, sequence, timestamp }
         batch.push({
           type: 'put',
@@ -97,7 +100,7 @@ module.exports = function (log, dir, private) {
   }
 
   return {
-    seq,
+    offset,
     stateLoaded,
     onData,
     writeBatch,
