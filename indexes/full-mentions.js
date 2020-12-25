@@ -31,7 +31,7 @@ module.exports = function (log, dir) {
     batch = []
   }
 
-  function processData(data) {
+  function processData(data, processed) {
     if (!data.value) return // deleted
 
     let p = 0 // note you pass in p!
@@ -70,7 +70,7 @@ module.exports = function (log, dir) {
 
   function handleData(data, processed) {
     if (data.seq < seq.value) return
-    else return processData(data)
+    else return processData(data, processed)
   }
 
   function parseInt10(x) {
