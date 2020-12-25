@@ -1,4 +1,4 @@
-const OffsetLog = require('async-flumelog')
+const OffsetLog = require('async-log')
 const bipf = require('bipf')
 const { BLOCK_SIZE, newLogPath } = require('./defaults')
 
@@ -38,8 +38,7 @@ module.exports = function (dir, config, private) {
     originalGet(offset, (err, buffer) => {
       if (err) return cb(err)
       else {
-        // "seq" in flumedb is an abstract num, here it actually means "offset"
-        const record = { seq: offset, value: buffer }
+        const record = { offset, value: buffer }
         cb(null, private.decrypt(record, false).value)
       }
     })

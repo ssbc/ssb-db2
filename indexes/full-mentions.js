@@ -31,25 +31,22 @@ module.exports = function (log, dir) {
   }
 
   function handleData(record, processed) {
-    const recOffset = record.seq // "seq" is abstract, here it means "offset"
-    const recBuffer = record.value
-
-    if (recOffset < offset.value) return
-    if (!recBuffer) return // deleted
+    if (record.offset < offset.value) return
+    if (!record.value) return // deleted
 
     let p = 0 // note you pass in p!
-    const pKey = bipf.seekKey(recBuffer, p, bKey)
+    const pKey = bipf.seekKey(record.value, p, bKey)
 
     p = 0
-    p = bipf.seekKey(recBuffer, p, bValue)
+    p = bipf.seekKey(record.value, p, bValue)
     if (~p) {
-      const pContent = bipf.seekKey(recBuffer, p, bContent)
+      const pContent = bipf.seekKey(record.value, p, bContent)
       if (~pContent) {
-        const pMentions = bipf.seekKey(recBuffer, pContent, bMentions)
+        const pMentions = bipf.seekKey(record.value, pContent, bMentions)
         if (~pMentions) {
-          const mentionsData = bipf.decode(recBuffer, pMentions)
+          const mentionsData = bipf.decode(record.value, pMentions)
           if (Array.isArray(mentionsData)) {
-            const shortKey = bipf.decode(recBuffer, pKey).slice(1, 10)
+            const shortKey = bipf.decode(record.value, pKey).slice(1, 10)
             mentionsData.forEach((mention) => {
               if (
                 mention.link &&

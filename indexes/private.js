@@ -107,44 +107,41 @@ module.exports = function (dir, keys) {
     const buf = Buffer.alloc(len)
     bipf.encode(msg, buf, 0)
 
-    return { seq: record.seq, value: buf }
+    return { offset: record.offset, value: buf }
   }
 
   function decrypt(record, streaming) {
-    const recOffset = record.seq // "seq" is abstract, here it means "offset"
-    const recBuffer = record.value
-
-    if (bsb.eq(canDecrypt, recOffset) !== -1) {
+    if (bsb.eq(canDecrypt, record.offset) !== -1) {
       let p = 0 // note you pass in p!
 
-      p = bipf.seekKey(recBuffer, p, bValue)
+      p = bipf.seekKey(record.value, p, bValue)
       if (p >= 0) {
-        const pContent = bipf.seekKey(recBuffer, p, bContent)
+        const pContent = bipf.seekKey(record.value, p, bContent)
         if (pContent >= 0) {
-          const content = ssbKeys.unbox(bipf.decode(recBuffer, pContent), keys)
+          const content = ssbKeys.unbox(bipf.decode(record.value, pContent), keys)
           if (content) return reconstructMessage(record, content)
         }
       }
-    } else if (recOffset > latestOffset.value) {
-      if (streaming) latestOffset.set(recOffset)
+    } else if (record.offset > latestOffset.value) {
+      if (streaming) latestOffset.set(record.offset)
 
       let p = 0 // note you pass in p!
 
-      p = bipf.seekKey(recBuffer, p, bValue)
+      p = bipf.seekKey(record.value, p, bValue)
       if (p >= 0) {
-        const pContent = bipf.seekKey(recBuffer, p, bContent)
+        const pContent = bipf.seekKey(record.value, p, bContent)
         if (pContent >= 0) {
-          const type = bipf.getEncodedType(recBuffer, pContent)
+          const type = bipf.getEncodedType(record.value, pContent)
           if (type === StringType) {
-            encrypted.push(recOffset)
+            encrypted.push(record.offset)
 
             const content = ssbKeys.unbox(
-              bipf.decode(recBuffer, pContent),
+              bipf.decode(record.value, pContent),
               keys
             )
 
             if (content) {
-              canDecrypt.push(recOffset)
+              canDecrypt.push(record.offset)
               return reconstructMessage(record, content)
             }
           }

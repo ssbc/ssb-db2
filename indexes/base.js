@@ -40,29 +40,26 @@ module.exports = function (log, dir, private) {
   }
 
   function handleData(record, processed) {
-    const recOffset = record.seq // "seq" is abstract, here means "offset"
-    const recBuffer = record.value
-
-    if (recOffset < offset.value) return
-    if (!recBuffer) return // deleted
+    if (record.offset < offset.value) return
+    if (!record.value) return // deleted
 
     let p = 0 // note you pass in p!
-    const pKey = bipf.seekKey(recBuffer, p, bKey)
+    const pKey = bipf.seekKey(record.value, p, bKey)
 
     p = 0
-    p = bipf.seekKey(recBuffer, p, bValue)
+    p = bipf.seekKey(record.value, p, bValue)
     if (~p) {
-      const p2 = bipf.seekKey(recBuffer, p, bAuthor)
-      const author = bipf.decode(recBuffer, p2)
-      const p3 = bipf.seekKey(recBuffer, p, bSequence)
-      const sequence = bipf.decode(recBuffer, p3)
-      const p4 = bipf.seekKey(recBuffer, p, bTimestamp)
-      const timestamp = bipf.decode(recBuffer, p4)
+      const p2 = bipf.seekKey(record.value, p, bAuthor)
+      const author = bipf.decode(record.value, p2)
+      const p3 = bipf.seekKey(record.value, p, bSequence)
+      const sequence = bipf.decode(record.value, p3)
+      const p4 = bipf.seekKey(record.value, p, bTimestamp)
+      const timestamp = bipf.decode(record.value, p4)
 
       let latestSequence = 0
       if (authorLatest[author]) latestSequence = authorLatest[author].sequence
       if (sequence > latestSequence) {
-        const key = bipf.decode(recBuffer, pKey)
+        const key = bipf.decode(record.value, pKey)
         authorLatest[author] = { id: key, sequence, timestamp }
         batch.push({
           type: 'put',
