@@ -16,7 +16,7 @@
     "fastintcompression": "0.0.4",
     "flumecodec": "0.0.1",
     "flumelog-offset": "3.4.4",
-    "jitdb": "ssb-ngi-pointer/jitdb#die-rename",
+    "jitdb": "0.33.0",
     "level": "^6.0.1",
     "lodash.debounce": "^4.0.8",
     "mkdirp": "^1.0.4",
