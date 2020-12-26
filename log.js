@@ -1,4 +1,4 @@
-const OffsetLog = require('async-log')
+const OffsetLog = require('async-append-only-log')
 const bipf = require('bipf')
 const { BLOCK_SIZE, newLogPath } = require('./defaults')
 
