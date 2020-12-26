@@ -1,7 +1,7 @@
 const fs = require('fs')
 const pull = require('pull-stream')
 const FlumeLog = require('flumelog-offset')
-const AsyncFlumeLog = require('async-flumelog')
+const AsyncLog = require('async-append-only-log')
 const bipf = require('bipf')
 const jsonCodec = require('flumecodec/json')
 const Obv = require('obv')
@@ -143,13 +143,14 @@ exports.init = function init(sbot, config) {
     const newLog =
       sbot.db && sbot.db.getLog() && sbot.db.getLog().stream
         ? sbot.db.getLog()
-        : AsyncFlumeLog(newLogPath(config.path), { blockSize: BLOCK_SIZE })
+        : AsyncLog(newLogPath(config.path), { blockSize: BLOCK_SIZE })
     const newLogStream = newLog.stream({ gte: 0 })
 
     let migratedSize = null
     let progressCalls = 0
 
     function updateMigratedSize(obj) {
+      // "seq" in flumedb is an abstract num, here it actually means "offset"
       migratedSize = obj.seq
     }
 

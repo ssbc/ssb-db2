@@ -3,7 +3,7 @@ const Plugin = require('./plugin')
 const { reEncrypt } = require('./private')
 
 // 1 index:
-// - [author, sequence] => seq (EBT)
+// - [author, sequence] => offset
 
 module.exports = function (log, dir) {
   const bValue = Buffer.from('value')
@@ -13,7 +13,7 @@ module.exports = function (log, dir) {
   let batch = []
 
   const name = 'ebt'
-  const { level, seq, stateLoaded, onData, writeBatch } = Plugin(
+  const { level, offset, stateLoaded, onData, writeBatch } = Plugin(
     dir,
     name,
     1,
@@ -26,22 +26,22 @@ module.exports = function (log, dir) {
     batch = []
   }
 
-  function handleData(data, processed) {
-    if (data.seq < seq.value) return
-    if (!data.value) return // deleted
+  function handleData(record, processed) {
+    if (record.offset < offset.value) return
+    if (!record.value) return // deleted
 
     let p = 0 // note you pass in p!
-    p = bipf.seekKey(data.value, p, bValue)
+    p = bipf.seekKey(record.value, p, bValue)
     if (~p) {
-      const p2 = bipf.seekKey(data.value, p, bAuthor)
-      const author = bipf.decode(data.value, p2)
-      const p3 = bipf.seekKey(data.value, p, bSequence)
-      const sequence = bipf.decode(data.value, p3)
+      const p2 = bipf.seekKey(record.value, p, bAuthor)
+      const author = bipf.decode(record.value, p2)
+      const p3 = bipf.seekKey(record.value, p, bSequence)
+      const sequence = bipf.decode(record.value, p3)
 
       batch.push({
         type: 'put',
         key: [author, sequence],
-        value: data.seq,
+        value: record.offset,
       })
     }
 
@@ -49,18 +49,18 @@ module.exports = function (log, dir) {
   }
 
   function levelKeyToMessage(key, cb) {
-    level.get(key, (err, seq) => {
+    level.get(key, (err, offset) => {
       if (err) return cb(err)
       else
-        log.get(parseInt(seq, 10), (err, data) => {
+        log.get(parseInt(offset, 10), (err, record) => {
           if (err) return cb(err)
-          cb(null, bipf.decode(data, 0))
+          cb(null, bipf.decode(record, 0))
         })
     })
   }
 
   return {
-    seq,
+    offset,
     stateLoaded,
     onData,
     writeBatch,

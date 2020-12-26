@@ -61,7 +61,7 @@ test('migrate moves msgs from old log to new log', (t) => {
     fromEvent('ssb:db2:migrate:progress', sbot),
     pull.filter((x) => x === 1),
     pull.take(1),
-    // we need to make sure async-flumelog has written the data
+    // we need to make sure async-log has written the data
     pull.asyncMap((_, cb) => sbot.db.getLog().onDrain(cb)),
     pull.drain(() => {
       t.true(fs.existsSync(path.join(dir, 'db2', 'log.bipf')), 'migration done')

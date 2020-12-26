@@ -37,7 +37,7 @@ test('Base', (t) => {
   })
 })
 
-test('author seq', (t) => {
+test('author sequence', (t) => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }
 

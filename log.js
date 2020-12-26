@@ -1,4 +1,4 @@
-const OffsetLog = require('async-flumelog')
+const OffsetLog = require('async-append-only-log')
 const bipf = require('bipf')
 const { BLOCK_SIZE, newLogPath } = require('./defaults')
 
@@ -34,10 +34,13 @@ module.exports = function (dir, config, private) {
   // add automatic decrypt
 
   let originalGet = log.get
-  log.get = function (seq, cb) {
-    originalGet(seq, (err, res) => {
+  log.get = function (offset, cb) {
+    originalGet(offset, (err, buffer) => {
       if (err) return cb(err)
-      else cb(null, private.decrypt({ seq, value: res }, false).value)
+      else {
+        const record = { offset, value: buffer }
+        cb(null, private.decrypt(record, false).value)
+      }
     })
   }
 
