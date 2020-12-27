@@ -27,8 +27,8 @@ module.exports = function (log, dir) {
   }
 
   function handleData(record, processed) {
-    if (record.offset < offset.value) return
-    if (!record.value) return // deleted
+    if (record.offset < offset.value) return batch.length
+    if (!record.value) return batch.length // deleted
 
     let p = 0 // note you pass in p!
     p = bipf.seekKey(record.value, p, bValue)

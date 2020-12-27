@@ -31,8 +31,8 @@ module.exports = function (log, dir) {
   }
 
   function handleData(record, processed) {
-    if (record.offset < offset.value) return
-    if (!record.value) return // deleted
+    if (record.offset < offset.value) return batch.length
+    if (!record.value) return batch.length // deleted
 
     let p = 0 // note you pass in p!
     const pKey = bipf.seekKey(record.value, p, bKey)
@@ -55,7 +55,7 @@ module.exports = function (log, dir) {
               ) {
                 batch.push({
                   type: 'put',
-                  key: [mention.link, 'm', shortKey],
+                  key: [mention.link, shortKey],
                   value: processed,
                 })
               }
@@ -101,8 +101,8 @@ module.exports = function (log, dir) {
     getMessagesByMention: function (key, live, cb) {
       getResults(
         {
-          gte: [key, 'm', ''],
-          lte: [key, 'm', undefined],
+          gte: [key, ''],
+          lte: [key, undefined],
           keyEncoding: jsonCodec,
           keys: false,
         },
