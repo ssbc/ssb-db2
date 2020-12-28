@@ -91,7 +91,7 @@ function inefficientFindMigratedOffset(newLog, oldLog, cb) {
     if (err) return cb(err) // TODO: might need an explain() here
     if (!msgCountNewLog) return cb(null, -1)
 
-    let result = null
+    let result = -1
     pull(
       oldLog.getStream({ gte: 0 }),
       pull.take(msgCountNewLog),
