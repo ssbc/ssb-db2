@@ -34,6 +34,7 @@ module.exports = function (dir, keys) {
   function load(filename, cb) {
     readFile(filename)
       .then((buf) => {
+        if (!buf) return cb(new Error("empty file"))
         const offset = buf.readInt32LE(0)
         const body = buf.slice(4)
 
@@ -48,6 +49,7 @@ module.exports = function (dir, keys) {
         latestOffset.set(-1)
         stateLoaded.resolve()
         if (err.code === 'ENOENT') cb()
+        else if (err.message === 'empty file') cb()
         else cb(err)
         return
       }

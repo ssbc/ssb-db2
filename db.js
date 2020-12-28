@@ -318,9 +318,10 @@ exports.init = function (sbot, config) {
   }
 
   // setTimeout to make sure extra indexes from secret-stack are also included
-  setTimeout(() => {
+  const timer = setTimeout(() => {
     onIndexesStateLoaded(updateIndexes)
-  }).unref()
+  })
+  if (timer.unref) timer.unref()
 
   function close(cb) {
     const tasks = []
