@@ -12,7 +12,6 @@ const { indexesPath } = require('./defaults')
 const Log = require('./log')
 const BaseIndex = require('./indexes/base')
 const Private = require('./indexes/private')
-// const Partial = require('./indexes/partial')
 
 const {
   and,
@@ -55,8 +54,6 @@ exports.init = function (sbot, config) {
   const log = Log(dir, config, private)
   const jitdb = JITDb(log, indexesPath(dir))
   const baseIndex = BaseIndex(log, dir, private)
-  //const contacts = fullIndex.contacts
-  //const partial = Partial(dir)
 
   const debug = Debug('ssb:db2')
 
@@ -230,59 +227,13 @@ exports.init = function (sbot, config) {
   }
 
   function getStatus() {
-    //const partialState = partial.getSync()
-    //const graph = contacts.getGraphForFeedSync(config.keys.public)
-
-    // partial
-    /*
-    let profilesSynced = 0
-    let contactsSynced = 0
-    let messagesSynced = 0
-    let totalPartial = 0
-    */
-
-    // full
-    let fullSynced = 0
-    let totalFull = 0
-
-    /*
-    graph.following.forEach(relation => {
-      if (partialState[relation] && partialState[relation]['full'])
-        fullSynced += 1
-
-      totalFull += 1
-    })
-
-    graph.extended.forEach(relation => {
-      if (partialState[relation] && partialState[relation]['syncedProfile'])
-        profilesSynced += 1
-      if (partialState[relation] && partialState[relation]['syncedContacts'])
-        contactsSynced += 1
-      if (partialState[relation] && partialState[relation]['syncedMessages'])
-        messagesSynced += 1
-
-      totalPartial += 1
-    })
-    */
-
     const result = {
       log: log.since.value,
       indexes: {},
-      /*
-      partial: {
-        totalPartial,
-        profilesSynced,
-        contactsSynced,
-        messagesSynced,
-        totalFull,
-        fullSynced,
-      }
-      */
     }
 
-    for (const indexName in indexes) {
+    for (const indexName in indexes)
       result.indexes[indexName] = indexes[indexName].offset.value
-    }
 
     return result
   }
