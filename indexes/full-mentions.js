@@ -31,22 +31,23 @@ module.exports = function (log, dir) {
   }
 
   function handleData(record, processed) {
-    if (record.offset < offset.value) return
-    if (!record.value) return // deleted
+    if (record.offset < offset.value) return batch.length
+    const recBuffer = record.value
+    if (!recBuffer) return batch.length // deleted
 
     let p = 0 // note you pass in p!
-    const pKey = bipf.seekKey(record.value, p, bKey)
+    const pKey = bipf.seekKey(recBuffer, p, bKey)
 
     p = 0
-    p = bipf.seekKey(record.value, p, bValue)
+    p = bipf.seekKey(recBuffer, p, bValue)
     if (~p) {
-      const pContent = bipf.seekKey(record.value, p, bContent)
+      const pContent = bipf.seekKey(recBuffer, p, bContent)
       if (~pContent) {
-        const pMentions = bipf.seekKey(record.value, pContent, bMentions)
+        const pMentions = bipf.seekKey(recBuffer, pContent, bMentions)
         if (~pMentions) {
-          const mentionsData = bipf.decode(record.value, pMentions)
+          const mentionsData = bipf.decode(recBuffer, pMentions)
           if (Array.isArray(mentionsData)) {
-            const shortKey = bipf.decode(record.value, pKey).slice(1, 10)
+            const shortKey = bipf.decode(recBuffer, pKey).slice(1, 10)
             mentionsData.forEach((mention) => {
               if (
                 mention.link &&
@@ -55,7 +56,7 @@ module.exports = function (log, dir) {
               ) {
                 batch.push({
                   type: 'put',
-                  key: [mention.link, 'm', shortKey],
+                  key: [mention.link, shortKey],
                   value: processed,
                 })
               }
@@ -101,8 +102,8 @@ module.exports = function (log, dir) {
     getMessagesByMention: function (key, live, cb) {
       getResults(
         {
-          gte: [key, 'm', ''],
-          lte: [key, 'm', undefined],
+          gte: [key, ''],
+          lte: [key, undefined],
           keyEncoding: jsonCodec,
           keys: false,
         },
