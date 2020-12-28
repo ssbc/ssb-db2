@@ -79,7 +79,56 @@ test('migrate moves msgs from old log to new log', (t) => {
   )
 })
 
-test('migrate keeps new log synced with old log being updated', (t) => {
+test('migrate moves msgs from ssb-db to new log', (t) => {
+  // Delete db2 folder to make sure we start migrating from zero
+  rimraf.sync(path.join(dir, 'db2'))
+
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('ssb-db'))
+    .use(require('../'))
+    .call(null, { keys, path: dir })
+
+  sbot.db2migrate.start()
+
+  let progressEventsReceived = false
+  pull(
+    fromEvent('ssb:db2:migrate:progress', sbot),
+    pull.take(TOTAL),
+    pull.collect((err, nums) => {
+      t.error(err)
+      t.equals(nums.length, TOTAL, `${TOTAL} progress events emitted`)
+      t.equals(nums[0], 0, 'first progress event is zero')
+      t.true(nums[0] < nums[1], 'monotonically increasing')
+      t.true(nums[1] < nums[2], 'monotonically increasing')
+      t.equals(nums[TOTAL - 1], 1, 'last progress event is one')
+      progressEventsReceived = true
+    })
+  )
+
+  pull(
+    fromEvent('ssb:db2:migrate:progress', sbot),
+    pull.filter((x) => x === 1),
+    pull.take(1),
+    // we need to make sure async-log has written the data
+    pull.asyncMap((_, cb) => sbot.db.getLog().onDrain(cb)),
+    pull.drain(() => {
+      t.true(fs.existsSync(path.join(dir, 'db2', 'log.bipf')), 'migration done')
+      sbot.db.query(
+        toCallback((err1, msgs) => {
+          t.error(err1, 'no err')
+          t.equal(msgs.length, TOTAL)
+          t.true(progressEventsReceived, 'progress events received')
+          sbot.close(() => {
+            t.end()
+          })
+        })
+      )
+    })
+  )
+})
+
+test('migrate keeps new log synced with ssb-db being updated', (t) => {
   const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('ssb-db'))

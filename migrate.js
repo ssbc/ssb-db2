@@ -7,18 +7,7 @@ const jsonCodec = require('flumecodec/json')
 const Obv = require('obv')
 const debug = require('debug')('ssb:db2:migrate')
 const { BLOCK_SIZE, oldLogPath, newLogPath } = require('./defaults')
-
-function skip(count, onDone) {
-  let skipped = 0
-  return pull.filter((x) => {
-    if (skipped >= count) return true
-    else {
-      skipped++
-      if (skipped === count && onDone) onDone(x)
-      return false
-    }
-  })
-}
+const seekers = require('./seekers')
 
 function fileExists(filename) {
   return fs.existsSync(filename) && fs.statSync(filename).size > 0
@@ -30,27 +19,27 @@ function makeFileExistsObv(filename) {
   return obv
 }
 
-function getOldLogStreams(sbot, config) {
+function getOldLog(sbot, config) {
+  // Support ssb-db@21
   if (sbot.createRawLogStream && sbot.status) {
-    const logStream = sbot.createRawLogStream({ old: true, live: false })
-    const logStreamLive = sbot.createRawLogStream({ old: false, live: true })
+    const getStream = (opts) =>
+      sbot.createRawLogStream({ old: true, live: false, ...opts })
+    const getLiveStream = () =>
+      sbot.createRawLogStream({ old: false, live: true })
     const getSize = () => sbot.status().sync.since
-    return [logStream, logStreamLive, getSize]
+    return { getStream, getLiveStream, getSize }
   }
-  if (sbot.createLogStream && sbot.status) {
-    const logStream = sbot.createLogStream({
-      raw: true,
-      old: true,
-      live: false,
-    })
-    const logStreamLive = sbot.createLogStream({
-      raw: true,
-      old: false,
-      live: true,
-    })
+  // Support ssb-db@19
+  else if (sbot.createLogStream && sbot.status) {
+    const getStream = (opts) =>
+      sbot.createLogStream({ raw: true, old: true, live: false, ...opts })
+    const getLiveStream = () =>
+      sbot.createLogStream({ raw: true, old: false, live: true })
     const getSize = () => sbot.status().sync.since
-    return [logStream, logStreamLive, getSize]
-  } else {
+    return { getStream, getLiveStream, getSize }
+  }
+  // Support running without ssb-db
+  else {
     const oldLog = FlumeLog(oldLogPath(config.path), {
       blockSize: BLOCK_SIZE,
       codec: jsonCodec,
@@ -62,10 +51,12 @@ function getOldLogStreams(sbot, config) {
       sync: false,
       codec: jsonCodec,
     }
-    const logStream = oldLog.stream({ old: true, live: false, ...opts })
-    const logStreamLive = oldLog.stream({ old: false, live: true, ...opts })
+    const getStream = (moreOpts) =>
+      oldLog.stream({ old: true, live: false, ...opts, ...moreOpts })
+    const getLiveStream = () =>
+      oldLog.stream({ old: false, live: true, ...opts })
     const getSize = () => oldLog.since.value
-    return [logStream, logStreamLive, getSize]
+    return { getStream, getLiveStream, getSize }
   }
 }
 
@@ -88,6 +79,71 @@ function scanAndCount(pushstream, cb) {
       this.ended = err || true
       cb(null, count)
     },
+  })
+}
+
+/**
+ * Fallback algorithm that does the same as findMigratedOffset, but is slow
+ * because it does a scan of BOTH new log and old log.
+ */
+function inefficientFindMigratedOffset(newLog, oldLog, cb) {
+  scanAndCount(newLog.stream({ gte: 0 }), (err, msgCountNewLog) => {
+    if (err) return cb(err) // TODO: might need an explain() here
+    if (!msgCountNewLog) return cb(null, -1)
+
+    let result = null
+    pull(
+      oldLog.getStream({ gte: 0 }),
+      pull.take(msgCountNewLog),
+      pull.drain(
+        (x) => {
+          result = x.seq
+        },
+        (err) => {
+          if (err) return cb(err) // TODO: might need an explain() here
+          cb(null, result)
+        }
+      )
+    )
+  })
+}
+
+function findMigratedOffset(sbot, oldLog, newLog, cb) {
+  if (!sbot.get) {
+    debug('running in inefficient mode because no ssb-db is installed')
+    inefficientFindMigratedOffset(newLog, oldLog, cb)
+    return
+  }
+
+  newLog.onDrain(() => {
+    if (typeof newLog.since.value !== 'number' || newLog.since.value < 0) {
+      cb(null, -1)
+      return
+    }
+
+    const offsetInNewLog = newLog.since.value
+    newLog.get(offsetInNewLog, (err, buf) => {
+      if (err) return cb(err) // TODO: might need an explain() here
+
+      const msgKey = bipf.decode(buf, seekers.seekKey(buf))
+      sbot.get(msgKey, (err2, msg, offsetInOldLog) => {
+        if (err2) return cb(err2) // TODO: might need an explain() here
+
+        if (typeof offsetInOldLog === 'number') {
+          cb(null, offsetInOldLog)
+        } else {
+          // NOTE! Currently all versions of ssb-db do not support returning
+          // byte offset, so this case will trigger always! The only way to
+          // make ssb-db support it is to hack it with patch-package. This is
+          // fine temporarily because the only change is faster performance.
+          debug(
+            'running in inefficient mode because your ssb-db ' +
+              'does not support returning byte offset from ssb.get()'
+          )
+          inefficientFindMigratedOffset(newLog, oldLog, cb)
+        }
+      })
+    })
   })
 }
 
@@ -136,31 +192,23 @@ exports.init = function init(sbot, config) {
     started = true
     debug('started')
 
-    const [oldLogStream, oldLogStreamLive, getOldSize] = getOldLogStreams(
-      sbot,
-      config
-    )
+    const oldLog = getOldLog(sbot, config)
     const newLog =
       sbot.db && sbot.db.getLog() && sbot.db.getLog().stream
         ? sbot.db.getLog()
         : AsyncLog(newLogPath(config.path), { blockSize: BLOCK_SIZE })
-    const newLogStream = newLog.stream({ gte: 0 })
 
     let migratedSize = null
     let progressCalls = 0
 
-    function updateMigratedSize(obj) {
+    function updateMigratedSizeAndPluck(obj) {
       // "seq" in flumedb is an abstract num, here it actually means "offset"
       migratedSize = obj.seq
-    }
-
-    function updateMigratedSizeAndPluck(obj) {
-      updateMigratedSize(obj)
       return obj.value
     }
 
     function emitProgressEvent() {
-      const oldSize = getOldSize()
+      const oldSize = oldLog.getSize()
       if (oldSize > 0 && migratedSize !== null) {
         const progress = migratedSize / oldSize
         if (
@@ -186,18 +234,18 @@ exports.init = function init(sbot, config) {
       }
     }
 
-    scanAndCount(newLogStream, (err, msgCountNewLog) => {
+    findMigratedOffset(sbot, oldLog, newLog, (err, migratedOffset) => {
       if (err) return console.error(err)
-      if (msgCountNewLog === 0) debug('new log is empty, will start migrating')
-      else debug('new log has %s msgs, will continue migrating', msgCountNewLog)
+
+      if (migratedOffset >= 0) {
+        debug('continue migrating from previous offset %s', migratedOffset)
+        migratedSize = migratedOffset
+        emitProgressEvent()
+      }
 
       let msgCountOldLog = 0
       pull(
-        oldLogStream,
-        skip(msgCountNewLog, function whenDoneSkipping(obj) {
-          updateMigratedSize(obj)
-          emitProgressEvent()
-        }),
+        oldLog.getStream({ gt: migratedOffset }),
         pull.map(updateMigratedSizeAndPluck),
         pull.map(toBIPF),
         pull.asyncMap(writeTo(newLog)),
@@ -219,7 +267,7 @@ exports.init = function init(sbot, config) {
             }
 
             pull(
-              oldLogStreamLive,
+              oldLog.getLiveStream(),
               pull.map(updateMigratedSizeAndPluck),
               pull.map(toBIPF),
               pull.asyncMap(writeTo(newLog)),
