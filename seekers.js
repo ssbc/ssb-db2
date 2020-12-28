@@ -18,54 +18,54 @@ module.exports = {
   seekAuthor: function (buffer) {
     let p = 0 // note you pass in p!
     p = seekKey(buffer, p, bValue)
-    if (!~p) return
+    if (p < 0) return
     return seekKey(buffer, p, bAuthor)
   },
 
   seekType: function (buffer) {
     let p = 0 // note you pass in p!
     p = seekKey(buffer, p, bValue)
-    if (!~p) return
+    if (p < 0) return
     p = seekKey(buffer, p, bContent)
-    if (!~p) return
+    if (p < 0) return
     return seekKey(buffer, p, bType)
   },
 
   seekRoot: function (buffer) {
     let p = 0 // note you pass in p!
     p = seekKey(buffer, p, bValue)
-    if (!~p) return
+    if (p < 0) return
     p = seekKey(buffer, p, bContent)
-    if (!~p) return
+    if (p < 0) return
     return seekKey(buffer, p, bRoot)
   },
 
   seekVoteLink: function (buffer) {
     let p = 0 // note you pass in p!
     p = seekKey(buffer, p, bValue)
-    if (!~p) return
+    if (p < 0) return
     p = seekKey(buffer, p, bContent)
-    if (!~p) return
+    if (p < 0) return
     p = seekKey(buffer, p, bVote)
-    if (!~p) return
+    if (p < 0) return
     return seekKey(buffer, p, bLink)
   },
 
   seekContact: function (buffer) {
     let p = 0 // note you pass in p!
     p = seekKey(buffer, p, bValue)
-    if (!~p) return
+    if (p < 0) return
     p = seekKey(buffer, p, bContent)
-    if (!~p) return
+    if (p < 0) return
     return seekKey(buffer, p, bContact)
   },
 
   seekMentions: function (buffer) {
     let p = 0 // note you pass in p!
     p = seekKey(buffer, p, bValue)
-    if (!~p) return
+    if (p < 0) return
     p = seekKey(buffer, p, bContent)
-    if (!~p) return
+    if (p < 0) return
     return seekKey(buffer, p, bMentions)
   },
 
@@ -77,16 +77,16 @@ module.exports = {
   seekPrivate: function (buffer) {
     let p = 0 // note you pass in p!
     p = seekKey(buffer, p, bMeta)
-    if (!~p) return
+    if (p < 0) return
     return seekKey(buffer, p, bPrivate)
   },
 
   seekChannel: function (buffer) {
     let p = 0 // note you pass in p!
     p = seekKey(buffer, p, bValue)
-    if (!~p) return
+    if (p < 0) return
     p = seekKey(buffer, p, bContent)
-    if (!~p) return
+    if (p < 0) return
     return seekKey(buffer, p, bChannel)
   },
 

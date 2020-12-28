@@ -33,7 +33,7 @@ module.exports = function (dir, config, private) {
 
   // add automatic decrypt
 
-  let originalGet = log.get
+  const originalGet = log.get
   log.get = function (offset, cb) {
     originalGet(offset, (err, buffer) => {
       if (err) return cb(err)
@@ -44,11 +44,11 @@ module.exports = function (dir, config, private) {
     })
   }
 
-  let originalStream = log.stream
+  const originalStream = log.stream
   log.stream = function (opts) {
-    let s = originalStream(opts)
-    let originalPipe = s.pipe.bind(s)
-    s.pipe = function (o) {
+    const s = originalStream(opts)
+    const originalPipe = s.pipe.bind(s)
+    s.pipe = function pipe(o) {
       let originalWrite = o.write
       o.write = (record) => originalWrite(private.decrypt(record, true))
       return originalPipe(o)

@@ -110,19 +110,16 @@ exports.init = function (sbot, config) {
     )
   }
 
+  /**
+   * Beware:
+   * There is a race condition here if you add the same message quickly
+   * after another because baseIndex is lazy. The default js SSB
+   * implementation adds messages in order, so it doesn't really have
+   * this problem.
+   */
   function rawAdd(msg, cb) {
-    const id = getId(msg)
-
-    /*
-      Beware:
-
-      There is a race condition here if you add the same message quickly
-      after another because baseIndex is lazy. The default js SSB
-      implementation adds messages in order, so it doesn't really have
-      this problem.
-    */
-
     stateFeedsReady.promise.then(() => {
+      const id = getId(msg)
       get(id, (err, data) => {
         if (data) cb(null, data)
         else log.add(id, msg, cb)
@@ -253,29 +250,28 @@ exports.init = function (sbot, config) {
   function updateIndexes() {
     const start = Date.now()
 
-    const indexesRun = Object.values(indexes)
+    const indexesArr = Object.values(indexes)
 
-    function liveStream() {
-      debug('live streaming changes')
-      log.stream({ gt: indexes['base'].offset.value, live: true }).pipe({
-        paused: false,
-        write: (data) => indexesRun.forEach((x) => x.onData(data, true)),
-      })
-    }
-
-    const lowestOffset = Math.min(
-      ...Object.values(indexes).map((x) => x.offset.value)
-    )
+    const lowestOffset = Math.min(...indexesArr.map((idx) => idx.offset.value))
     debug(`lowest offset for all indexes is ${lowestOffset}`)
 
     log.stream({ gt: lowestOffset }).pipe({
       paused: false,
-      write: (data) => indexesRun.forEach((x) => x.onData(data, false)),
-      end: () => {
-        const tasks = indexesRun.map((index) => promisify(index.writeBatch)())
-        Promise.all(tasks).then(liveStream)
-
-        debug(`index scan time: ${Date.now() - start}ms`)
+      write(data) {
+        indexesArr.forEach((idx) => idx.onData(data, false))
+      },
+      end() {
+        debug(`updateIndexes() scan time: ${Date.now() - start}ms`)
+        const writeTasks = indexesArr.map((idx) => promisify(idx.writeBatch)())
+        Promise.all(writeTasks).then(() => {
+          debug('updateIndexes() live streaming')
+          log.stream({ gt: indexes['base'].offset.value, live: true }).pipe({
+            paused: false,
+            write(data) {
+              indexesArr.forEach((idx) => idx.onData(data, true))
+            },
+          })
+        })
       },
     })
   }
@@ -309,8 +305,8 @@ exports.init = function (sbot, config) {
   function onIndexesStateLoaded(cb) {
     if (!onIndexesStateLoaded.promise) {
       const stateLoadedPromises = [private.stateLoaded]
-      for (var index in indexes) {
-        stateLoadedPromises.push(indexes[index].stateLoaded)
+      for (const indexName in indexes) {
+        stateLoadedPromises.push(indexes[indexName].stateLoaded)
       }
       onIndexesStateLoaded.promise = Promise.all(stateLoadedPromises)
     }

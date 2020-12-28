@@ -28,17 +28,13 @@ module.exports = function (log, dir) {
 
   function handleData(record, processed) {
     if (record.offset < offset.value) return batch.length
-    const recBuffer = record.value
-    if (!recBuffer) return batch.length // deleted
+    const buf = record.value
+    if (!buf) return batch.length // deleted
 
-    let p = 0 // note you pass in p!
-    p = bipf.seekKey(recBuffer, p, bValue)
-    if (~p) {
-      const p2 = bipf.seekKey(recBuffer, p, bAuthor)
-      const author = bipf.decode(recBuffer, p2)
-      const p3 = bipf.seekKey(recBuffer, p, bSequence)
-      const sequence = bipf.decode(recBuffer, p3)
-
+    const pValue = bipf.seekKey(buf, 0, bValue)
+    if (pValue >= 0) {
+      const author = bipf.decode(buf, bipf.seekKey(buf, pValue, bAuthor))
+      const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, bSequence))
       batch.push({
         type: 'put',
         key: [author, sequence],
