@@ -53,7 +53,7 @@ module.exports = function (
 
   function onData(record, isLive) {
     // maybe check if for us!
-    let unwritten = handleData(record, processed)
+    const unwritten = handleData(record, processed)
     if (unwritten > 0) unWrittenOffset = record.offset
     processed++
 

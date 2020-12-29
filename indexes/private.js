@@ -12,7 +12,7 @@ const Debug = require('debug')
 const { indexesPath } = require('../defaults')
 
 module.exports = function (dir, keys) {
-  let latestOffset = Obv()
+  const latestOffset = Obv()
   const stateLoaded = DeferredPromise()
   let encrypted = []
   let canDecrypt = []
@@ -90,12 +90,8 @@ module.exports = function (dir, keys) {
     cb()
   }
 
-  const bValue = Buffer.from('value')
-  const bContent = Buffer.from('content')
-  const StringType = 0
-
   function reconstructMessage(record, unboxedContent) {
-    let msg = bipf.decode(record.value, 0)
+    const msg = bipf.decode(record.value, 0)
     const originalContent = msg.value.content
     msg.value.content = unboxedContent
     msg.meta = {
@@ -110,46 +106,43 @@ module.exports = function (dir, keys) {
     return { offset: record.offset, value: buf }
   }
 
+  const bValue = Buffer.from('value')
+  const bContent = Buffer.from('content')
+
   function decrypt(record, streaming) {
-    if (bsb.eq(canDecrypt, record.offset) !== -1) {
-      let p = 0 // note you pass in p!
+    const recOffset = record.offset
+    const recBuffer = record.value
+    let p = 0 // note you pass in p!
+    if (bsb.eq(canDecrypt, recOffset) !== -1) {
+      p = bipf.seekKey(recBuffer, p, bValue)
+      if (p < 0) return record
+      p = bipf.seekKey(recBuffer, p, bContent)
+      if (p < 0) return record
 
-      p = bipf.seekKey(record.value, p, bValue)
-      if (p >= 0) {
-        const pContent = bipf.seekKey(record.value, p, bContent)
-        if (pContent >= 0) {
-          const content = ssbKeys.unbox(bipf.decode(record.value, pContent), keys)
-          if (content) return reconstructMessage(record, content)
-        }
-      }
-    } else if (record.offset > latestOffset.value) {
-      if (streaming) latestOffset.set(record.offset)
+      const unboxedContent = ssbKeys.unbox(bipf.decode(recBuffer, p), keys)
+      if (!unboxedContent) return record
 
-      let p = 0 // note you pass in p!
+      return reconstructMessage(record, unboxedContent)
+    } else if (recOffset > latestOffset.value) {
+      if (streaming) latestOffset.set(recOffset)
 
-      p = bipf.seekKey(record.value, p, bValue)
-      if (p >= 0) {
-        const pContent = bipf.seekKey(record.value, p, bContent)
-        if (pContent >= 0) {
-          const type = bipf.getEncodedType(record.value, pContent)
-          if (type === StringType) {
-            encrypted.push(record.offset)
+      p = bipf.seekKey(recBuffer, p, bValue)
+      if (p < 0) return record
+      p = bipf.seekKey(recBuffer, p, bContent)
+      if (p < 0) return record
 
-            const content = ssbKeys.unbox(
-              bipf.decode(record.value, pContent),
-              keys
-            )
+      const type = bipf.getEncodedType(recBuffer, p)
+      if (type !== bipf.types.string) return record
 
-            if (content) {
-              canDecrypt.push(record.offset)
-              return reconstructMessage(record, content)
-            }
-          }
-        }
-      }
+      encrypted.push(recOffset)
+      const unboxedContent = ssbKeys.unbox(bipf.decode(recBuffer, p), keys)
+      if (!unboxedContent) return record
+
+      canDecrypt.push(recOffset)
+      return reconstructMessage(record, unboxedContent)
+    } else {
+      return record
     }
-
-    return record
   }
 
   return {

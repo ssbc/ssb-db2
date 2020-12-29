@@ -7,8 +7,8 @@ const Plugin = require('./plugin')
 // - author => latest { msg key, sequence timestamp } (validate state & EBT)
 
 module.exports = function (log, dir, private) {
-  const bValue = Buffer.from('value')
   const bKey = Buffer.from('key')
+  const bValue = Buffer.from('value')
   const bAuthor = Buffer.from('author')
   const bSequence = Buffer.from('sequence')
   const bTimestamp = Buffer.from('timestamp')
@@ -41,26 +41,19 @@ module.exports = function (log, dir, private) {
 
   function handleData(record, processed) {
     if (record.offset < offset.value) return batch.length
-    const recBuffer = record.value
-    if (!recBuffer) return batch.length // deleted
+    const buf = record.value
+    if (!buf) return batch.length // deleted
 
-    let p = 0 // note you pass in p!
-    const pKey = bipf.seekKey(recBuffer, p, bKey)
-
-    p = 0
-    p = bipf.seekKey(recBuffer, p, bValue)
-    if (~p) {
-      const p2 = bipf.seekKey(recBuffer, p, bAuthor)
-      const author = bipf.decode(recBuffer, p2)
-      const p3 = bipf.seekKey(recBuffer, p, bSequence)
-      const sequence = bipf.decode(recBuffer, p3)
-      const p4 = bipf.seekKey(recBuffer, p, bTimestamp)
-      const timestamp = bipf.decode(recBuffer, p4)
+    const pValue = bipf.seekKey(buf, 0, bValue)
+    if (pValue >= 0) {
+      const author = bipf.decode(buf, bipf.seekKey(buf, pValue, bAuthor))
+      const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, bSequence))
+      const timestamp = bipf.decode(buf, bipf.seekKey(buf, pValue, bTimestamp))
 
       let latestSequence = 0
       if (authorLatest[author]) latestSequence = authorLatest[author].sequence
       if (sequence > latestSequence) {
-        const key = bipf.decode(recBuffer, pKey)
+        const key = bipf.decode(buf, bipf.seekKey(buf, 0, bKey))
         authorLatest[author] = { id: key, sequence, timestamp }
         batch.push({
           type: 'put',
