@@ -92,11 +92,17 @@ test('delete all', (t) => {
         db.deleteFeed(keys.id, (err) => {
           t.error(err, 'no err')
 
-          db.getJITDB().all(author(keys.id), 0, false, false, (err, results) => {
-            t.error(err, 'no err')
-            t.equal(results.length, 0, 'gone')
-            sbot.close(t.end)
-          })
+          db.getJITDB().all(
+            author(keys.id),
+            0,
+            false,
+            false,
+            (err, results) => {
+              t.error(err, 'no err')
+              t.equal(results.length, 0, 'gone')
+              sbot.close(t.end)
+            }
+          )
         })
       })
     })
