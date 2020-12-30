@@ -1,4 +1,4 @@
-const Obv = require('obv')
+const Obv = require('obz')
 const bipf = require('bipf')
 const fic = require('fastintcompression')
 const bsb = require('binary-search-bounds')
