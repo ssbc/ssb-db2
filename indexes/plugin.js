@@ -1,4 +1,4 @@
-const Obv = require('obv')
+const Obv = require('obz')
 const Level = require('level')
 const path = require('path')
 const Debug = require('debug')

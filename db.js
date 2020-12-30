@@ -1,7 +1,7 @@
 const push = require('push-stream')
 const hash = require('ssb-keys/util').hash
 const validate = require('ssb-validate')
-const Obv = require('obv')
+const Obv = require('obz')
 const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
 const JITDb = require('jitdb')
@@ -359,6 +359,7 @@ exports.init = function (sbot, config) {
     getLog: () => log,
     registerIndex,
     getIndexes: () => indexes,
+    getIndex: (index) => indexes[index],
     clearIndexes,
     onDrain,
     getJITDB: () => jitdb,

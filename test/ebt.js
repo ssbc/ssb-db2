@@ -48,7 +48,7 @@ test('author sequence', (t) => {
       t.error(err, 'no err')
 
       db.onDrain('ebt', () => {
-        db.getIndexes().ebt.getMessageFromAuthorSequence(
+        db.getIndex('ebt').getMessageFromAuthorSequence(
           [keys.id, postMsg2.value.sequence],
           (err, msg) => {
             t.error(err, 'no err')
