@@ -115,7 +115,7 @@ exports.init = function (sbot, config) {
       const id = getId(msg)
       if (validated)
         // ssb-validate makes sure things come in order
-        return log.add(id, msg, cb)
+        log.add(id, msg, cb)
       else
         get(id, (err, data) => {
           if (data) cb(null, data)
