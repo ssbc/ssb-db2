@@ -49,7 +49,9 @@
   "scripts": {
     "test": "tape test/*.js | tap-spec",
     "format-code": "prettier --write \"*.js\" \"(test|compat|indexes|operators)/*.js\"",
-    "format-code-staged": "pretty-quick --staged --pattern \"*.js\" --pattern \"(test|compat|indexes|operators)/*.js\""
+    "format-code-staged": "pretty-quick --staged --pattern \"*.js\" --pattern \"(test|compat|indexes|operators)/*.js\"",
+    "benchmark": "node benchmark/index.js | tap-spec",
+    "benchmark-no-create": "node benchmark/index.js noCreate | tap-spec"
   },
   "husky": {
     "hooks": {
