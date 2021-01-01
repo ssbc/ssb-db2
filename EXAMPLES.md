@@ -68,8 +68,8 @@ sbot.db.query(
   and(author(aliceId), contact(bobId)),
   descending(),
   paginate(1),
-  toCallback(arr => {
-    const msg = arr[0]
+  toCallback((err, response) => {
+    const msg = response.results[0]
     // ...
   })
 )
