@@ -93,16 +93,17 @@ test('Raw feed with unused type + ooo', (t) => {
     Date.now() + 5
   )
 
-  db.addOOOStrictOrder(state.queue[2].value, (err) => {
+  let strictOrderState = validate.initial()
+  db.addOOOStrictOrder(state.queue[2].value, strictOrderState, (err) => {
     t.error(err, 'no err')
 
-    db.addOOOStrictOrder(state.queue[3].value, (err) => {
+    db.addOOOStrictOrder(state.queue[3].value, strictOrderState, (err) => {
       t.error(err, 'no err')
 
-      db.addOOOStrictOrder(state.queue[4].value, (err) => {
+      db.addOOOStrictOrder(state.queue[4].value, strictOrderState, (err) => {
         t.error(err, 'no err')
 
-        db.addOOOStrictOrder(state.queue[5].value, (err) => {
+        db.addOOOStrictOrder(state.queue[5].value, strictOrderState, (err) => {
           t.error(err, 'no err')
 
           db.addOOO(state.queue[0].value, (err, oooMsg) => {
@@ -145,7 +146,8 @@ test('Add with holes', (t) => {
     Date.now() + 2
   ) // start
 
-  db.addOOOStrictOrder(state.queue[0].value, (err) => {
+  let strictOrderState = validate.initial()
+  db.addOOOStrictOrder(state.queue[0].value, strictOrderState, (err) => {
     t.error(err, 'no err')
 
     db.addOOO(state.queue[2].value, (err, msg) => {
@@ -181,6 +183,7 @@ test('Add same message twice', (t) => {
     db.add(state.queue[1].value, (err) => {
       t.error(err, 'no err')
 
+      // validate makes sure we can't add the same message twice
       db.add(state.queue[1].value, (err) => {
         t.ok(err, 'Should fail to add')
         t.end()
@@ -208,10 +211,11 @@ test('Strict order basic case', (t) => {
     Date.now() + 1
   )
 
-  db.addOOOStrictOrder(state.queue[0].value, (err) => {
+  let strictOrderState = validate.initial()
+  db.addOOOStrictOrder(state.queue[0].value, strictOrderState, (err) => {
     t.error(err, 'no err')
 
-    db.addOOOStrictOrder(state.queue[1].value, (err) => {
+    db.addOOOStrictOrder(state.queue[1].value, strictOrderState, (err) => {
       t.error(err, 'no err')
       t.end()
     })
@@ -244,10 +248,11 @@ test('Strict order fail case', (t) => {
     Date.now() + 2
   )
 
-  db.addOOOStrictOrder(state.queue[0].value, (err) => {
+  let strictOrderState = validate.initial()
+  db.addOOOStrictOrder(state.queue[0].value, strictOrderState, (err) => {
     t.error(err, 'no err')
 
-    db.addOOOStrictOrder(state.queue[2].value, (err) => {
+    db.addOOOStrictOrder(state.queue[2].value, strictOrderState, (err) => {
       t.ok(err, 'Should fail to add')
 
       t.end()

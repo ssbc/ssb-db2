@@ -110,20 +110,17 @@ exports.init = function (sbot, config) {
     )
   }
 
-  /**
-   * Beware:
-   * There is a race condition here if you add the same message quickly
-   * after another because baseIndex is lazy. The default js SSB
-   * implementation adds messages in order, so it doesn't really have
-   * this problem.
-   */
-  function rawAdd(msg, cb) {
+  function rawAdd(msg, validated, cb) {
     stateFeedsReady.promise.then(() => {
       const id = getId(msg)
-      get(id, (err, data) => {
-        if (data) cb(null, data)
-        else log.add(id, msg, cb)
-      })
+      if (validated)
+        // ssb-validate makes sure things come in order
+        return log.add(id, msg, cb)
+      else
+        get(id, (err, data) => {
+          if (data) cb(null, data)
+          else log.add(id, msg, cb)
+        })
     })
   }
 
@@ -134,7 +131,7 @@ exports.init = function (sbot, config) {
     try {
       state = validate.append(state, hmac_key, msg)
       if (state.error) return cb(state.error)
-      rawAdd(msg, cb)
+      rawAdd(msg, true, cb)
     } catch (ex) {
       return cb(ex)
     }
@@ -150,25 +147,26 @@ exports.init = function (sbot, config) {
 
       if (oooState.error) return cb(oooState.error)
 
-      rawAdd(msg, cb)
+      rawAdd(msg, false, cb)
     } catch (ex) {
       return cb(ex)
     }
   }
 
-  function addOOOStrictOrder(msg, cb) {
+  function addOOOStrictOrder(msg, strictOrderState, cb) {
     const guard = guardAgainstDuplicateLogs('addOOOStrictOrder()')
     if (guard) return cb(guard)
 
-    const knownAuthor = msg.author in state.feeds
+    const knownAuthor = msg.author in strictOrderState.feeds
 
     try {
-      if (!knownAuthor) state = validate.appendOOO(state, hmac_key, msg)
-      else state = validate.append(state, hmac_key, msg)
+      if (!knownAuthor)
+        strictOrderState = validate.appendOOO(strictOrderState, hmac_key, msg)
+      else strictOrderState = validate.append(strictOrderState, hmac_key, msg)
 
-      if (state.error) return cb(state.error)
+      if (strictOrderState.error) return cb(strictOrderState.error)
 
-      rawAdd(msg, cb)
+      rawAdd(msg, true, cb)
     } catch (ex) {
       return cb(ex)
     }
@@ -180,7 +178,7 @@ exports.init = function (sbot, config) {
 
     state.queue = []
     state = validate.appendNew(state, null, config.keys, msg, Date.now())
-    rawAdd(state.queue[0].value, (err, data) => {
+    rawAdd(state.queue[0].value, true, (err, data) => {
       post.set(data)
       cb(err, data)
     })
