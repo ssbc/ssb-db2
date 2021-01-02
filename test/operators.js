@@ -10,7 +10,7 @@ const {
   and,
   type,
   isPrivate,
-  isNotPrivate,
+  isPublic,
   toCallback,
   author,
   isRoot,
@@ -75,7 +75,7 @@ test('execute and(type("post"), isPrivate())', (t) => {
   })
 })
 
-test('execute and(type("post"), isNotPrivate())', (t) => {
+test('execute and(type("post"), isPublic())', (t) => {
   let content = { type: 'posty', text: 'super secret', recps: [keys.id] }
   content = ssbKeys.box(
     content,
@@ -85,13 +85,13 @@ test('execute and(type("post"), isNotPrivate())', (t) => {
   db.publish(content, (err, postMsg) => {
     t.error(err, 'no err')
 
-    db.publish({ type: 'posty', text: 'Testing non-private' }, (err, postMsg) => {
+    db.publish({ type: 'posty', text: 'Testing public' }, (err, postMsg) => {
       db.query(
-        and(type('posty'), isNotPrivate()),
+        and(type('posty'), isPublic()),
         toCallback((err2, msgs) => {
           t.error(err2, 'no err2')
           t.equal(msgs.length, 1)
-          t.equal(msgs[0].value.content.text, 'Testing non-private')
+          t.equal(msgs[0].value.content.text, 'Testing public')
           t.end()
         })
       )
