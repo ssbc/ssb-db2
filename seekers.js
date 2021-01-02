@@ -81,6 +81,11 @@ module.exports = {
     return seekKey(buffer, p, bPrivate)
   },
 
+  seekMeta: function (buffer) {
+    let p = 0 // note you pass in p!
+    return seekKey(buffer, p, bMeta)
+  },
+
   seekChannel: function (buffer) {
     let p = 0 // note you pass in p!
     p = seekKey(buffer, p, bValue)
