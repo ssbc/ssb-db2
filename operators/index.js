@@ -85,7 +85,7 @@ function isPrivate() {
 }
 
 function isNotPrivate() {
-  return equal(seekMeta, undefined, { indexType: 'meta_private' })
+  return equal(seekMeta, undefined, { indexType: 'meta' })
 }
 
 module.exports = Object.assign({}, jitdbOperators, {
