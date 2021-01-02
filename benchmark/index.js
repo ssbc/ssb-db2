@@ -22,8 +22,8 @@ if (!skipCreate) {
   fs.appendFileSync(reportPath, '## Benchmark results\n\n')
 
   const SEED = 'sloop'
-  const MESSAGES = 10000
-  const AUTHORS = 200
+  const MESSAGES = 100000
+  const AUTHORS = 2000
 
   test('generate fixture with flumelog-offset', (t) => {
     generateFixture({
