@@ -10,6 +10,7 @@ const {
   and,
   type,
   isPrivate,
+  isPublic,
   toCallback,
   author,
   isRoot,
@@ -71,6 +72,30 @@ test('execute and(type("post"), isPrivate())', (t) => {
         t.end()
       })
     )
+  })
+})
+
+test('execute and(type("post"), isPublic())', (t) => {
+  let content = { type: 'posty', text: 'super secret', recps: [keys.id] }
+  content = ssbKeys.box(
+    content,
+    content.recps.map((x) => x.substr(1))
+  )
+
+  db.publish(content, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    db.publish({ type: 'posty', text: 'Testing public' }, (err, postMsg) => {
+      db.query(
+        and(type('posty'), isPublic()),
+        toCallback((err2, msgs) => {
+          t.error(err2, 'no err2')
+          t.equal(msgs.length, 1)
+          t.equal(msgs[0].value.content.text, 'Testing public')
+          t.end()
+        })
+      )
+    })
   })
 })
 

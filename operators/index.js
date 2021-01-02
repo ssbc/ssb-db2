@@ -6,6 +6,7 @@ const {
   seekChannel,
   seekRoot,
   seekPrivate,
+  seekMeta,
   seekVoteLink,
   seekMentions,
   pluckLink,
@@ -83,6 +84,10 @@ function isPrivate() {
   return equal(seekPrivate, bTrue, { indexType: 'meta_private' })
 }
 
+function isPublic() {
+  return equal(seekMeta, undefined, { indexType: 'meta' })
+}
+
 module.exports = Object.assign({}, jitdbOperators, {
   type,
   author,
@@ -94,4 +99,5 @@ module.exports = Object.assign({}, jitdbOperators, {
   hasRoot,
   isRoot,
   isPrivate,
+  isPublic
 })
