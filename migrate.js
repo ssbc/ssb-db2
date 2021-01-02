@@ -154,10 +154,17 @@ exports.version = '0.14.0'
 exports.manifest = {
   start: 'sync',
   doesOldLogExist: 'sync',
+  synchronized: 'async',
 }
 
 exports.init = function init(sbot, config) {
   const oldLogExists = makeFileExistsObv(oldLogPath(config.path))
+
+  /**
+   * Boolean obv that indicates whether the new log is synced with the old log.
+   */
+  const synchronized = Obv()
+  synchronized.set(true) // assume true until we `start()`
 
   let started = false
   let hasCloseHook = false
@@ -191,6 +198,8 @@ exports.init = function init(sbot, config) {
     if (oldLogMissingThenRetry(start)) return
     started = true
     debug('started')
+
+    synchronized.set(false)
 
     const oldLog = getOldLog(sbot, config)
     const newLog =
@@ -266,6 +275,8 @@ exports.init = function init(sbot, config) {
               }, 2000).unref()
             }
 
+            synchronized.set(true)
+
             pull(
               oldLog.getLiveStream(),
               pull.map(updateMigratedSizeAndPluck),
@@ -284,6 +295,7 @@ exports.init = function init(sbot, config) {
   return {
     start,
     doesOldLogExist: () => oldLogExists.value,
+    synchronized,
     // dangerouslyKillOldLog, // FIXME: implement this
   }
 }
