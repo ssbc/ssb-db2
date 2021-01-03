@@ -83,8 +83,6 @@ test('initial indexing', (t) => {
     .use(require('../'))
     .call(null, { keys, path: dir })
 
-  sbot.db2migrate.start()
-
   const start = Date.now()
   sbot.db.query(
     and(type('post')),
