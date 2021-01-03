@@ -7,6 +7,8 @@ const generateFixture = require('ssb-fixtures')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const ssbKeys = require('ssb-keys')
+const pull = require('pull-stream')
+const fromEvent = require('pull-stream-util/from-event')
 const { and, type, descending, paginate, toCallback } = require('../operators')
 
 const dir = '/tmp/ssb-db2-benchmark'
@@ -42,16 +44,44 @@ if (!skipCreate) {
   })
 }
 
-test('initial indexing', (t) => {
+test('reset db2', (t) => {
   rimraf.sync(db2Path)
+  t.pass('delete db2 folder to start clean')
+  t.end()
+})
 
+test('migration', (t) => {
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../migrate'))
+    .call(null, { keys, path: dir })
+
+  const start = Date.now()
+  sbot.db2migrate.start()
+
+  pull(
+    fromEvent('ssb:db2:migrate:progress', sbot),
+    pull.filter((progress) => progress === 1),
+    pull.take(1),
+    pull.drain(() => {
+      const duration = Date.now() - start
+      t.pass(`duration: ${duration}ms`)
+      fs.appendFileSync(reportPath, `- Migration: ${duration}ms\n`)
+      // wait for new log FS writes to finalize
+      setTimeout(() => {
+        sbot.close(() => {
+          t.end()
+        })
+      }, 2000)
+    })
+  )
+})
+
+test('initial indexing', (t) => {
   const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
-    .call(null, {
-      keys,
-      path: dir,
-    })
+    .call(null, { keys, path: dir })
 
   sbot.db2migrate.start()
 
