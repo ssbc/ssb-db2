@@ -26,3 +26,31 @@ jobs:
       - run: npm install
       - name: npm test
         run: DEBUG=jitdb,ssb:* npm test
+
+  benchmark:
+    needs: test
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js 12.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: 12.x
+      - run: npm install
+      - name: Benchmark
+        run: npm run benchmark
+      - id: get-comment-body
+        name: Gather results
+        run: |
+          body=$(cat /tmp/ssb-db2-benchmark/benchmark.md)
+          body="${body//'%'/'%25'}"
+          body="${body//$'\n'/'%0A'}"
+          body="${body//$'\r'/'%0D'}"
+          echo ::set-output name=body::$body
+      - name: Publish comment
+        uses: mshick/add-pr-comment@v1
+        with:
+          message: ${{ steps.get-comment-body.outputs.body }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
