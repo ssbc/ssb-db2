@@ -54,7 +54,8 @@ module.exports = function (
   function onData(record, isLive) {
     // maybe check if for us!
     const unwritten = handleData(record, processed)
-    if (unwritten > 0) unWrittenOffset = record.offset
+    if (isLive && unwritten > 0) unWrittenOffset = record.offset
+    else unWrittenOffset = record.offset
     processed++
 
     if (unwritten > chunkSize || isLive) writeBatch(() => {})
