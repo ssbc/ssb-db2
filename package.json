@@ -1,14 +1,14 @@
 {
   "name": "ssb-db2",
   "description": "A new database for SSB",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "homepage": "https://github.com/arj03/ssb-db2",
   "repository": {
     "type": "git",
     "url": "git@github.com:arj03/ssb-db2.git"
   },
   "dependencies": {
-    "async-append-only-log": "^3.0.0",
+    "async-append-only-log": "^3.0.1",
     "atomically-universal": "^0.1.0",
     "binary-search-bounds": "^2.0.4",
     "bipf": "~1.4.0",
