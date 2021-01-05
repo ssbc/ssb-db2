@@ -2,7 +2,7 @@ const OffsetLog = require('async-append-only-log')
 const bipf = require('bipf')
 const { BLOCK_SIZE, newLogPath } = require('./defaults')
 
-module.exports = function (dir, config, private) {
+module.exports = function (dir, config, privateIndex) {
   config = config || {}
 
   const log = OffsetLog(newLogPath(dir), {
@@ -39,7 +39,7 @@ module.exports = function (dir, config, private) {
       if (err) return cb(err)
       else {
         const record = { offset, value: buffer }
-        cb(null, private.decrypt(record, false).value)
+        cb(null, privateIndex.decrypt(record, false).value)
       }
     })
   }
@@ -50,7 +50,7 @@ module.exports = function (dir, config, private) {
     const originalPipe = s.pipe.bind(s)
     s.pipe = function pipe(o) {
       let originalWrite = o.write
-      o.write = (record) => originalWrite(private.decrypt(record, true))
+      o.write = (record) => originalWrite(privateIndex.decrypt(record, true))
       return originalPipe(o)
     }
     return s

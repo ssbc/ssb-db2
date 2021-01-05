@@ -6,7 +6,7 @@ const Plugin = require('./plugin')
 // 1 index:
 // - author => latest { msg key, sequence timestamp } (validate state & EBT)
 
-module.exports = function (log, dir, private) {
+module.exports = function (log, dir, privateIndex) {
   const bKey = Buffer.from('key')
   const bValue = Buffer.from('value')
   const bAuthor = Buffer.from('author')
@@ -33,7 +33,7 @@ module.exports = function (log, dir, private) {
   function writeData(cb) {
     level.batch(batch, { valueEncoding: 'json' }, (err) => {
       if (err) return cb(err)
-      else private.saveIndexes(cb)
+      else privateIndex.saveIndexes(cb)
     })
 
     batch = []
