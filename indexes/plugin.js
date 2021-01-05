@@ -27,26 +27,28 @@ module.exports = function (
   const META = '\x00'
   const chunkSize = 2048
   let processed = 0 // processed "seq"
-  const offset = Obv()
+  const offset = Obv() // persisted
   const stateLoaded = DeferredPromise()
-  let unWrittenOffset = -1
+  let notPersistedOffset = -1
 
   function writeBatch(cb) {
-    if (unWrittenOffset > -1 && !level.isClosed()) {
-      level.put(
-        META,
-        { version, offset: unWrittenOffset, processed },
-        { valueEncoding: 'json' },
-        (err) => {
-          if (err) throw err
-        }
-      )
-
+    if (notPersistedOffset > -1 && !level.isClosed()) {
       writeData((err) => {
         if (err) return cb(err)
         else {
-          offset.set(unWrittenOffset)
-          cb()
+          // we can't batch this as the encoding might not be the same as the plugin
+          level.put(
+            META,
+            { version, offset: notPersistedOffset, processed },
+            { valueEncoding: 'json' },
+            (err) => {
+              if (err) cb(err)
+              else {
+                offset.set(notPersistedOffset)
+                cb()
+              }
+            }
+          )
         }
       })
     } else cb()
@@ -55,11 +57,11 @@ module.exports = function (
   const liveWriteBatch = debounce(writeBatch, 250)
 
   function onData(record, isLive) {
-    const unwritten = handleData(record, processed)
-    unWrittenOffset = record.offset
+    const changes = handleData(record, processed)
+    notPersistedOffset = record.offset
     processed++
 
-    if (unwritten > chunkSize) writeBatch(() => {})
+    if (changes > chunkSize) writeBatch(() => {})
     else if (isLive) liveWriteBatch(() => {})
   }
 
