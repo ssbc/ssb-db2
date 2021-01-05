@@ -1,5 +1,6 @@
 const Obv = require('obz')
 const Level = require('level')
+const debounce = require('lodash.debounce')
 const path = require('path')
 const Debug = require('debug')
 const DeferredPromise = require('p-defer')
@@ -51,13 +52,15 @@ module.exports = function (
     } else cb()
   }
 
+  const liveWriteBatch = debounce(writeBatch, 250)
+
   function onData(record, isLive) {
-    // maybe check if for us!
     const unwritten = handleData(record, processed)
-    if (unwritten > 0) unWrittenOffset = record.offset
+    unWrittenOffset = record.offset
     processed++
 
-    if (unwritten > chunkSize || isLive) writeBatch(() => {})
+    if (unwritten > chunkSize) writeBatch(() => {})
+    else if (isLive) liveWriteBatch(() => {})
   }
 
   level.get(META, { valueEncoding: 'json' }, (err, data) => {
