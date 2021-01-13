@@ -35,8 +35,9 @@ module.exports = function (
     if (notPersistedOffset > -1 && !level.isClosed()) {
       writeData((err) => {
         if (err) return cb(err)
-        else {
-          // we can't batch this as the encoding might not be the same as the plugin
+
+        // we can't batch this as the encoding might not be the same as the plugin
+        if (!level.isClosed()) {
           level.put(
             META,
             { version, offset: notPersistedOffset, processed },
