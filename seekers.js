@@ -6,6 +6,8 @@ const bAuthor = Buffer.from('author')
 const bContent = Buffer.from('content')
 const bType = Buffer.from('type')
 const bRoot = Buffer.from('root')
+const bFork = Buffer.from('fork')
+const bBranch = Buffer.from('branch')
 const bVote = Buffer.from('vote')
 const bContact = Buffer.from('contact')
 const bLink = Buffer.from('link')
@@ -38,6 +40,24 @@ module.exports = {
     p = seekKey(buffer, p, bContent)
     if (p < 0) return
     return seekKey(buffer, p, bRoot)
+  },
+
+  seekFork: function (buffer) {
+    let p = 0 // note you pass in p!
+    p = seekKey(buffer, p, bValue)
+    if (p < 0) return
+    p = seekKey(buffer, p, bContent)
+    if (p < 0) return
+    return seekKey(buffer, p, bFork)
+  },
+
+  seekBranch: function (buffer) {
+    let p = 0 // note you pass in p!
+    p = seekKey(buffer, p, bValue)
+    if (p < 0) return
+    p = seekKey(buffer, p, bContent)
+    if (p < 0) return
+    return seekKey(buffer, p, bBranch)
   },
 
   seekVoteLink: function (buffer) {
