@@ -17,6 +17,7 @@ const {
   votesFor,
   mentions,
   hasRoot,
+  hasFork,
   live,
   toPullStream,
   contact,
@@ -139,6 +140,35 @@ test('execute hasRoot(msgkey)', (t) => {
 
         db.query(
           and(hasRoot(postMsg.key)),
+          toCallback((err, results) => {
+            t.error(err, 'no err')
+            t.equal(results.length, 1)
+            t.equal(results[0].value.content.text, threadMsg1.text)
+            t.end()
+          })
+        )
+      })
+    })
+  })
+})
+
+test('execute hasFork(msgkey)', (t) => {
+  const post = { type: 'post', text: 'Testing!' }
+  const post2 = { type: 'post', text: 'Testing 2!' }
+
+  db.publish(post, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    db.publish(post2, (err) => {
+      t.error(err, 'no err')
+
+      const threadMsg1 = { type: 'post', text: 'reply', fork: postMsg.key }
+
+      db.publish(threadMsg1, (err) => {
+        t.error(err, 'no err')
+
+        db.query(
+          and(hasFork(postMsg.key)),
           toCallback((err, results) => {
             t.error(err, 'no err')
             t.equal(results.length, 1)
