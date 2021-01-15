@@ -12,6 +12,7 @@ const {
   seekMentions,
   pluckLink,
   seekContact,
+  seekBranch,
 } = require('../seekers')
 const { and, equal, includes } = jitdbOperators
 
@@ -81,6 +82,13 @@ function hasFork(msgKey) {
   })
 }
 
+function hasBranch(msgKey) {
+  return equal(seekBranch, msgKey, {
+    prefix: 32,
+    indexType: 'value_content_branch',
+  })
+}
+
 function isRoot() {
   return equal(seekRoot, null, {
     indexType: 'value_content_root',
@@ -106,6 +114,7 @@ module.exports = Object.assign({}, jitdbOperators, {
   mentions,
   hasRoot,
   hasFork,
+  hasBranch,
   isRoot,
   isPrivate,
   isPublic,
