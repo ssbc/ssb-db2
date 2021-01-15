@@ -52,6 +52,49 @@ test('Base', (t) => {
   )
 })
 
+test('get', (t) => {
+  const post = { type: 'post', text: 'Testing!' }
+
+  db.publish(post, (err, postMsg) => {
+    t.error(err, 'no err')
+    t.equal(postMsg.value.content.text, post.text, 'text correct')
+
+    db.get(postMsg.key, (err, getMsg) => {
+      t.error(err, 'no err')
+      t.deepEqual(postMsg.value, getMsg, 'msg value correct')
+      t.end()
+    })
+  })
+})
+
+test('get missing key', (t) => {
+  const post = { type: 'post', text: 'Testing!' }
+
+  db.publish(post, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    db.get('%fake', (err, getMsg) => {
+      t.equal(err.message, 'Key not found in database %fake')
+      t.end()
+    })
+  })
+})
+
+test('getMsg', (t) => {
+  const post = { type: 'post', text: 'Testing!' }
+
+  db.publish(post, (err, postMsg) => {
+    t.error(err, 'no err')
+    t.equal(postMsg.value.content.text, post.text, 'text correct')
+
+    db.getMsg(postMsg.key, (err, getMsg) => {
+      t.error(err, 'no err')
+      t.deepEqual(postMsg, getMsg, 'msg value correct')
+      t.end()
+    })
+  })
+})
+
 test('delete single', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 
@@ -87,7 +130,7 @@ test('delete all', (t) => {
 
       db.getJITDB().all(author(keys.id), 0, false, false, (err, results) => {
         t.error(err, 'no err')
-        t.equal(results.length, 30 + 2, 'got both new messages')
+        t.equal(results.length, 30 + 5, 'got both new messages')
 
         db.deleteFeed(keys.id, (err) => {
           t.error(err, 'no err')
