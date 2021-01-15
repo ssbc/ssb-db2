@@ -99,15 +99,24 @@ exports.init = function (sbot, config) {
     }
   }
 
-  function get(id, cb) {
+  function getHelper(id, onlyValue, cb) {
     query(
       and(key(id)),
       toCallback((err, results) => {
         if (err) return cb(err)
-        else if (results.length) return cb(null, results[0].value)
-        else return cb()
+        else if (results.length)
+          return cb(null, onlyValue ? results[0].value : results[0])
+        else return cb(new Error('Key not found in database ' + id))
       })
     )
+  }
+
+  function get(id, cb) {
+    getHelper(id, true, cb)
+  }
+
+  function getMsg(id, cb) {
+    getHelper(id, false, cb)
   }
 
   function rawAdd(msg, validated, cb) {
@@ -353,6 +362,7 @@ exports.init = function (sbot, config) {
   return {
     // API:
     get,
+    getMsg,
     query,
     del,
     deleteFeed,

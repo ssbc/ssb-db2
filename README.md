@@ -206,7 +206,11 @@ sbot.db2migrate.start()
 
 ### get(msgId, cb)
 
-Get a particular message by message id.
+Get a particular message value by message id.
+
+### getMsg(msgId, cb)
+
+Get a particular message including key by message id.
 
 ### del(msgId, cb)
 
