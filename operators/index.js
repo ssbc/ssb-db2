@@ -31,6 +31,7 @@ function type(value) {
 
 function author(value) {
   return equal(seekAuthor, value, {
+    prefix: 32,
     indexType: 'value_author',
   })
 }
