@@ -11,7 +11,7 @@ const DeferredPromise = require('p-defer')
 const { indexesPath } = require('./defaults')
 const Log = require('./log')
 const BaseIndex = require('./indexes/base')
-const Private = require('./indexes/private')
+const PrivateIndex = require('./indexes/private')
 
 const {
   and,
@@ -50,10 +50,10 @@ exports.manifest = {
 
 exports.init = function (sbot, config) {
   const dir = config.path
-  const private = Private(dir, config.keys)
-  const log = Log(dir, config, private)
+  const privateIndex = PrivateIndex(dir, config.keys)
+  const log = Log(dir, config, privateIndex)
   const jitdb = JITDb(log, indexesPath(dir))
-  const baseIndex = BaseIndex(log, dir, private)
+  const baseIndex = BaseIndex(log, dir, privateIndex)
 
   const debug = Debug('ssb:db2')
 
@@ -311,7 +311,7 @@ exports.init = function (sbot, config) {
 
   function onIndexesStateLoaded(cb) {
     if (!onIndexesStateLoaded.promise) {
-      const stateLoadedPromises = [private.stateLoaded]
+      const stateLoadedPromises = [privateIndex.stateLoaded]
       for (const indexName in indexes) {
         stateLoadedPromises.push(indexes[indexName].stateLoaded)
       }
