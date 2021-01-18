@@ -8,6 +8,7 @@ const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const {
   and,
+  or,
   type,
   isPrivate,
   isPublic,
@@ -36,6 +37,35 @@ const sbot = SecretStack({ appKey: caps.shs }).use(require('../')).call(null, {
   path: dir,
 })
 const db = sbot.db
+
+test('can create a reusable query portion', (t) => {
+  const about = { type: 'about', text: 'Testing!' }
+
+  db.publish(about, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    const myAbouts = db.query(and(type('about'), author(keys.id)))
+
+    db.query(
+      myAbouts,
+      toCallback((err2, msgs) => {
+        t.error(err2, 'no err2')
+        t.equal(msgs.length, 1)
+        t.equal(msgs[0].value.content.type, 'about')
+
+        pull(
+          db.query(myAbouts, toPullStream()),
+          pull.collect((err3, msgsAgain) => {
+            t.error(err3, 'no err3')
+            t.equal(msgsAgain.length, 1)
+            t.equal(msgsAgain[0].value.content.type, 'about')
+            t.end()
+          })
+        )
+      })
+    )
+  })
+})
 
 test('execute and(type("post"), author(me))', (t) => {
   const post = { type: 'post', text: 'Testing!' }
@@ -124,7 +154,7 @@ test('execute isRoot()', (t) => {
   })
 })
 
-test('execute hasRoot(msgkey)', (t) => {
+test('execute and(hasRoot(msgkey))', (t) => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }
 
@@ -141,6 +171,35 @@ test('execute hasRoot(msgkey)', (t) => {
 
         db.query(
           and(hasRoot(postMsg.key)),
+          toCallback((err, results) => {
+            t.error(err, 'no err')
+            t.equal(results.length, 1)
+            t.equal(results[0].value.content.text, threadMsg1.text)
+            t.end()
+          })
+        )
+      })
+    })
+  })
+})
+
+test('execute or(hasRoot(msgkey))', (t) => {
+  const post = { type: 'post', text: 'Testing!' }
+  const post2 = { type: 'post', text: 'Testing 2!' }
+
+  db.publish(post, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    db.publish(post2, (err) => {
+      t.error(err, 'no err')
+
+      const threadMsg1 = { type: 'post', text: 'reply', root: postMsg.key }
+
+      db.publish(threadMsg1, (err) => {
+        t.error(err, 'no err')
+
+        db.query(
+          or(hasRoot(postMsg.key)),
           toCallback((err, results) => {
             t.error(err, 'no err')
             t.equal(results.length, 1)
