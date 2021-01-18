@@ -337,25 +337,32 @@ exports.init = function (sbot, config) {
 
   // override query() from jitdb to implicitly call fromDB()
   function query(first, ...rest) {
-    const waitForMigrateAndDrain = and(
-      deferred((meta, cb) => {
-        if (sbot.db2migrate) {
-          sbot.db2migrate.synchronized((isSynced) => {
-            if (isSynced) {
-              log.onDrain(cb)
-            }
-          })
-        } else {
-          log.onDrain(cb)
-        }
-      })
-    )
+    // Before running the query, the log needs to be migrated/synced with the
+    // old log and it should be 'drained'
+    const waitUntilReady = deferred((meta, cb) => {
+      if (sbot.db2migrate) {
+        sbot.db2migrate.synchronized((isSynced) => {
+          if (isSynced) {
+            log.onDrain(cb)
+          }
+        })
+      } else {
+        log.onDrain(cb)
+      }
+    })
+
+    if (rest.length === 0) {
+      const ops = fromDB(jitdb)
+      ops.meta.db2 = this
+      return jitdbOperators.query(ops, and(waitUntilReady), first)
+    }
+
     if (!first.meta) {
       const ops = fromDB(jitdb)
       ops.meta.db2 = this
-      return jitdbOperators.query(ops, waitForMigrateAndDrain, first, ...rest)
+      return jitdbOperators.query(ops, and(waitUntilReady, first), ...rest)
     } else {
-      return jitdbOperators.query(first, waitForMigrateAndDrain, ...rest)
+      return jitdbOperators.query(first, and(waitUntilReady), ...rest)
     }
   }
 
