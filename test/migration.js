@@ -190,12 +190,18 @@ test('migrate does not read decrypted from old log', (t) => {
       },
     })
 
-  // This should run after the sbot.publish completes
-  pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
-    pull.filter((x) => x === 1),
-    pull.take(1),
-    pull.drain(() => {
+  const onMigrationDone = (cb) =>
+    pull(
+      fromEvent('ssb:db2:migrate:progress', sbot),
+      pull.filter((x) => x === 1),
+      pull.take(1),
+      pull.drain(cb)
+    )
+
+  // This should run on init, to signal that nothing needed to be migrated
+  onMigrationDone(() => {
+    // This should run after the sbot.publish (below) completes
+    onMigrationDone(() => {
       sbot.db.query(
         and(type('post'), isPrivate()),
         toCallback((err, msgs) => {
@@ -206,16 +212,16 @@ test('migrate does not read decrypted from old log', (t) => {
         })
       )
     })
-  )
 
-  let content = { type: 'post', text: 'super secret', recps: [keys.id] }
-  content = ssbKeys.box(
-    content,
-    content.recps.map((x) => x.substr(1))
-  )
-  sbot.publish(content, (err, posted) => {
-    t.error(err, 'publish suceeded')
-    t.equals(typeof posted.value.content, 'string', 'private msg posted')
+    let content = { type: 'post', text: 'super secret', recps: [keys.id] }
+    content = ssbKeys.box(
+      content,
+      content.recps.map((x) => x.substr(1))
+    )
+    sbot.publish(content, (err, posted) => {
+      t.error(err, 'publish suceeded')
+      t.equals(typeof posted.value.content, 'string', 'private msg posted')
+    })
   })
 })
 
