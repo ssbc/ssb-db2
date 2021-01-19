@@ -20,44 +20,25 @@ function makeFileExistsObv(filename) {
 }
 
 function getOldLog(sbot, config) {
-  // Support ssb-db@21
-  if (sbot.createRawLogStream && sbot.status) {
-    const getStream = (opts) =>
-      sbot.createRawLogStream({ old: true, live: false, ...opts })
-    const getLiveStream = () =>
-      sbot.createRawLogStream({ old: false, live: true })
-    const getSize = () => sbot.status().sync.since
-    return { getStream, getLiveStream, getSize }
+  const oldLog = FlumeLog(oldLogPath(config.path), {
+    blockSize: BLOCK_SIZE,
+    codec: jsonCodec,
+  })
+  const opts = {
+    keys: true,
+    seqs: true,
+    value: true,
+    sync: false,
+    reverse: false,
+    codec: jsonCodec,
   }
-  // Support ssb-db@19
-  else if (sbot.createLogStream && sbot.status) {
-    const getStream = (opts) =>
-      sbot.createLogStream({ raw: true, old: true, live: false, ...opts })
-    const getLiveStream = () =>
-      sbot.createLogStream({ raw: true, old: false, live: true })
-    const getSize = () => sbot.status().sync.since
-    return { getStream, getLiveStream, getSize }
-  }
-  // Support running without ssb-db
-  else {
-    const oldLog = FlumeLog(oldLogPath(config.path), {
-      blockSize: BLOCK_SIZE,
-      codec: jsonCodec,
-    })
-    const opts = {
-      keys: true,
-      seqs: true,
-      value: true,
-      sync: false,
-      codec: jsonCodec,
-    }
-    const getStream = (moreOpts) =>
-      oldLog.stream({ old: true, live: false, ...opts, ...moreOpts })
-    const getLiveStream = () =>
-      oldLog.stream({ old: false, live: true, ...opts })
-    const getSize = () => oldLog.since.value
-    return { getStream, getLiveStream, getSize }
-  }
+  const getStream = (moreOpts) =>
+    oldLog.stream({ old: true, live: false, ...opts, ...moreOpts })
+  const getLiveStream = () => oldLog.stream({ old: false, live: true, ...opts })
+  const getSize = () => oldLog.since.value
+  // FIXME: when we do #129, should replace Obv() with something from db.js
+  const newMsgObv = sbot.post ? sbot.post : Obv()
+  return { getStream, getLiveStream, getSize, newMsgObv }
 }
 
 function toBIPF(msg) {
@@ -208,7 +189,6 @@ exports.init = function init(sbot, config) {
         : AsyncLog(newLogPath(config.path), { blockSize: BLOCK_SIZE })
 
     let migratedSize = null
-    let progressCalls = 0
 
     function updateMigratedSizeAndPluck(obj) {
       // "seq" in flumedb is an abstract num, here it actually means "offset"
@@ -216,10 +196,11 @@ exports.init = function init(sbot, config) {
       return obj.value
     }
 
+    let progressCalls = 0
     function emitProgressEvent() {
       const oldSize = oldLog.getSize()
       if (oldSize > 0 && migratedSize !== null) {
-        const progress = migratedSize / oldSize
+        const progress = Math.min(migratedSize / oldSize, 1)
         if (
           progress === 1 ||
           progressCalls < 100 ||
@@ -231,16 +212,14 @@ exports.init = function init(sbot, config) {
     }
 
     let dataTransferred = 0 // FIXME: does this only work if the new log is empty?
-    function writeTo(log) {
-      return (data, cb) => {
-        dataTransferred += data.length
-        // FIXME: could we use log.add since it already converts to BIPF?
-        // FIXME: see also issue #16
-        log.append(data, () => {})
-        emitProgressEvent()
-        if (dataTransferred % BLOCK_SIZE === 0) log.onDrain(cb)
-        else cb()
-      }
+    function writeToNewLog(data, cb) {
+      dataTransferred += data.length
+      // FIXME: could we use log.add since it already converts to BIPF?
+      // FIXME: see also issue #16
+      newLog.append(data, () => {})
+      emitProgressEvent()
+      if (dataTransferred % BLOCK_SIZE === 0) newLog.onDrain(cb)
+      else cb()
     }
 
     findMigratedOffset(sbot, oldLog, newLog, (err, migratedOffset) => {
@@ -257,7 +236,7 @@ exports.init = function init(sbot, config) {
         oldLog.getStream({ gt: migratedOffset }),
         pull.map(updateMigratedSizeAndPluck),
         pull.map(toBIPF),
-        pull.asyncMap(writeTo(newLog)),
+        pull.asyncMap(writeToNewLog),
         (drainAborter = pull.drain(
           () => {
             msgCountOldLog++
@@ -266,6 +245,7 @@ exports.init = function init(sbot, config) {
             if (err) return console.error(err)
             debug('done migrating %s msgs from old log', msgCountOldLog)
 
+            // Setup periodic `debug` reporter of live msgs migrated
             let liveMsgCount = 0
             if (debug.enabled) {
               setInterval(() => {
@@ -275,17 +255,16 @@ exports.init = function init(sbot, config) {
               }, 2000).unref()
             }
 
+            // Inform the other parts of ssb-db2 that migration is done
             synchronized.set(true)
 
-            pull(
-              oldLog.getLiveStream(),
-              pull.map(updateMigratedSizeAndPluck),
-              pull.map(toBIPF),
-              pull.asyncMap(writeTo(newLog)),
-              (drainAborter = pull.drain(() => {
+            // Setup migration of live new msgs identified on the old log
+            drainAborter = null
+            oldLog.newMsgObv((msg) => {
+              writeToNewLog(toBIPF(msg), () => {
                 liveMsgCount++
-              }))
-            )
+              })
+            })
           }
         ))
       )
