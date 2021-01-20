@@ -63,6 +63,21 @@ function scanAndCount(pushstream, cb) {
   })
 }
 
+function guardAgainstDecryptedMsg(msg) {
+  if (
+    (msg && msg.meta && msg.meta.private) ||
+    (msg && msg.value && msg.value.meta && msg.value.meta.private)
+  ) {
+    console.error(
+      'ssb:db2:migrate was about to write ' +
+        'private message *decrypted* to disk'
+    )
+    return true
+  } else {
+    return false
+  }
+}
+
 /**
  * Fallback algorithm that does the same as findMigratedOffset, but is slow
  * because it does a scan of BOTH new log and old log.
@@ -243,7 +258,11 @@ exports.init = function init(sbot, config) {
           },
           (err) => {
             if (err) return console.error(err)
+
+            // Inform the other parts of ssb-db2 that migration is done
+            synchronized.set(true)
             debug('done migrating %s msgs from old log', msgCountOldLog)
+            drainAborter = null
 
             // Setup periodic `debug` reporter of live msgs migrated
             let liveMsgCount = 0
@@ -255,12 +274,9 @@ exports.init = function init(sbot, config) {
               }, 2000).unref()
             }
 
-            // Inform the other parts of ssb-db2 that migration is done
-            synchronized.set(true)
-
             // Setup migration of live new msgs identified on the old log
-            drainAborter = null
             oldLog.newMsgObv((msg) => {
+              if (guardAgainstDecryptedMsg(msg)) return
               writeToNewLog(toBIPF(msg), () => {
                 liveMsgCount++
               })
