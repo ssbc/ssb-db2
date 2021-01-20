@@ -68,13 +68,10 @@ function guardAgainstDecryptedMsg(msg) {
     (msg && msg.meta && msg.meta.private) ||
     (msg && msg.value && msg.value.meta && msg.value.meta.private)
   ) {
-    console.error(
+    return new Error(
       'ssb:db2:migrate was about to write ' +
         'private message *decrypted* to disk'
     )
-    return true
-  } else {
-    return false
   }
 }
 
@@ -276,7 +273,9 @@ exports.init = function init(sbot, config) {
 
             // Setup migration of live new msgs identified on the old log
             oldLog.newMsgObv((msg) => {
-              if (guardAgainstDecryptedMsg(msg)) return
+              const guard = guardAgainstDecryptedMsg(msg)
+              if (guard) throw guard
+
               writeToNewLog(toBIPF(msg), () => {
                 liveMsgCount++
               })
