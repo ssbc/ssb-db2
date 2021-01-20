@@ -4,6 +4,7 @@ const validate = require('ssb-validate')
 const Obv = require('obz')
 const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
+const operators = require('./operators')
 const JITDb = require('jitdb')
 const Debug = require('debug')
 const DeferredPromise = require('p-defer')
@@ -13,14 +14,7 @@ const Log = require('./log')
 const BaseIndex = require('./indexes/base')
 const PrivateIndex = require('./indexes/private')
 
-const {
-  and,
-  fromDB,
-  key,
-  author,
-  deferred,
-  toCallback,
-} = require('./operators')
+const { and, fromDB, key, author, deferred, toCallback } = operators
 
 function getId(msg) {
   return '%' + hash(JSON.stringify(msg, null, 2))
@@ -378,6 +372,7 @@ exports.init = function (sbot, config) {
     addOOO,
     addOOOStrictOrder,
     getStatus,
+    operators,
 
     // needed primarily internally by other plugins in this project:
     post,

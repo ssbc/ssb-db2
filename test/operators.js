@@ -423,6 +423,24 @@ test('execute votesFor(msgkey)', (t) => {
   })
 })
 
+test('operators are exposed', (t) => {
+  const post = { type: 'post', text: 'Testing!' }
+
+  db.publish(post, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    pull(
+      db.query(
+        db.operators.and(db.operators.key(postMsg.key)),
+        db.operators.toCallback((err, results) => {
+          t.equal(results[0].key, postMsg.key)
+          t.end()
+        })
+      )
+    )
+  })
+})
+
 test('live votesFor', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 
