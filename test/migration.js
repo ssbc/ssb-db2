@@ -9,7 +9,7 @@ const generateFixture = require('ssb-fixtures')
 const fs = require('fs')
 const pull = require('pull-stream')
 const fromEvent = require('pull-stream-util/from-event')
-const { toCallback } = require('../operators')
+const { toCallback, and, isPrivate, type } = require('../operators')
 
 const dir = '/tmp/ssb-db2-migrate'
 
@@ -70,9 +70,7 @@ test('migrate moves msgs from old log to new log', (t) => {
           t.error(err1, 'no err')
           t.equal(msgs.length, TOTAL)
           t.true(progressEventsReceived, 'progress events received')
-          sbot.close(() => {
-            t.end()
-          })
+          sbot.close(t.end)
         })
       )
     })
@@ -119,9 +117,7 @@ test('migrate moves msgs from ssb-db to new log', (t) => {
           t.error(err1, 'no err')
           t.equal(msgs.length, TOTAL)
           t.true(progressEventsReceived, 'progress events received')
-          sbot.close(() => {
-            t.end()
-          })
+          sbot.close(t.end)
         })
       )
     })
@@ -163,9 +159,8 @@ test('migrate keeps new log synced with ssb-db being updated', (t) => {
                 toCallback((err3, msgs2) => {
                   t.error(err3, '2nd query suceeded')
                   t.equal(msgs2.length, TOTAL + 1, `${TOTAL + 1} msgs`)
-                  sbot.close(() => {
-                    t.end()
-                  })
+                  t.equal(msgs2[TOTAL].value.content.text, 'Extra post')
+                  sbot.close(t.end)
                 })
               )
             })
@@ -181,6 +176,55 @@ test('migrate keeps new log synced with ssb-db being updated', (t) => {
   )
 })
 
+test('migrate does not read decrypted from old log', (t) => {
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('ssb-db'))
+    .use(require('../index'))
+    .call(null, {
+      keys,
+      path: dir,
+      db2: {
+        automigrate: true,
+        migrateMaxCpu: 40,
+      },
+    })
+
+  const onMigrationDone = (cb) =>
+    pull(
+      fromEvent('ssb:db2:migrate:progress', sbot),
+      pull.filter((x) => x === 1),
+      pull.take(1),
+      pull.drain(cb)
+    )
+
+  // This should run on init, to signal that nothing needed to be migrated
+  onMigrationDone(() => {
+    // This should run after the sbot.publish (below) completes
+    onMigrationDone(() => {
+      sbot.db.query(
+        and(type('post'), isPrivate()),
+        toCallback((err, msgs) => {
+          t.error(err, 'no err')
+          t.equal(msgs.length, 1)
+          t.equal(msgs[0].value.content.text, 'super secret')
+          sbot.close(t.end)
+        })
+      )
+    })
+
+    let content = { type: 'post', text: 'super secret', recps: [keys.id] }
+    content = ssbKeys.box(
+      content,
+      content.recps.map((x) => x.substr(1))
+    )
+    sbot.publish(content, (err, posted) => {
+      t.error(err, 'publish suceeded')
+      t.equals(typeof posted.value.content, 'string', 'private msg posted')
+    })
+  })
+})
+
 test('refuses to db2.add() while old log exists', (t) => {
   const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
@@ -193,6 +237,7 @@ test('refuses to db2.add() while old log exists', (t) => {
     pull.filter((x) => x === 1),
     pull.take(1),
     pull.drain(() => {
+      t.pass('migration done')
       const post = { type: 'post', text: 'Testing!' }
       sbot.db.publish(post, (err, posted) => {
         t.ok(err)
@@ -201,9 +246,7 @@ test('refuses to db2.add() while old log exists', (t) => {
           err.message.includes('refusing to publish() because the old log'),
           'error message is about the old log'
         )
-        sbot.close(() => {
-          t.end()
-        })
+        sbot.close(t.end)
       })
     })
   )
@@ -222,9 +265,7 @@ test('migrate does nothing when there is no old log', (t) => {
 
   setTimeout(() => {
     t.pass('did nothing')
-    sbot.close(() => {
-      t.end()
-    })
+    sbot.close(t.end)
   }, 1000)
 
   pull(
