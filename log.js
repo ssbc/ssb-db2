@@ -1,9 +1,11 @@
 const OffsetLog = require('async-append-only-log')
 const bipf = require('bipf')
+const TooHot = require('too-hot')
 const { BLOCK_SIZE, newLogPath } = require('./defaults')
 
 module.exports = function (dir, config, privateIndex) {
   config = config || {}
+  config.db2 = config.db2 || {}
 
   const log = OffsetLog(newLogPath(dir), {
     blockSize: BLOCK_SIZE,
@@ -31,8 +33,7 @@ module.exports = function (dir, config, privateIndex) {
     })
   }
 
-  // add automatic decrypt
-
+  // monkey-patch log.get to decrypt the msg
   const originalGet = log.get
   log.get = function (offset, cb) {
     originalGet(offset, (err, buffer) => {
@@ -44,13 +45,30 @@ module.exports = function (dir, config, privateIndex) {
     })
   }
 
+  // monkey-patch log.stream to temporarily pause when the CPU is too busy,
+  // and to decrypt the msg
   const originalStream = log.stream
   log.stream = function (opts) {
+    const tooHot = config.db2.maxCpu
+      ? TooHot({ ceiling: config.db2.maxCpu, maxPause: 1000 })
+      : () => false
     const s = originalStream(opts)
     const originalPipe = s.pipe.bind(s)
     s.pipe = function pipe(o) {
       let originalWrite = o.write
-      o.write = (record) => originalWrite(privateIndex.decrypt(record, true))
+      o.write = (record) => {
+        const hot = tooHot()
+        if (hot && !s.sink.paused) {
+          s.sink.paused = true
+          hot.then(() => {
+            s.sink.paused = false
+            s.resume()
+            originalWrite(privateIndex.decrypt(record, true))
+          })
+        } else {
+          originalWrite(privateIndex.decrypt(record, true))
+        }
+      }
       return originalPipe(o)
     }
     return s

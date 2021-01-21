@@ -134,7 +134,6 @@ test('migrate keeps new log synced with ssb-db being updated', (t) => {
       path: dir,
       db2: {
         automigrate: true,
-        migrateMaxCpu: 40,
       },
     })
 
@@ -186,7 +185,6 @@ test('migrate does not read decrypted from old log', (t) => {
       path: dir,
       db2: {
         automigrate: true,
-        migrateMaxCpu: 40,
       },
     })
 

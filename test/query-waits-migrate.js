@@ -55,3 +55,49 @@ test('query() waits for migrate to sync old and new logs', (t) => {
     })
   )
 })
+
+test('config.maxCpu makes indexing last longer', (t) => {
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  const sbot1 = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .call(null, { keys, path: dir, db2: { maxCpu: Infinity } })
+
+  sbot1.db2migrate.start()
+
+  const start1 = Date.now()
+  sbot1.db.query(
+    and(type('post')),
+    descending(),
+    paginate(1),
+    toCallback(() => {
+      const duration1 = Date.now() - start1
+
+      sbot1.close(() => {
+        rimraf.sync(path.join(dir, 'db2'))
+
+        const sbot2 = SecretStack({ appKey: caps.shs })
+          .use(require('../'))
+          .call(null, { keys, path: dir, db2: { maxCpu: 10 } })
+
+        sbot2.db2migrate.start()
+
+        const start2 = Date.now()
+        sbot2.db.query(
+          and(type('post')),
+          descending(),
+          paginate(1),
+          toCallback(() => {
+            const duration2 = Date.now() - start2
+
+            t.true(duration2 > duration1, 'duration2 > duration1')
+            t.true(duration2 > 4 * duration1, 'duration2 > 4 * duration1')
+
+            sbot2.close(() => {
+              t.end()
+            })
+          })
+        )
+      })
+    })
+  )
+})
