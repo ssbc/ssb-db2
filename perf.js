@@ -66,6 +66,16 @@ let queries = {
     paginate(25),
     descending(),
   ],
+  'author posts again': [
+    and(
+      type('post'),
+      author('@6CAxOI3f+LUOVrbAl0IemqiS7ATpQvr9Mdw9LC4+Uv0=.ed25519'),
+      isPublic()
+    ),
+    startFrom(0),
+    paginate(25),
+    descending(),
+  ],
 }
 
 const tests = Object.keys(queries).length
