@@ -473,23 +473,40 @@ test('live votesFor', (t) => {
         db.query(
           and(votesFor(postMsg.key)),
           live({ old: true }),
-          toPullStream(),
-          pull.drain(
-            (result) => {
-              if (i++ == 0) {
-                t.equal(result.key, v1.key)
-                db.publish(voteMsg2, (err, v2) => {
-                  t.error(err, 'no err')
-                })
-              } else {
-                t.equal(result.value.content.vote.value, -1)
-                sbot.close(t.end)
-              }
-            },
-            () => {}
-          )
+          toPullStream()
+        ),
+        pull.drain(
+          (result) => {
+            if (i++ == 0) {
+              t.equal(result.key, v1.key)
+              db.publish(voteMsg2, (err, v2) => {
+                t.error(err, 'no err')
+              })
+            } else {
+              t.equal(result.value.content.vote.value, -1)
+              t.end()
+            }
+          },
+          () => {}
         )
       )
     })
   })
+})
+
+test('live alone', (t) => {
+  pull(
+    db.query(live({ old: true }), toPullStream()),
+    pull.take(1),
+    pull.drain((msg) => {
+      t.ok(msg)
+      t.ok(msg.value)
+      t.ok(msg.value.content)
+      t.end()
+    })
+  )
+})
+
+test('teardown sbot', (t) => {
+  sbot.close(t.end)
 })
