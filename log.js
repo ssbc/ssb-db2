@@ -61,9 +61,9 @@ module.exports = function (dir, config, privateIndex) {
         if (hot && !s.sink.paused) {
           s.sink.paused = true
           hot.then(() => {
+            originalWrite(privateIndex.decrypt(record, true))
             s.sink.paused = false
             s.resume()
-            originalWrite(privateIndex.decrypt(record, true))
           })
         } else {
           originalWrite(privateIndex.decrypt(record, true))
