@@ -253,6 +253,31 @@ partial replication.
 Gets the current db status, same functionality as
 [db.status](https://github.com/ssbc/ssb-db#dbstatus) in ssb-db.
 
+## Configuration
+
+You can use ssb-config parameters to configure some aspects of ssb-db2:
+
+```js
+const config = {
+  keys: keys,
+  db2: {
+    /**
+     * Start the migration plugin automatically as soon as possible.
+     * Default: false
+     */
+    automigrate: true,
+
+    /**
+     * An upper limit on the CPU load that ssb-db2 can use while indexing
+     * and scanning. `85` means "ssb-db2 will only index when CPU load is at
+     * 85% or lower".
+     * Default: Infinity
+     */
+    maxCpu: 85,
+  }
+}
+```
+
 [ssb-db]: https://github.com/ssbc/ssb-db/
 [bipf]: https://github.com/ssbc/bipf/
 [jitdb]: https://github.com/ssb-ngi-pointer/jitdb/
