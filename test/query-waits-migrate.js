@@ -89,8 +89,9 @@ test('config.maxCpu makes indexing last longer', (t) => {
           toCallback(() => {
             const duration2 = Date.now() - start2
 
+            t.pass('duration2 = ' + duration2 + ', duration1 = ' + duration1)
             t.true(duration2 > duration1, 'duration2 > duration1')
-            t.true(duration2 > 4 * duration1, 'duration2 > 4 * duration1')
+            t.true(duration2 > 2 * duration1, 'duration2 > 2 * duration1')
 
             sbot2.close(() => {
               t.end()
