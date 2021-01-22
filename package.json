@@ -29,7 +29,6 @@
     "pull-level": "^2.0.4",
     "pull-stream": "^3.6.14",
     "push-stream": "^11.0.0",
-    "sorted-btree": "^1.4.0",
     "ssb-keys": "^8.0.0",
     "ssb-ref": "^2.14.3",
     "ssb-sort": "^1.1.3",
