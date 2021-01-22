@@ -25,6 +25,8 @@ const sbot = SecretStack({ caps })
     keys: require('ssb-keys').loadOrCreateSync(path.join('ssb', 'secret')),
   })
 
+// value.content.about = ...
+
 var run = 0
 
 let queries = {
@@ -66,10 +68,10 @@ let queries = {
     paginate(25),
     descending(),
   ],
-  'author posts again': [
+  'anothor author posts': [
     and(
       type('post'),
-      author('@6CAxOI3f+LUOVrbAl0IemqiS7ATpQvr9Mdw9LC4+Uv0=.ed25519'),
+      author('@QlCTpvY7p9ty2yOFrv1WU1AE88aoQc4Y7wYal7PFc+w=.ed25519'),
       isPublic()
     ),
     startFrom(0),
@@ -86,11 +88,9 @@ function runQuery() {
   console.time('query')
 
   sbot.db.query(
-    //and(type('post')),
-    //and(author('@6CAxOI3f+LUOVrbAl0IemqiS7ATpQvr9Mdw9LC4+Uv0=.ed25519')),
     ...queries[name],
     toCallback((err, msgs) => {
-      //console.log(msgs[0])
+      //const results = msgs.results ? msgs.results : msgs
       console.timeEnd('query')
       if (++run >= tests) sbot.close()
       else runQuery()
