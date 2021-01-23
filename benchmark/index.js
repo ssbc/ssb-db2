@@ -11,7 +11,20 @@ const pull = require('pull-stream')
 const fromEvent = require('pull-stream-util/from-event')
 const DeferredPromise = require('p-defer')
 const sleep = require('util').promisify(setTimeout)
-const { and, type, descending, paginate, toCallback } = require('../operators')
+const {
+  and,
+  type,
+  author,
+  key,
+  votesFor,
+  isPublic,
+  isRoot,
+  hasRoot,
+  startFrom,
+  paginate,
+  descending,
+  toCallback,
+} = require('../operators')
 
 const dir = '/tmp/ssb-db2-benchmark'
 const oldLogPath = path.join(dir, 'flume', 'log.offset')
@@ -155,4 +168,84 @@ test('initial indexing', async (t) => {
   )
 
   await ended.promise
+})
+
+const KEY1 = '%Xwdpu9gRe8wl4i0ssKyU24oGYKXW75hjE5VCbEB9bmM=.sha25' // root post
+const KEY2 = '%EpzOw6sOBb4RGtofVD43GnfImoiw6NzEEsraHsNXF1g=.sha25' // contact
+const KEY3 = '%55wBq68+p45q7/OuPgL+TC07Ifx8ihEW93u/EZaYv6c=.sha256' // another post
+const AUTHOR1 = '@ZngOKXHjrvG+cy7Gjx5pSFunUqcePfmDQQxoUlHFUdU=.ed2551'
+const AUTHOR2 = '@58u/J9+5bOXeYRDCYQ9cJ7kklghIpQFPBYxlhKq1/qs=.ed2551'
+
+const queries = {
+  'key one initial': [and(key(KEY1))],
+
+  'key two': [and(key(KEY2))],
+
+  'key one again': [and(key(KEY1))],
+
+  'latest root posts': [
+    and(type('post'), isRoot(), isPublic()),
+    startFrom(0),
+    paginate(25),
+    descending(),
+  ],
+
+  'latest posts': [
+    and(type('post'), isPublic()),
+    startFrom(0),
+    paginate(25),
+    descending(),
+  ],
+
+  'votes one initial': [and(votesFor(KEY1))],
+
+  'votes again': [and(votesFor(KEY3))],
+
+  'hasRoot': [and(hasRoot(KEY1))],
+
+  'hasRoot again': [and(hasRoot(KEY3))],
+
+  'author one posts': [
+    and(type('post'), author(AUTHOR1), isPublic()),
+    startFrom(0),
+    paginate(25),
+    descending(),
+  ],
+
+  'author two posts': [
+    and(type('post'), author(AUTHOR2), isPublic()),
+    startFrom(0),
+    paginate(25),
+    descending(),
+  ],
+}
+
+let sbot
+test('setup', (t) => {
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .call(null, { keys, path: dir })
+  t.end()
+})
+
+for (const title in queries) {
+  test(title, (t) => {
+    const start = Date.now()
+
+    sbot.db.query(
+      ...queries[title],
+      toCallback((err) => {
+        if (err) t.fail(err)
+        const duration = Date.now() - start
+        t.pass(`duration: ${duration}ms`)
+        fs.appendFileSync(reportPath, `| ${title} | ${duration}ms |\n`)
+        t.end()
+      })
+    )
+  })
+}
+
+test('teardown', (t) => {
+  sbot.close(t.end)
 })
