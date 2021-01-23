@@ -240,6 +240,7 @@ for (const title in queries) {
         if (err) t.fail(err)
         const duration = Date.now() - start
         t.pass(`duration: ${duration}ms`)
+        fs.appendFileSync(reportPath, `| ${title} | ${duration}ms |\n`)
         t.end()
       })
     )
