@@ -7,6 +7,7 @@ const {
   author,
   key,
   votesFor,
+  hasRoot,
   isPublic,
   isRoot,
   startFrom,
@@ -57,6 +58,12 @@ let queries = {
   ],
   'votes again': [
     and(votesFor('%HZVnEzm0NgoSVfG0Hx4gMFbMMHhFvhJsG2zK/pijYII=.sha256')),
+  ],
+  hasRoot: [
+    and(hasRoot('%HZVnEzm0NgoSVfG0Hx4gMFbMMHhFvhJsG2zK/pijYII=.sha256')),
+  ],
+  'hasRoot again': [
+    and(hasRoot('%HZVnEzm0NgoSVfG0Hx4gMFbMMHhFvhJsG2zK/pijYII=.sha256')),
   ],
   'author posts': [
     and(
