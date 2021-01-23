@@ -172,6 +172,7 @@ test('initial indexing', async (t) => {
 
 const KEY1 = '%Xwdpu9gRe8wl4i0ssKyU24oGYKXW75hjE5VCbEB9bmM=.sha25' // root post
 const KEY2 = '%EpzOw6sOBb4RGtofVD43GnfImoiw6NzEEsraHsNXF1g=.sha25' // contact
+const KEY3 = '%55wBq68+p45q7/OuPgL+TC07Ifx8ihEW93u/EZaYv6c=.sha256' // another post
 const AUTHOR1 = '@ZngOKXHjrvG+cy7Gjx5pSFunUqcePfmDQQxoUlHFUdU=.ed2551'
 const AUTHOR2 = '@58u/J9+5bOXeYRDCYQ9cJ7kklghIpQFPBYxlhKq1/qs=.ed2551'
 
@@ -198,13 +199,11 @@ const queries = {
 
   'votes one initial': [and(votesFor(KEY1))],
 
-  'votes one': [and(votesFor(KEY1))],
+  'votes again': [and(votesFor(KEY3))],
 
-  'votes again': [and(votesFor(KEY1))],
+  'hasRoot': [and(hasRoot(KEY1))],
 
-  hasRoot: [and(hasRoot(KEY1))],
-
-  'hasRoot again': [and(hasRoot(KEY1))],
+  'hasRoot again': [and(hasRoot(KEY3))],
 
   'author one posts': [
     and(type('post'), author(AUTHOR1), isPublic()),
