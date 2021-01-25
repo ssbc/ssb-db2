@@ -47,6 +47,7 @@ function votesFor(msgKey) {
     type('vote'),
     equal(seekVoteLink, msgKey, {
       prefix: 32,
+      useMap: true,
       indexType: 'value_content_vote_link',
     })
   )()
@@ -57,6 +58,7 @@ function contact(feedId) {
     type('contact'),
     equal(seekContact, feedId, {
       prefix: 32,
+      useMap: true,
       indexType: 'value_content_contact',
     })
   )()
@@ -72,6 +74,7 @@ function mentions(key) {
 function hasRoot(msgKey) {
   return equal(seekRoot, msgKey, {
     prefix: 32,
+    useMap: true,
     indexType: 'value_content_root',
   })
 }
@@ -79,6 +82,7 @@ function hasRoot(msgKey) {
 function hasFork(msgKey) {
   return equal(seekFork, msgKey, {
     prefix: 32,
+    useMap: true,
     indexType: 'value_content_fork',
   })
 }
@@ -86,6 +90,7 @@ function hasFork(msgKey) {
 function hasBranch(msgKey) {
   return equal(seekBranch, msgKey, {
     prefix: 32,
+    useMap: true,
     indexType: 'value_content_branch',
   })
 }
