@@ -60,6 +60,11 @@ if (!skipCreate) {
   })
 }
 
+let maxRAM = 0
+function updateMaxRAM() {
+  maxRAM = Math.max(maxRAM, process.memoryUsage().heapTotal)
+}
+
 test('migration (using ssb-db)', async (t) => {
   rimraf.sync(db2Path)
   t.pass('delete db2 folder to start clean')
@@ -94,6 +99,7 @@ test('migration (using ssb-db)', async (t) => {
         reportPath,
         `| Migration (using ssb-db) | ${duration}ms |\n`
       )
+      updateMaxRAM()
       await sleep(2000) // wait for new log FS writes to finalize
       sbot.close(() => {
         ended.resolve()
@@ -127,6 +133,7 @@ test('migration (alone)', async (t) => {
       const duration = Date.now() - start
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Migration (alone) | ${duration}ms |\n`)
+      updateMaxRAM()
       await sleep(2000) // wait for new log FS writes to finalize
       sbot.close(() => {
         ended.resolve()
@@ -161,6 +168,7 @@ test('initial indexing', async (t) => {
         t.fail('should have LATESTMSG')
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Initial indexing | ${duration}ms |\n`)
+      updateMaxRAM()
       sbot.close(() => {
         ended.resolve()
       })
@@ -201,7 +209,7 @@ const queries = {
 
   'votes again': [and(votesFor(KEY3))],
 
-  'hasRoot': [and(hasRoot(KEY1))],
+  hasRoot: [and(hasRoot(KEY1))],
 
   'hasRoot again': [and(hasRoot(KEY3))],
 
@@ -240,11 +248,19 @@ for (const title in queries) {
         const duration = Date.now() - start
         t.pass(`duration: ${duration}ms`)
         fs.appendFileSync(reportPath, `| ${title} | ${duration}ms |\n`)
+        updateMaxRAM()
         t.end()
       })
     )
   })
 }
+
+test('maximum RAM used', (t) => {
+  const mb = (maxRAM / 1000 / 1000).toFixed(20)
+  t.pass(`RAM: ${mb} MB`)
+  fs.appendFileSync(reportPath, `| Maximum heap size | ${mb} MB |\n`)
+  t.end()
+})
 
 test('teardown', (t) => {
   sbot.close(t.end)
