@@ -256,7 +256,7 @@ for (const title in queries) {
 }
 
 test('maximum RAM used', (t) => {
-  const mb = (maxRAM / 1000 / 1000).toFixed(20)
+  const mb = (maxRAM / 1000 / 1000).toFixed(2)
   t.pass(`RAM: ${mb} MB`)
   fs.appendFileSync(reportPath, `| Maximum heap size | ${mb} MB |\n`)
   t.end()
