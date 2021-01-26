@@ -7,6 +7,7 @@ const generateFixture = require('ssb-fixtures')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const ssbKeys = require('ssb-keys')
+const multicb = require('multicb')
 const pull = require('pull-stream')
 const fromEvent = require('pull-stream-util/from-event')
 const DeferredPromise = require('p-defer')
@@ -203,6 +204,37 @@ test('initial indexing compat', async (t) => {
         ended.resolve()
       })
     })
+  })
+
+  await ended.promise
+})
+
+test('Two indexes updating concurrently', async (t) => {
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .use(require('../compat'))
+    .call(null, { keys, path: dir })
+
+  await sleep(500) // some silence to make it easier to read the CPU profiler
+
+  const ended = DeferredPromise()
+  const done = multicb({ pluck: 1 })
+  const start = Date.now()
+
+  sbot.db.query(and(type('about')), toCallback(done()))
+  sbot.db.query(and(type('about'), isPublic()), toCallback(done()))
+
+  done((err) => {
+    if (err) t.fail(err)
+    const duration = Date.now() - start
+    t.pass(`duration: ${duration}ms`)
+    fs.appendFileSync(
+      reportPath,
+      `| Two indexes updating concurrently | ${duration}ms |\n`
+    )
+    updateMaxRAM()
+    sbot.close(() => ended.resolve())
   })
 
   await ended.promise
