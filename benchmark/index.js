@@ -178,6 +178,36 @@ test('initial indexing', async (t) => {
   await ended.promise
 })
 
+test('initial indexing compat', async (t) => {
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .use(require('../compat'))
+    .call(null, { keys, path: dir })
+
+  await sleep(500) // some silence to make it easier to read the CPU profiler
+
+  const ended = DeferredPromise()
+  const start = Date.now()
+
+  sbot.db.onDrain('base', () => {
+    sbot.db.onDrain('ebt', () => {
+      const duration = Date.now() - start
+      t.pass(`duration: ${duration}ms`)
+      fs.appendFileSync(
+        reportPath,
+        `| Initial indexing compat | ${duration}ms |\n`
+      )
+      updateMaxRAM()
+      sbot.close(() => {
+        ended.resolve()
+      })
+    })
+  })
+
+  await ended.promise
+})
+
 const KEY1 = '%Xwdpu9gRe8wl4i0ssKyU24oGYKXW75hjE5VCbEB9bmM=.sha25' // root post
 const KEY2 = '%EpzOw6sOBb4RGtofVD43GnfImoiw6NzEEsraHsNXF1g=.sha25' // contact
 const KEY3 = '%55wBq68+p45q7/OuPgL+TC07Ifx8ihEW93u/EZaYv6c=.sha256' // another post
