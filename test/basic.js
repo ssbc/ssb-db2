@@ -67,6 +67,20 @@ test('get', (t) => {
   })
 })
 
+test('getStatus', (t) => {
+  db.onDrain('ebt', () => {
+    const stats = db.getStatus().value
+    t.pass(JSON.stringify(stats))
+    t.ok(stats.log)
+    t.ok(stats.jit)
+    t.ok(stats.indexes)
+    t.true(stats['log'] > 0)
+    t.equal(stats.jit['seq'], stats['log'])
+    t.equal(stats.indexes['ebt'], stats['log'])
+    t.end()
+  })
+})
+
 test('get missing key', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 

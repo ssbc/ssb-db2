@@ -11,6 +11,7 @@ const DeferredPromise = require('p-defer')
 
 const { indexesPath } = require('./defaults')
 const Log = require('./log')
+const Status = require('./status')
 const BaseIndex = require('./indexes/base')
 const PrivateIndex = require('./indexes/private')
 
@@ -48,6 +49,7 @@ exports.init = function (sbot, config) {
   const log = Log(dir, config, privateIndex)
   const jitdb = JITDb(log, indexesPath(dir))
   const baseIndex = BaseIndex(log, dir, privateIndex)
+  const status = Status(log, jitdb)
 
   const debug = Debug('ssb:db2')
 
@@ -224,18 +226,6 @@ exports.init = function (sbot, config) {
     })
   }
 
-  function getStatus() {
-    const result = {
-      log: log.since.value,
-      indexes: {},
-    }
-
-    for (const indexName in indexes)
-      result.indexes[indexName] = indexes[indexName].offset.value
-
-    return result
-  }
-
   function clearIndexes() {
     for (const indexName in indexes) indexes[indexName].remove(() => {})
   }
@@ -244,6 +234,8 @@ exports.init = function (sbot, config) {
     const index = Index(log, dir)
 
     if (indexes[index.name]) throw 'Index already exists'
+
+    index.offset((o) => status.updateIndex(index.name, o))
 
     indexes[index.name] = index
   }
@@ -289,12 +281,16 @@ exports.init = function (sbot, config) {
         const index = indexes[indexName]
         if (!index) return cb('Unknown index:' + indexName)
 
+        status.updateLog()
+
         if (index.offset.value === log.since.value) {
+          status.updateIndex(indexName, index.offset.value)
           cb()
         } else {
           const remove = index.offset(() => {
             if (index.offset.value === log.since.value) {
               remove()
+              status.updateIndex(indexName, index.offset.value)
               cb()
             }
           })
@@ -371,7 +367,7 @@ exports.init = function (sbot, config) {
     publish,
     addOOO,
     addOOOStrictOrder,
-    getStatus,
+    getStatus: () => status.obv,
     operators,
 
     // needed primarily internally by other plugins in this project:
