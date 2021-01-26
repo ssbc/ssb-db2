@@ -30,7 +30,7 @@ test('drain', (t) => {
     t.error(err, 'no err')
 
     db.onDrain('base', () => {
-      const status = db.getStatus()
+      const status = db.getStatus().value
       t.equal(status.log, 0, 'log in sync')
       t.equal(status.indexes['base'], 0, 'index in sync')
       t.end()
