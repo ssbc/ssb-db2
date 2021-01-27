@@ -83,6 +83,21 @@ exports.init = function (sbot, config) {
     stateFeedsReady.resolve()
   })
 
+  // Crunch stats numbers to produce one number for the "indexing" progress
+  status.obv((stats) => {
+    const logSize = Math.max(1, stats.log) // 1 prevents division by zero
+    const nums = Object.values(stats.indexes)
+    const N = Math.max(1, nums.length) // 1 prevents division by zero
+    const progress = Math.min(
+      nums
+        .map((offset) => Math.max(0, offset)) // avoid -1 numbers
+        .map((offset) => offset / logSize) // this index's progress
+        .reduce((acc, x) => acc + x, 0) / N, // avg = (sum of all progress) / N
+      1 // never go above 1
+    )
+    sbot.emit('ssb:db2:indexing:progress', progress)
+  })
+
   function guardAgainstDuplicateLogs(methodName) {
     if (sbot.db2migrate && sbot.db2migrate.doesOldLogExist()) {
       return new Error(
