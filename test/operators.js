@@ -32,10 +32,13 @@ mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
-const sbot = SecretStack({ appKey: caps.shs }).use(require('../')).call(null, {
-  keys,
-  path: dir,
-})
+const sbot = SecretStack({ appKey: caps.shs })
+  .use(require('../'))
+  .use(require('../full-mentions'))
+  .call(null, {
+    keys,
+    path: dir,
+  })
 const db = sbot.db
 
 test('can create a reusable query portion', (t) => {
@@ -439,6 +442,11 @@ test('operators are exposed', (t) => {
       )
     )
   })
+})
+
+test('extra operators are exposed', (t) => {
+  t.equal(typeof db.operators.fullMentions, 'function')
+  t.end()
 })
 
 test('live votesFor', (t) => {
