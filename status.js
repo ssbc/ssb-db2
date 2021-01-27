@@ -8,6 +8,9 @@ module.exports = function Status(log, jitdb) {
   }
   const obv = Obv()
   obv.set(statsObj)
+  const EMIT_INTERVAL = 1000
+  const PRUNE_INTERVAL = 2000
+  let jitdbLastTime = Date.now()
   let i = 0
   let iTimer = 0
   let timer = null
@@ -15,6 +18,7 @@ module.exports = function Status(log, jitdb) {
   jitdb.status((jitStats) => {
     updateLog()
     statsObj.jit = jitStats
+    jitdbLastTime = Date.now()
     obv.set(statsObj)
   })
 
@@ -28,9 +32,12 @@ module.exports = function Status(log, jitdb) {
         i = iTimer = 0
       } else {
         iTimer = i
+        if (jitdbLastTime + PRUNE_INTERVAL < Date.now()) {
+          statsObj.jit = {}
+        }
         obv.set(statsObj)
       }
-    }, 1000)
+    }, EMIT_INTERVAL)
     if (timer.unref) timer.unref()
   }
 
@@ -44,6 +51,9 @@ module.exports = function Status(log, jitdb) {
     ++i
     if (!timer) {
       iTimer = i
+      if (jitdbLastTime + PRUNE_INTERVAL < Date.now()) {
+        statsObj.jit = {}
+      }
       obv.set(statsObj)
       setTimer()
     }
