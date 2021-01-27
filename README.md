@@ -85,15 +85,16 @@ like this:
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const {query, and, type, author, toCallback} = require('ssb-db2/operators')
-const mentions = require('ssb-db2/operators/full-mentions')
 
 const sbot = SecretStack({ caps })
   .use(require('ssb-db2'))
   .use(require('ssb-db2/full-mentions')) // include index
   .call(null, { path: './' })
 
+const {fullMentions} = sbot.db.operators
+
 sbot.db.query(
-  and(type('post'), mentions(alice.id))),
+  and(type('post'), fullMentions(alice.id))),
   toCallback((err, msgs) => {
     console.log('There are ' + msgs.length + ' messages')
     sbot.close()
