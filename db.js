@@ -86,7 +86,7 @@ exports.init = function (sbot, config) {
   // Crunch stats numbers to produce one number for the "indexing" progress
   status.obv((stats) => {
     const logSize = Math.max(1, stats.log) // 1 prevents division by zero
-    const nums = Object.values(stats.jit).concat(Object.values(stats.indexes))
+    const nums = Object.values(stats.indexes)
     const N = Math.max(1, nums.length) // 1 prevents division by zero
     const progress = Math.min(
       nums
