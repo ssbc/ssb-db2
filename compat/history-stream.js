@@ -1,6 +1,7 @@
 const pull = require('pull-stream')
 const pullCont = require('pull-cont')
 const ref = require('ssb-ref')
+const Hookable = require('hoox')
 const { author } = require('../operators')
 const { reEncrypt } = require('../indexes/private')
 
@@ -15,7 +16,7 @@ exports.permissions = {
 }
 
 exports.init = function (sbot, config) {
-  sbot.createHistoryStream = function (opts) {
+  sbot.createHistoryStream = Hookable(function createHistoryStream(opts) {
     // default values
     const sequence = opts.sequence || opts.seq || 0
     const limit = opts.limit
@@ -67,7 +68,7 @@ exports.init = function (sbot, config) {
         })
       })
     )
-  }
+  })
 
   return {}
 }
