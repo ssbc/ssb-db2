@@ -358,13 +358,13 @@ exports.init = function (sbot, config) {
 
     if (rest.length === 0) {
       const ops = fromDB(jitdb)
-      ops.meta.db2 = this
+      ops.meta.db = this
       return jitdbOperators.query(ops, and(waitUntilReady), first)
     }
 
     if (!first.meta) {
       const ops = fromDB(jitdb)
-      ops.meta.db2 = this
+      ops.meta.db = this
       return jitdbOperators.query(ops, and(waitUntilReady, first), ...rest)
     } else {
       return jitdbOperators.query(first, and(waitUntilReady), ...rest)
