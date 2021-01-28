@@ -159,3 +159,19 @@ test('Encrypted', (t) => {
     )
   })
 })
+
+test('should be hookable', (t) => {
+  let hookCalled = false
+  sbot.createHistoryStream.hook(function (fn, args) {
+    hookCalled = true
+    return fn.call(null, args[0])
+  })
+
+  pull(
+    sbot.createHistoryStream({ id: 'wat', limit: 1 }),
+    pull.collect(() => {
+      t.true(hookCalled)
+      t.end()
+    })
+  )
+})
