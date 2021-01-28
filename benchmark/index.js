@@ -63,7 +63,7 @@ if (!skipCreate) {
 
 let maxRAM = 0
 function updateMaxRAM() {
-  maxRAM = Math.max(maxRAM, process.memoryUsage().heapTotal)
+  maxRAM = Math.max(maxRAM, process.memoryUsage().rss)
 }
 
 test('migration (using ssb-db)', async (t) => {
