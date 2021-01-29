@@ -61,9 +61,22 @@ if (!skipCreate) {
   })
 }
 
-let maxRAM = 0
+let maxRAMrss = 0
+let maxRAMheap = 0
 function updateMaxRAM() {
-  maxRAM = Math.max(maxRAM, process.memoryUsage().heapTotal)
+  const memUsage = process.memoryUsage()
+  maxRAMrss = Math.max(maxRAMrss, memUsage.rss)
+  maxRAMheap = Math.max(maxRAMheap, memUsage.heapUsed)
+}
+
+function toMB(bytes) {
+  return (bytes / 1000 / 1000).toFixed(2)
+}
+
+function reportMem() {
+  const rss = toMB(maxRAMrss)
+  const heap = toMB(maxRAMheap)
+  return `${rss} MB = ${heap} MB + etc`
 }
 
 test('migration (using ssb-db)', async (t) => {
@@ -101,6 +114,7 @@ test('migration (using ssb-db)', async (t) => {
         `| Migration (using ssb-db) | ${duration}ms |\n`
       )
       updateMaxRAM()
+      global.gc()
       await sleep(2000) // wait for new log FS writes to finalize
       sbot.close(() => {
         ended.resolve()
@@ -135,6 +149,12 @@ test('migration (alone)', async (t) => {
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Migration (alone) | ${duration}ms |\n`)
       updateMaxRAM()
+      global.gc()
+      t.pass(`memory usage without indexes: ${reportMem()}`)
+      fs.appendFileSync(
+        reportPath,
+        `| Memory usage without indexes | ${reportMem()} |\n`
+      )
       await sleep(2000) // wait for new log FS writes to finalize
       sbot.close(() => {
         ended.resolve()
@@ -170,6 +190,7 @@ test('initial indexing', async (t) => {
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Initial indexing | ${duration}ms |\n`)
       updateMaxRAM()
+      global.gc()
       sbot.close(() => {
         ended.resolve()
       })
@@ -200,6 +221,7 @@ test('initial indexing compat', async (t) => {
         `| Initial indexing compat | ${duration}ms |\n`
       )
       updateMaxRAM()
+      global.gc()
       sbot.close(() => {
         ended.resolve()
       })
@@ -234,6 +256,7 @@ test('Two indexes updating concurrently', async (t) => {
       `| Two indexes updating concurrently | ${duration}ms |\n`
     )
     updateMaxRAM()
+    global.gc()
     sbot.close(() => ended.resolve())
   })
 
@@ -318,9 +341,8 @@ for (const title in queries) {
 }
 
 test('maximum RAM used', (t) => {
-  const mb = (maxRAM / 1000 / 1000).toFixed(2)
-  t.pass(`RAM: ${mb} MB`)
-  fs.appendFileSync(reportPath, `| Maximum heap size | ${mb} MB |\n`)
+  t.pass(`maximum memory usage: ${reportMem()}`)
+  fs.appendFileSync(reportPath, `| Maximum memory usage | ${reportMem()} |\n`)
   t.end()
 })
 
