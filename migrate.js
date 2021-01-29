@@ -19,7 +19,7 @@ function makeFileExistsObv(filename) {
   return obv
 }
 
-function getOldLog(sbot, config) {
+function getOldLog(sbot, config, sbotPost) {
   const oldLog = FlumeLog(oldLogPath(config.path), {
     blockSize: BLOCK_SIZE,
     codec: jsonCodec,
@@ -37,7 +37,7 @@ function getOldLog(sbot, config) {
   const getLiveStream = () => oldLog.stream({ old: false, live: true, ...opts })
   const getSize = () => oldLog.since.value
   // FIXME: when we do #129, should replace Obv() with something from db.js
-  const newMsgObv = sbot.post ? sbot.post : Obv()
+  const newMsgObv = sbotPost || sbot.post || Obv()
   return { getStream, getLiveStream, getSize, newMsgObv }
 }
 
@@ -152,6 +152,7 @@ exports.manifest = {
 
 exports.init = function init(sbot, config) {
   const oldLogExists = makeFileExistsObv(oldLogPath(config.path))
+  const sbotPost = sbot.post // !! Capture this before compat/ebt mutates it !!
 
   /**
    * Boolean obv that indicates whether the new log is synced with the old log.
@@ -194,7 +195,7 @@ exports.init = function init(sbot, config) {
 
     synchronized.set(false)
 
-    const oldLog = getOldLog(sbot, config)
+    const oldLog = getOldLog(sbot, config, sbotPost)
     const newLog =
       sbot.db && sbot.db.getLog() && sbot.db.getLog().stream
         ? sbot.db.getLog()
