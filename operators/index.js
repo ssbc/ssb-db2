@@ -31,12 +31,18 @@ function type(value) {
   })
 }
 
-function author(value) {
-  return equal(seekAuthor, value, {
-    prefix: 32,
-    prefixOffset: 1,
-    indexType: 'value_author',
-  })
+function author(value, opts) {
+  if (opts && opts.dedicated) {
+    return equal(seekAuthor, value, {
+      indexType: 'value_author',
+    })
+  } else {
+    return equal(seekAuthor, value, {
+      prefix: 32,
+      prefixOffset: 1,
+      indexType: 'value_author',
+    })
+  }
 }
 
 function channel(value) {

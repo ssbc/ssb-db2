@@ -311,6 +311,20 @@ const queries = {
     paginate(25),
     descending(),
   ],
+
+  'dedicated author one posts': [
+    and(type('post'), author(AUTHOR1, { dedicated: true }), isPublic()),
+    startFrom(0),
+    paginate(25),
+    descending(),
+  ],
+
+  'dedicated author one posts again': [
+    and(type('post'), author(AUTHOR1, { dedicated: true }), isPublic()),
+    startFrom(0),
+    paginate(25),
+    descending(),
+  ],
 }
 
 let sbot

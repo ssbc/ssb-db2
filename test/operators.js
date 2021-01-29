@@ -1,6 +1,7 @@
 const test = require('tape')
 const ssbKeys = require('ssb-keys')
 const path = require('path')
+const fs = require('fs')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const pull = require('pull-stream')
@@ -83,6 +84,30 @@ test('execute and(type("post"), author(me))', (t) => {
         t.equal(msgs.length, 1)
         t.equal(msgs[0].value.content.type, 'post')
         t.end()
+      })
+    )
+  })
+})
+
+test('dedicated author index', (t) => {
+  const post = { type: 'dogs', text: 'Testing!' }
+
+  db.publish(post, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    db.query(
+      and(type('dogs'), author(keys.id, { dedicated: true })),
+      toCallback((err2, msgs) => {
+        t.error(err2, 'no err2')
+        t.equal(msgs.length, 1)
+        t.equal(msgs[0].value.content.type, 'dogs')
+        setTimeout(() => {
+          const dedicatedIndex = fs
+            .readdirSync(path.join(dir, 'db2', 'indexes'))
+            .find((f) => f.startsWith('value_author_@') && f.endsWith('.index'))
+          t.ok(dedicatedIndex, 'dedicated index exists')
+          t.end()
+        }, 500)
       })
     )
   })
