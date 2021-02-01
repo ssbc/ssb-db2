@@ -35,37 +35,31 @@ module.exports = function (log, dir) {
     const recBuffer = record.value
     if (!recBuffer) return batch.length // deleted
 
+    const pKey = bipf.seekKey(recBuffer, 0, bKey)
+
     let p = 0 // note you pass in p!
-    const pKey = bipf.seekKey(recBuffer, p, bKey)
-
-    p = 0
     p = bipf.seekKey(recBuffer, p, bValue)
-    if (~p) {
-      const pContent = bipf.seekKey(recBuffer, p, bContent)
-      if (~pContent) {
-        const pMentions = bipf.seekKey(recBuffer, pContent, bMentions)
-        if (~pMentions) {
-          const mentionsData = bipf.decode(recBuffer, pMentions)
-          if (Array.isArray(mentionsData)) {
-            const shortKey = bipf.decode(recBuffer, pKey).slice(1, 10)
-            mentionsData.forEach((mention) => {
-              if (
-                mention.link &&
-                typeof mention.link === 'string' &&
-                (mention.link[0] === '@' || mention.link[0] === '%')
-              ) {
-                batch.push({
-                  type: 'put',
-                  key: [mention.link, shortKey],
-                  value: processed,
-                })
-              }
-            })
-          }
-        }
+    if (p < 0) return batch.length
+    p = bipf.seekKey(recBuffer, p, bContent)
+    if (p < 0) return batch.length
+    p = bipf.seekKey(recBuffer, p, bMentions)
+    if (p < 0) return batch.length
+    const mentionsData = bipf.decode(recBuffer, p)
+    if (!Array.isArray(mentionsData)) return batch.length
+    const shortKey = bipf.decode(recBuffer, pKey).slice(1, 10)
+    mentionsData.forEach((mention) => {
+      if (
+        mention.link &&
+        typeof mention.link === 'string' &&
+        (mention.link[0] === '@' || mention.link[0] === '%')
+      ) {
+        batch.push({
+          type: 'put',
+          key: [mention.link, shortKey],
+          value: processed,
+        })
       }
-    }
-
+    })
     return batch.length
   }
 
