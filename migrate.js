@@ -142,7 +142,7 @@ function findMigratedOffset(sbot, oldLog, newLog, cb) {
 
 exports.name = 'db2migrate'
 
-exports.version = '1.2.0'
+exports.version = '1.9.1'
 
 exports.manifest = {
   start: 'sync',
