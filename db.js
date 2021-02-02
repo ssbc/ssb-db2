@@ -131,30 +131,30 @@ exports.init = function (sbot, config) {
   }
 
   function rawAdd(msg, validated, cb) {
-    stateFeedsReady.promise.then(() => {
-      const id = getId(msg)
-      if (validated)
-        // ssb-validate makes sure things come in order
-        log.add(id, msg, cb)
-      else
-        get(id, (err, data) => {
-          if (data) cb(null, data)
-          else log.add(id, msg, cb)
-        })
-    })
+    const id = getId(msg)
+    if (validated)
+      // ssb-validate makes sure things come in order
+      log.add(id, msg, cb)
+    else
+      get(id, (err, data) => {
+        if (data) cb(null, data)
+        else log.add(id, msg, cb)
+      })
   }
 
   function add(msg, cb) {
     const guard = guardAgainstDuplicateLogs('add()')
     if (guard) return cb(guard)
 
-    try {
-      state = validate.append(state, hmac_key, msg)
-      if (state.error) return cb(state.error)
-      rawAdd(msg, true, cb)
-    } catch (ex) {
-      return cb(ex)
-    }
+    stateFeedsReady.promise.then(() => {
+      try {
+        state = validate.append(state, hmac_key, msg)
+        if (state.error) return cb(state.error)
+        rawAdd(msg, true, cb)
+      } catch (ex) {
+        return cb(ex)
+      }
+    })
   }
 
   function addOOO(msg, cb) {
@@ -196,11 +196,13 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('publish()')
     if (guard) return cb(guard)
 
-    state.queue = []
-    state = validate.appendNew(state, null, config.keys, msg, Date.now())
-    rawAdd(state.queue[0].value, true, (err, data) => {
-      post.set(data)
-      cb(err, data)
+    stateFeedsReady.promise.then(() => {
+      state.queue = []
+      state = validate.appendNew(state, null, config.keys, msg, Date.now())
+      rawAdd(state.queue[0].value, true, (err, data) => {
+        post.set(data)
+        cb(err, data)
+      })
     })
   }
 
