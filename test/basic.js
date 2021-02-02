@@ -17,14 +17,14 @@ mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
-const sbot = SecretStack({ appKey: caps.shs })
+let sbot = SecretStack({ appKey: caps.shs })
   .use(require('../'))
   .use(require('../compat/ebt'))
   .call(null, {
     keys,
     path: dir,
   })
-const db = sbot.db
+let db = sbot.db
 
 test('Base', (t) => {
   const posts = []
@@ -157,9 +157,55 @@ test('delete all', (t) => {
             (err, results) => {
               t.error(err, 'no err')
               t.equal(results.length, 0, 'gone')
-              sbot.close(t.end)
+              t.end()
             }
           )
+        })
+      })
+    })
+  })
+})
+
+test('validate needs to load', (t) => {
+  const post = { type: 'post', text: 'Testing!' }
+  const post2 = { type: 'post', text: 'Testing 2!' }
+
+  db.onDrain(() => {
+    sbot.close(() => {
+      sbot = SecretStack({ appKey: caps.shs })
+        .use(require('../'))
+        .use(require('../compat/ebt'))
+        .call(null, {
+          keys,
+          path: dir,
+        })
+      db = sbot.db
+
+      // make sure we can post from cold boot
+      db.publish(post, (err, msg) => {
+        t.error(err, 'no err')
+
+        t.notEqual(msg.value.previous, null)
+
+        db.onDrain(() => {
+          sbot.close(() => {
+            // reload
+            sbot = SecretStack({ appKey: caps.shs })
+              .use(require('../'))
+              .use(require('../compat/ebt'))
+              .call(null, {
+                keys,
+                path: dir,
+              })
+            db = sbot.db
+
+            // make sure we have the correct previous
+            db.publish(post2, (err, msg2) => {
+              t.error(err, 'no err')
+              t.equal(msg.key, msg2.value.previous)
+              sbot.close(t.end)
+            })
+          })
         })
       })
     })
