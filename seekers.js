@@ -7,6 +7,7 @@ const bContent = Buffer.from('content')
 const bType = Buffer.from('type')
 const bRoot = Buffer.from('root')
 const bFork = Buffer.from('fork')
+const bAbout = Buffer.from('about')
 const bBranch = Buffer.from('branch')
 const bVote = Buffer.from('vote')
 const bContact = Buffer.from('contact')
@@ -87,6 +88,15 @@ module.exports = {
     p = seekKey(buffer, p, bContent)
     if (p < 0) return
     return seekKey(buffer, p, bMentions)
+  },
+
+  seekAbout: function (buffer) {
+    let p = 0 // note you pass in p!
+    p = seekKey(buffer, p, bValue)
+    if (p < 0) return
+    p = seekKey(buffer, p, bContent)
+    if (p < 0) return
+    return seekKey(buffer, p, bAbout)
   },
 
   pluckLink: function (buffer, start) {

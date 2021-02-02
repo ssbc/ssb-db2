@@ -13,6 +13,7 @@ const {
   pluckLink,
   seekContact,
   seekBranch,
+  seekAbout,
 } = require('../seekers')
 const { and, equal, includes } = jitdbOperators
 
@@ -82,6 +83,18 @@ function mentions(key) {
   })
 }
 
+function about(feedId) {
+  return and(
+    type('about'),
+    equal(seekAbout, feedId, {
+      prefix: 32,
+      prefixOffset: 1,
+      useMap: true,
+      indexType: 'value_content_about',
+    })
+  )
+}
+
 function hasRoot(msgKey) {
   return equal(seekRoot, msgKey, {
     prefix: 32,
@@ -132,6 +145,7 @@ module.exports = Object.assign({}, jitdbOperators, {
   votesFor,
   contact,
   mentions,
+  about,
   hasRoot,
   hasFork,
   hasBranch,

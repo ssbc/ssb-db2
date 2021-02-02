@@ -24,6 +24,7 @@ const {
   live,
   toPullStream,
   contact,
+  about,
 } = require('../operators')
 
 const dir = '/tmp/ssb-db2-operators'
@@ -399,6 +400,29 @@ test('execute contact(feedid)', (t) => {
           t.error(err, 'no err')
           t.equal(results.length, 1)
           t.equal(results[0].value.content.following, true)
+          t.end()
+        })
+      )
+    })
+  })
+})
+
+test('execute about(feedid)', (t) => {
+  const feedid = ssbKeys.generate().id
+  const msg1 = { type: 'about', about: feedid, name: 'Alice' }
+  const msg2 = { type: 'post', text: 'Testing!' }
+
+  db.publish(msg1, (err, m1) => {
+    t.error(err, 'no err')
+    db.publish(msg2, (err, m2) => {
+      t.error(err, 'no err')
+
+      db.query(
+        and(about(feedid)),
+        toCallback((err, results) => {
+          t.error(err, 'no err')
+          t.equal(results.length, 1)
+          t.equal(results[0].value.content.name, 'Alice')
           t.end()
         })
       )
