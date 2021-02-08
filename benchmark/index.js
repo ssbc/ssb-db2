@@ -245,12 +245,14 @@ test('migrate continuation (+db2)', async (t) => {
 
   pull(
     fromEvent('ssb:db2:migrate:progress', sbot),
-    pull.filter((progress) => progress > 0.5),
+    pull.filter((progress) => progress > 0.9),
     pull.take(1),
     pull.drain(async () => {
+      sbot.db2migrate.stop()
       await sleep(4000) // wait for new log FS writes to finalize
       await new Promise((r) => sbot.close(() => r()))
       await sleep(500) // some silence
+      t.pass('migrated 90%, will reset sbot')
 
       sbot = SecretStack({ appKey: caps.shs })
         .use(require('../'))
