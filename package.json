@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "husky": "^4.3.0",
+    "monotonic-timestamp": "0.0.9",
     "multicb": "1.2.2",
     "pull-stream-util": "0.1.2",
     "rimraf": "^3.0.2",
