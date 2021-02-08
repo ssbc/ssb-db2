@@ -77,17 +77,19 @@ function guardAgainstDecryptedMsg(msg) {
 
 /**
  * Fallback algorithm that does the same as findMigratedOffset, but is slow
- * because it does a scan of BOTH new log and old log.
+ * because it does a scan of BOTH new log and old log. First, it scans the new
+ * log to count how many msgs there exists, then it scans the old log to match
+ * that count.
  */
 function inefficientFindMigratedOffset(newLog, oldLog, cb) {
-  scanAndCount(newLog.stream({ gte: 0 }), (err, msgCountNewLog) => {
+  scanAndCount(newLog.stream({ gte: 0, decrypt: false }), (err, msgCount) => {
     if (err) return cb(err) // TODO: might need an explain() here
-    if (!msgCountNewLog) return cb(null, -1)
+    if (!msgCount) return cb(null, -1)
 
     let result = -1
     pull(
       oldLog.getStream({ gte: 0 }),
-      pull.take(msgCountNewLog),
+      pull.take(msgCount),
       pull.drain(
         (x) => {
           result = x.seq
