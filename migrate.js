@@ -164,10 +164,10 @@ exports.init = function init(sbot, config) {
   let retryPeriod = 250
   let drainAborter = null
 
-  function oldLogMissingThenRetry(fn) {
+  function oldLogMissingThenRetry(retryFn) {
     if (!hasCloseHook) {
       sbot.close.hook(function (fn, args) {
-        if (drainAborter) drainAborter.abort()
+        stop()
         fn.apply(this, args)
       })
       hasCloseHook = true
@@ -175,7 +175,7 @@ exports.init = function init(sbot, config) {
     oldLogExists.set(fileExists(oldLogPath(config.path)))
     if (oldLogExists.value === false) {
       retryPeriod = Math.min(retryPeriod * 2, 8000)
-      setTimeout(fn, retryPeriod).unref()
+      setTimeout(retryFn, retryPeriod).unref()
       return true
     } else {
       return false
@@ -184,6 +184,14 @@ exports.init = function init(sbot, config) {
 
   if (config.db2 && config.db2.automigrate) {
     start()
+  }
+
+  function stop() {
+    started = false
+    if (drainAborter) {
+      drainAborter.abort()
+      drainAborter = null
+    }
   }
 
   function start() {
@@ -288,6 +296,7 @@ exports.init = function init(sbot, config) {
 
   return {
     start,
+    stop,
     doesOldLogExist: () => oldLogExists.value,
     synchronized,
     // dangerouslyKillOldLog, // FIXME: implement this
