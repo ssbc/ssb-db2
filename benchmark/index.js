@@ -79,7 +79,7 @@ function reportMem() {
   return `${rss} MB = ${heap} MB + etc`
 }
 
-test('migration (using ssb-db)', async (t) => {
+test('migrate (+db1)', async (t) => {
   rimraf.sync(db2Path)
   t.pass('delete db2 folder to start clean')
 
@@ -109,10 +109,7 @@ test('migration (using ssb-db)', async (t) => {
     pull.drain(async () => {
       const duration = Date.now() - start
       t.pass(`duration: ${duration}ms`)
-      fs.appendFileSync(
-        reportPath,
-        `| Migration (using ssb-db) | ${duration}ms |\n`
-      )
+      fs.appendFileSync(reportPath, `| Migrate (+db1) | ${duration}ms |\n`)
       updateMaxRAM()
       global.gc()
       await sleep(2000) // wait for new log FS writes to finalize
@@ -125,7 +122,7 @@ test('migration (using ssb-db)', async (t) => {
   await ended.promise
 })
 
-test('migration (alone)', async (t) => {
+test('migrate (alone)', async (t) => {
   rimraf.sync(db2Path)
   t.pass('delete db2 folder to start clean')
 
@@ -147,7 +144,7 @@ test('migration (alone)', async (t) => {
     pull.drain(async () => {
       const duration = Date.now() - start
       t.pass(`duration: ${duration}ms`)
-      fs.appendFileSync(reportPath, `| Migration (alone) | ${duration}ms |\n`)
+      fs.appendFileSync(reportPath, `| Migrate (alone) | ${duration}ms |\n`)
       updateMaxRAM()
       global.gc()
       t.pass(`memory usage without indexes: ${reportMem()}`)
@@ -159,6 +156,128 @@ test('migration (alone)', async (t) => {
       sbot.close(() => {
         ended.resolve()
       })
+    })
+  )
+
+  await ended.promise
+})
+
+test('migrate (+db1 +db2)', async (t) => {
+  rimraf.sync(db2Path)
+  t.pass('delete db2 folder to start clean')
+
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('ssb-db'))
+    .use(require('../'))
+    .call(null, { keys, path: dir })
+
+  await sleep(500) // some silence to make it easier to read the CPU profiler
+
+  const ended = DeferredPromise()
+  const start = Date.now()
+  sbot.db2migrate.start()
+
+  pull(
+    fromEvent('ssb:db2:migrate:progress', sbot),
+    pull.filter((progress) => progress === 1),
+    pull.take(1),
+    pull.drain(async () => {
+      const duration = Date.now() - start
+      t.pass(`duration: ${duration}ms`)
+      fs.appendFileSync(reportPath, `| Migrate (+db1 +db2) | ${duration}ms |\n`)
+      await new Promise((resolve) => sbot.db.onDrain(resolve))
+      sbot.close(() => {
+        ended.resolve()
+      })
+    })
+  )
+
+  await ended.promise
+})
+
+test('migrate (+db2)', async (t) => {
+  rimraf.sync(db2Path)
+  t.pass('delete db2 folder to start clean')
+
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .call(null, { keys, path: dir })
+
+  await sleep(500) // some silence to make it easier to read the CPU profiler
+
+  const ended = DeferredPromise()
+  const start = Date.now()
+  sbot.db2migrate.start()
+
+  pull(
+    fromEvent('ssb:db2:migrate:progress', sbot),
+    pull.filter((progress) => progress === 1),
+    pull.take(1),
+    pull.drain(async () => {
+      const duration = Date.now() - start
+      t.pass(`duration: ${duration}ms`)
+      fs.appendFileSync(reportPath, `| Migrate (+db2) | ${duration}ms |\n`)
+      await new Promise((resolve) => sbot.db.onDrain(resolve))
+      sbot.close(() => {
+        ended.resolve()
+      })
+    })
+  )
+
+  await ended.promise
+})
+
+test('migrate continuation (+db2)', async (t) => {
+  rimraf.sync(db2Path)
+  t.pass('delete db2 folder to start clean')
+
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  let sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .call(null, { keys, path: dir })
+
+  await sleep(500) // some silence to make it easier to read the CPU profiler
+
+  const ended = DeferredPromise()
+  sbot.db2migrate.start()
+
+  pull(
+    fromEvent('ssb:db2:migrate:progress', sbot),
+    pull.filter((progress) => progress > 0.9),
+    pull.take(1),
+    pull.drain(async () => {
+      sbot.db2migrate.stop()
+      await new Promise((resolve) => sbot.db.onDrain(resolve))
+      await new Promise((resolve) => sbot.close(resolve))
+      await sleep(500) // some silence
+      t.pass('migrated 90%, will reset sbot')
+
+      sbot = SecretStack({ appKey: caps.shs })
+        .use(require('../'))
+        .call(null, { keys, path: dir })
+
+      const start = Date.now()
+      sbot.db2migrate.start()
+
+      pull(
+        fromEvent('ssb:db2:migrate:progress', sbot),
+        pull.filter((progress) => progress === 1),
+        pull.take(1),
+        pull.drain(async () => {
+          const duration = Date.now() - start
+          t.pass(`duration: ${duration}ms`)
+          fs.appendFileSync(
+            reportPath,
+            `| Migrate continuation (+db2) | ${duration}ms |\n`
+          )
+          await new Promise((resolve) => sbot.db.onDrain(resolve))
+          sbot.close(() => {
+            ended.resolve()
+          })
+        })
+      )
     })
   )
 

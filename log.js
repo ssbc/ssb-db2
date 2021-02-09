@@ -49,6 +49,7 @@ module.exports = function (dir, config, privateIndex) {
   // and to decrypt the msg
   const originalStream = log.stream
   log.stream = function (opts) {
+    const shouldDecrypt = opts.decrypt === false ? false : true
     const tooHot = config.db2.maxCpu
       ? TooHot({ ceiling: config.db2.maxCpu, maxPause: 1000 })
       : () => false
@@ -61,12 +62,14 @@ module.exports = function (dir, config, privateIndex) {
         if (hot && !s.sink.paused) {
           s.sink.paused = true
           hot.then(() => {
-            originalWrite(privateIndex.decrypt(record, true))
+            if (shouldDecrypt) originalWrite(privateIndex.decrypt(record, true))
+            else originalWrite(record)
             s.sink.paused = false
             s.resume()
           })
         } else {
-          originalWrite(privateIndex.decrypt(record, true))
+          if (shouldDecrypt) originalWrite(privateIndex.decrypt(record, true))
+          else originalWrite(record)
         }
       }
       return originalPipe(o)

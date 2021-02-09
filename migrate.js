@@ -77,17 +77,19 @@ function guardAgainstDecryptedMsg(msg) {
 
 /**
  * Fallback algorithm that does the same as findMigratedOffset, but is slow
- * because it does a scan of BOTH new log and old log.
+ * because it does a scan of BOTH new log and old log. First, it scans the new
+ * log to count how many msgs there exists, then it scans the old log to match
+ * that count.
  */
 function inefficientFindMigratedOffset(newLog, oldLog, cb) {
-  scanAndCount(newLog.stream({ gte: 0 }), (err, msgCountNewLog) => {
+  scanAndCount(newLog.stream({ gte: 0, decrypt: false }), (err, msgCount) => {
     if (err) return cb(err) // TODO: might need an explain() here
-    if (!msgCountNewLog) return cb(null, -1)
+    if (!msgCount) return cb(null, -1)
 
     let result = -1
     pull(
       oldLog.getStream({ gte: 0 }),
-      pull.take(msgCountNewLog),
+      pull.take(msgCount),
       pull.drain(
         (x) => {
           result = x.seq
@@ -164,10 +166,10 @@ exports.init = function init(sbot, config) {
   let retryPeriod = 250
   let drainAborter = null
 
-  function oldLogMissingThenRetry(fn) {
+  function oldLogMissingThenRetry(retryFn) {
     if (!hasCloseHook) {
       sbot.close.hook(function (fn, args) {
-        if (drainAborter) drainAborter.abort()
+        stop()
         fn.apply(this, args)
       })
       hasCloseHook = true
@@ -175,7 +177,7 @@ exports.init = function init(sbot, config) {
     oldLogExists.set(fileExists(oldLogPath(config.path)))
     if (oldLogExists.value === false) {
       retryPeriod = Math.min(retryPeriod * 2, 8000)
-      setTimeout(fn, retryPeriod).unref()
+      setTimeout(retryFn, retryPeriod).unref()
       return true
     } else {
       return false
@@ -184,6 +186,14 @@ exports.init = function init(sbot, config) {
 
   if (config.db2 && config.db2.automigrate) {
     start()
+  }
+
+  function stop() {
+    started = false
+    if (drainAborter) {
+      drainAborter.abort()
+      drainAborter = null
+    }
   }
 
   function start() {
@@ -288,6 +298,7 @@ exports.init = function init(sbot, config) {
 
   return {
     start,
+    stop,
     doesOldLogExist: () => oldLogExists.value,
     synchronized,
     // dangerouslyKillOldLog, // FIXME: implement this
