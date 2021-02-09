@@ -43,6 +43,11 @@ test('whoami', (t) => {
   t.end()
 })
 
+test('ready', (t) => {
+  t.equal(sbot.ready(), true)
+  t.end()
+})
+
 test('teardown sbot', (t) => {
   sbot.close(t.end)
 })
