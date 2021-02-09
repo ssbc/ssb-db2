@@ -186,7 +186,7 @@ test('migrate (+db1 +db2)', async (t) => {
       const duration = Date.now() - start
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Migrate (+db1 +db2) | ${duration}ms |\n`)
-      await sleep(4000) // wait for new log FS writes to finalize
+      await new Promise((resolve) => sbot.db.onDrain(resolve))
       sbot.close(() => {
         ended.resolve()
       })
@@ -219,7 +219,7 @@ test('migrate (+db2)', async (t) => {
       const duration = Date.now() - start
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Migrate (+db2) | ${duration}ms |\n`)
-      await sleep(4000) // wait for new log FS writes to finalize
+      await new Promise((resolve) => sbot.db.onDrain(resolve))
       sbot.close(() => {
         ended.resolve()
       })
@@ -249,8 +249,8 @@ test('migrate continuation (+db2)', async (t) => {
     pull.take(1),
     pull.drain(async () => {
       sbot.db2migrate.stop()
-      await sleep(4000) // wait for new log FS writes to finalize
-      await new Promise((r) => sbot.close(() => r()))
+      await new Promise((resolve) => sbot.db.onDrain(resolve))
+      await new Promise((resolve) => sbot.close(resolve))
       await sleep(500) // some silence
       t.pass('migrated 90%, will reset sbot')
 
@@ -272,7 +272,7 @@ test('migrate continuation (+db2)', async (t) => {
             reportPath,
             `| Migrate continuation (+db2) | ${duration}ms |\n`
           )
-          await sleep(4000) // wait for new log FS writes to finalize
+          await new Promise((resolve) => sbot.db.onDrain(resolve))
           sbot.close(() => {
             ended.resolve()
           })
