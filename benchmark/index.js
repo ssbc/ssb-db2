@@ -398,7 +398,7 @@ test('ssb-threads and ssb-friends', async (t) => {
   pull(
     sbot.threads.publicSummary({ allowlist: ['post', 'contact'] }),
     pull.take(1),
-    pull.collect((err, threads) => {
+    pull.collect(async (err, threads) => {
       const duration = Date.now() - start
       if (err) t.fail(err)
       if (threads.length !== 1) t.fail('missing results')
@@ -409,6 +409,44 @@ test('ssb-threads and ssb-friends', async (t) => {
       )
       updateMaxRAM()
       global.gc()
+      await sleep(2000) // wait for jitdb indexes to save to disk
+      sbot.close(() => {
+        ended.resolve()
+      })
+    })
+  )
+
+  await ended.promise
+})
+
+test('ssb-threads and ssb-friends again', async (t) => {
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .use(require('ssb-friends'))
+    .use(require('ssb-threads'))
+    .call(null, { keys, path: dir })
+
+  await sleep(500) // some silence to make it easier to read the CPU profiler
+
+  const ended = DeferredPromise()
+  const start = Date.now()
+
+  pull(
+    sbot.threads.publicSummary({ allowlist: ['post', 'contact'] }),
+    pull.take(1),
+    pull.collect(async (err, threads) => {
+      const duration = Date.now() - start
+      if (err) t.fail(err)
+      if (threads.length !== 1) t.fail('missing results')
+      t.pass(`duration: ${duration}ms`)
+      fs.appendFileSync(
+        reportPath,
+        `| ssb-threads and ssb-friends again | ${duration}ms |\n`
+      )
+      updateMaxRAM()
+      global.gc()
+      await sleep(2000) // wait for jitdb indexes to save to disk
       sbot.close(() => {
         ended.resolve()
       })
