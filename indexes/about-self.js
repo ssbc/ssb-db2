@@ -4,8 +4,6 @@ const pl = require('pull-level')
 const jsonCodec = require('flumecodec/json')
 const Plugin = require('ssb-db2/indexes/plugin')
 
-const isFeed = require('ssb-ref').isFeed
-
 // 1 index:
 // - feed => hydrated about
 
@@ -57,13 +55,11 @@ module.exports = function (log, dir) {
 
       updateProfileData(author, content)
 
-      if (isFeed(author)) {
-        batch.push({
-          type: 'put',
-          key: author,
-          value: profiles[author]
-        })
-      }
+      batch.push({
+        type: 'put',
+        key: author,
+        value: profiles[author]
+      })
     }
 
     return batch.length
