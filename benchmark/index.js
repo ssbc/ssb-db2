@@ -30,6 +30,7 @@ const {
 const dir = '/tmp/ssb-db2-benchmark'
 const oldLogPath = path.join(dir, 'flume', 'log.offset')
 const db2Path = path.join(dir, 'db2')
+const indexesPath = path.join(dir, 'db2', 'indexes')
 const reportPath = path.join(dir, 'benchmark.md')
 
 const skipCreate = process.argv[2] === 'noCreate'
@@ -308,6 +309,47 @@ test('initial indexing', async (t) => {
         t.fail('should have LATESTMSG')
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Initial indexing | ${duration}ms |\n`)
+      updateMaxRAM()
+      global.gc()
+      sbot.close(() => {
+        ended.resolve()
+      })
+    })
+  )
+
+  await ended.promise
+})
+
+test('initial indexing maxcpu 86', async (t) => {
+  rimraf.sync(indexesPath)
+  t.pass('delete indexes folder to start clean')
+
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .call(null, { keys, path: dir, db2: { maxCpu: 86 } })
+
+  await sleep(500) // some silence to make it easier to read the CPU profiler
+
+  const ended = DeferredPromise()
+  const start = Date.now()
+
+  sbot.db.query(
+    and(type('post')),
+    descending(),
+    paginate(1),
+    toCallback((err, { results, total }) => {
+      const duration = Date.now() - start
+      t.error(err)
+      if (total === 0) t.fail('should respond with msgs')
+      if (results.length !== 1) t.fail('should respond with 1 msg')
+      if (!results[0].value.content.text.includes('LATESTMSG'))
+        t.fail('should have LATESTMSG')
+      t.pass(`duration: ${duration}ms`)
+      fs.appendFileSync(
+        reportPath,
+        `| Initial indexing maxCpu=86 | ${duration}ms |\n`
+      )
       updateMaxRAM()
       global.gc()
       sbot.close(() => {
