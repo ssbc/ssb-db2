@@ -55,7 +55,7 @@ module.exports = class FullMentions extends Plugin {
     return
   }
 
-  writeData(cb) {
+  flushBatch(cb) {
     this.level.batch(this.batch, { keyEncoding: jsonCodec }, cb)
     this.batch = []
   }

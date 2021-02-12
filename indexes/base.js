@@ -19,7 +19,7 @@ module.exports = class BaseIndex extends Plugin {
     this.authorLatest = {}
   }
 
-  writeData(cb) {
+  flushBatch(cb) {
     this.level.batch(this.batch, { valueEncoding: 'json' }, (err) => {
       if (err) return cb(err)
       else this.privateIndex.saveIndexes(cb)

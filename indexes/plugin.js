@@ -29,7 +29,7 @@ module.exports = class Plugin {
 
     this.writeBatch = function writeBatch(cb) {
       if (notPersistedOffset > -1 && !this.level.isClosed()) {
-        this.writeData((err) => {
+        this.flushBatch((err) => {
           if (err) return cb(err)
 
           // we can't batch this as the encoding might not be the same as the plugin
@@ -101,7 +101,7 @@ module.exports = class Plugin {
     throw new Error('handleData() is missing an implementation')
   }
 
-  writeData() {
-    throw new Error('writeData() is missing an implementation')
+  flushBatch() {
+    throw new Error('flushBatch() is missing an implementation')
   }
 }

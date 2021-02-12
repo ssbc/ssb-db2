@@ -15,7 +15,7 @@ module.exports = class EBT extends Plugin {
     this.log = log
   }
 
-  writeData(cb) {
+  flushBatch(cb) {
     this.level.batch(this.batch, { keyEncoding: 'json' }, cb)
     this.batch = []
   }
