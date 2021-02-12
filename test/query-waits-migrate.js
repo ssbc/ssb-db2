@@ -56,7 +56,7 @@ test('query() waits for migrate to sync old and new logs', (t) => {
   )
 })
 
-test('config.maxCpu makes indexing last longer', (t) => {
+test('config.maxCpu makes indexing last longer', { todo: true }, (t) => {
   const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot1 = SecretStack({ appKey: caps.shs })
     .use(require('../'))

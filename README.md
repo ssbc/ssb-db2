@@ -102,6 +102,28 @@ sbot.db.query(
 )
 ```
 
+Another extra index plugin that is commonly needed in SSB communities
+is the **about-self** index. This indexes only self-assigned about
+messages in contrast to [ssb-social-index] that indexes all about
+messages.
+
+Example usage:
+
+```js
+const SecretStack = require('secret-stack')
+const caps = require('ssb-caps')
+
+const sbot = SecretStack({ caps })
+  .use(require('ssb-db2'))
+  .use(require('ssb-db2/about-self')) // include index
+  .call(null, { path: './' })
+
+sbot.db.onDrain('aboutSelf', () => {
+  const profile = sbot.db.getIndex('aboutSelf').getProfile(alice.id)
+  console.log("Alice has name:" + profile.name)
+})
+```
+
 ### Compatibility plugins
 
 SSB DB2 includes a couple of plugins for backwards compatibility,
@@ -283,3 +305,4 @@ const config = {
 [ssb-db]: https://github.com/ssbc/ssb-db/
 [bipf]: https://github.com/ssbc/bipf/
 [jitdb]: https://github.com/ssb-ngi-pointer/jitdb/
+[ssb-social-index]: https://github.com/ssbc/ssb-social-index
