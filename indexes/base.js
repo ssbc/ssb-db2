@@ -12,7 +12,7 @@ const bTimestamp = Buffer.from('timestamp')
 // author => latest { msg key, sequence timestamp } (validate state & EBT)
 module.exports = class BaseIndex extends Plugin {
   constructor(log, dir, privateIndex) {
-    super(dir, 'base', 1, undefined, 'json')
+    super(log, dir, 'base', 1, undefined, 'json')
     this.privateIndex = privateIndex
     this.authorLatest = {}
   }

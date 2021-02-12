@@ -9,8 +9,7 @@ const bSequence = Buffer.from('sequence')
 // [author, sequence] => offset
 module.exports = class EBT extends Plugin {
   constructor(log, dir) {
-    super(dir, 'ebt', 1, 'json')
-    this.log = log
+    super(log, dir, 'ebt', 1, 'json')
   }
 
   processRecord(record, seq) {

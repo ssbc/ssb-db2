@@ -12,7 +12,7 @@ const bAbout = Buffer.from('about')
 // feedId => hydratedAboutObj
 module.exports = class AboutSelf extends Plugin {
   constructor(log, dir) {
-    super(dir, 'aboutSelf', 3, 'json', 'json')
+    super(log, dir, 'aboutSelf', 3, 'json', 'json')
     this.profiles = {}
   }
 

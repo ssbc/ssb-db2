@@ -7,7 +7,8 @@ const DeferredPromise = require('p-defer')
 const { indexesPath } = require('../defaults')
 
 module.exports = class Plugin {
-  constructor(dir, name, version, keyEncoding, valueEncoding) {
+  constructor(log, dir, name, version, keyEncoding, valueEncoding) {
+    this.log = log
     this.name = name
     this.keyEncoding = keyEncoding
     this.valueEncoding = valueEncoding
