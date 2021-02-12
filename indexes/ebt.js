@@ -2,13 +2,11 @@ const bipf = require('bipf')
 const Plugin = require('./plugin')
 const { reEncrypt } = require('./private')
 
-// 1 index:
-// - [author, sequence] => offset
-
 const bValue = Buffer.from('value')
 const bAuthor = Buffer.from('author')
 const bSequence = Buffer.from('sequence')
 
+// [author, sequence] => offset
 module.exports = class EBT extends Plugin {
   constructor(log, dir) {
     super(dir, 'ebt', 1, 'json')
