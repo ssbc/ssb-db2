@@ -1,72 +1,63 @@
 const bipf = require('bipf')
 const pull = require('pull-stream')
 const pl = require('pull-level')
-const jsonCodec = require('flumecodec/json')
-const Plugin = require('ssb-db2/indexes/plugin')
+const Plugin = require('./plugin')
 
-// 1 index:
-// - feed => hydrated about
+const bValue = Buffer.from('value')
+const bAuthor = Buffer.from('author')
+const bContent = Buffer.from('content')
+const bType = Buffer.from('type')
+const bAbout = Buffer.from('about')
 
-module.exports = function (log, dir) {
-  const bValue = Buffer.from('value')
-  const bAuthor = Buffer.from('author')
-  const bContent = Buffer.from('content')
-  const bType = Buffer.from('type')
-  const bAbout = Buffer.from('about')
-
-  let batch = []
-
-  const name = 'aboutSelf'
-  const { level, offset, stateLoaded, onData, writeBatch } = Plugin(
-    dir,
-    name,
-    3,
-    handleData,
-    writeData,
-    beforeIndexUpdate
-  )
-
-  function writeData(cb) {
-    level.batch(batch, { keyEncoding: 'json', valueEncoding: 'json' }, cb)
-    batch = []
+// feedId => hydratedAboutObj
+module.exports = class AboutSelf extends Plugin {
+  constructor(log, dir) {
+    super(dir, 'aboutSelf', 3, 'json', 'json')
+    this.profiles = {}
   }
 
-  function handleData(record, processed) {
-    if (record.offset < offset.value) return batch.length
-    const recBuffer = record.value
-    if (!recBuffer) return batch.length // deleted
+  onLoadedMeta(cb) {
+    pull(
+      pl.read(this.level, {
+        gte: '',
+        lte: undefined,
+        keyEncoding: this.keyEncoding,
+        valueEncoding: this.valueEncoding,
+        keys: true,
+      }),
+      pull.drain((data) => (this.profiles[data.key] = data.value), cb)
+    )
+  }
+
+  processRecord(record, seq) {
+    const buf = record.value
 
     let p = 0 // note you pass in p!
-    p = bipf.seekKey(recBuffer, p, bValue)
-    if (!~p) return batch.length
+    p = bipf.seekKey(buf, p, bValue)
+    if (p < 0) return
+    const pAuthor = bipf.seekKey(buf, p, bAuthor)
+    const pContent = bipf.seekKey(buf, p, bContent)
+    if (pContent < 0) return
+    const pType = bipf.seekKey(buf, pContent, bType)
+    if (pType < 0) return
 
-    const pAuthor = bipf.seekKey(recBuffer, p, bAuthor)
+    if (bipf.compareString(buf, pType, bAbout) === 0) {
+      const author = bipf.decode(buf, pAuthor)
+      const content = bipf.decode(buf, pContent)
+      if (content.about !== author) return
 
-    const pContent = bipf.seekKey(recBuffer, p, bContent)
-    if (!~pContent) return batch.length
+      this.updateProfileData(author, content)
 
-    const pType = bipf.seekKey(recBuffer, pContent, bType)
-    if (!~pType) return batch.length
-
-    if (bipf.compareString(recBuffer, pType, bAbout) === 0) {
-      const author = bipf.decode(recBuffer, pAuthor)
-      const content = bipf.decode(recBuffer, pContent)
-      if (content.about != author) return batch.length
-
-      updateProfileData(author, content)
-
-      batch.push({
+      this.batch.push({
         type: 'put',
         key: author,
-        value: profiles[author],
+        value: this.profiles[author],
       })
     }
-
-    return batch.length
   }
 
-  function updateProfileData(author, content) {
-    let profile = profiles[author] || {}
+  updateProfileData(author, content) {
+    let profile = this.profiles[author] || {}
 
     if (content.name) profile.name = content.name
 
@@ -76,56 +67,26 @@ module.exports = function (log, dir) {
       profile.image = content.image.link
     else if (typeof content.image === 'string') profile.image = content.image
 
-    profiles[author] = profile
+    this.profiles[author] = profile
   }
 
-  let profiles = {}
-
-  function beforeIndexUpdate(cb) {
-    pull(
-      pl.read(level, {
-        gte: '',
-        lte: undefined,
-        keyEncoding: jsonCodec,
-        valueEncoding: jsonCodec,
-        keys: true,
-      }),
-      pull.drain((data) => (profiles[data.key] = data.value), cb)
-    )
+  getProfile(feedId) {
+    return this.profiles[feedId] || {}
   }
 
-  function getProfile(feedId) {
-    return profiles[feedId] || {}
-  }
-
-  function getLiveProfile(feedId) {
-    return pl.read(level, {
+  getLiveProfile(feedId) {
+    return pl.read(this.level, {
       gte: feedId,
       lte: feedId,
-      keyEncoding: 'json',
-      valueEncoding: 'json',
+      keyEncoding: this.keyEncoding,
+      valueEncoding: this.valueEncoding,
       keys: false,
       live: true,
       old: false,
     })
   }
 
-  function getProfiles() {
-    return profiles
-  }
-
-  return {
-    offset,
-    stateLoaded,
-    onData,
-    writeBatch,
-    name,
-
-    remove: level.clear,
-    close: level.close.bind(level),
-
-    getProfile,
-    getProfiles,
-    getLiveProfile,
+  getProfiles() {
+    return this.profiles
   }
 }
