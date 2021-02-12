@@ -11,13 +11,8 @@ const bSequence = Buffer.from('sequence')
 
 module.exports = class EBT extends Plugin {
   constructor(log, dir) {
-    super(dir, 'ebt', 1)
+    super(dir, 'ebt', 1, 'json')
     this.log = log
-  }
-
-  flushBatch(cb) {
-    this.level.batch(this.batch, { keyEncoding: 'json' }, cb)
-    this.batch = []
   }
 
   handleData(record, seq) {

@@ -2,7 +2,6 @@ const bipf = require('bipf')
 const pl = require('pull-level')
 const pull = require('pull-stream')
 const Plugin = require('./plugin')
-const jsonCodec = require('flumecodec/json')
 const { or, seqs, liveSeqs } = require('../operators')
 
 // 1 index:
@@ -19,7 +18,7 @@ function parseInt10(x) {
 
 module.exports = class FullMentions extends Plugin {
   constructor(log, dir) {
-    super(dir, 'fullMentions', 1)
+    super(dir, 'fullMentions', 1, 'json')
   }
 
   handleData(record, seq) {
@@ -55,11 +54,6 @@ module.exports = class FullMentions extends Plugin {
     return
   }
 
-  flushBatch(cb) {
-    this.level.batch(this.batch, { keyEncoding: jsonCodec }, cb)
-    this.batch = []
-  }
-
   getResults(opts, live, cb) {
     pull(
       pl.read(this.level, opts),
@@ -81,7 +75,7 @@ module.exports = class FullMentions extends Plugin {
       {
         gte: [key, ''],
         lte: [key, undefined],
-        keyEncoding: jsonCodec,
+        keyEncoding: this.keyEncoding,
         keys: false,
       },
       live,

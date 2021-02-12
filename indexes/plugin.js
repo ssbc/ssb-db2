@@ -7,8 +7,10 @@ const DeferredPromise = require('p-defer')
 const { indexesPath } = require('../defaults')
 
 module.exports = class Plugin {
-  constructor(dir, name, version) {
+  constructor(dir, name, version, keyEncoding, valueEncoding) {
     this.name = name
+    this.keyEncoding = keyEncoding
+    this.valueEncoding = valueEncoding
     const debug = Debug('ssb:db2:' + name)
 
     const indexPath = path.join(indexesPath(dir), name)
@@ -100,7 +102,12 @@ module.exports = class Plugin {
     throw new Error('handleData() is missing an implementation')
   }
 
-  flushBatch() {
-    throw new Error('flushBatch() is missing an implementation')
+  flushBatch(cb) {
+    this.level.batch(
+      this.batch,
+      { keyEncoding: this.keyEncoding, valueEncoding: this.valueEncoding },
+      cb
+    )
+    this.batch = []
   }
 }

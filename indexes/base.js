@@ -14,17 +14,16 @@ const bTimestamp = Buffer.from('timestamp')
 
 module.exports = class BaseIndex extends Plugin {
   constructor(log, dir, privateIndex) {
-    super(dir, 'base', 1)
+    super(dir, 'base', 1, undefined, 'json')
     this.privateIndex = privateIndex
     this.authorLatest = {}
   }
 
   flushBatch(cb) {
-    this.level.batch(this.batch, { valueEncoding: 'json' }, (err) => {
+    super.flushBatch((err) => {
       if (err) return cb(err)
       else this.privateIndex.saveIndexes(cb)
     })
-    this.batch = []
   }
 
   handleData(record, seq) {
@@ -59,7 +58,7 @@ module.exports = class BaseIndex extends Plugin {
     pull(
       pl.read(this.level, {
         gt: META,
-        valueEncoding: 'json',
+        valueEncoding: this.valueEncoding,
       }),
       pull.collect((err, data) => {
         if (err) return cb(err)
@@ -81,7 +80,7 @@ module.exports = class BaseIndex extends Plugin {
 
   // returns { id (msg key), sequence, timestamp }
   getLatest(feedId, cb) {
-    this.level.get(feedId, { valueEncoding: 'json' }, cb)
+    this.level.get(feedId, { valueEncoding: this.valueEncoding }, cb)
   }
 
   removeFeedFromLatest(feedId) {
