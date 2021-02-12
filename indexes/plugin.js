@@ -58,9 +58,12 @@ module.exports = function (
   const liveWriteBatch = debounce(writeBatch, 250)
 
   function onData(record, isLive) {
-    const changes = handleData(record, processed)
+    let changes = 0
+    if (record.offset > offset.value) {
+      changes = handleData(record, processed)
+      processed++
+    }
     notPersistedOffset = record.offset
-    processed++
 
     if (changes > chunkSize) writeBatch(() => {})
     else if (isLive) liveWriteBatch(() => {})
