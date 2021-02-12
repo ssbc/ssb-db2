@@ -273,7 +273,7 @@ exports.init = function (sbot, config) {
       end() {
         debug(`updateIndexes() scan time: ${Date.now() - start}ms`)
         const writeTasks = indexesArr.map((idx) =>
-          promisify(idx.writeBatch.bind(idx))()
+          promisify(idx.flush.bind(idx))()
         )
         Promise.all(writeTasks).then(() => {
           debug('updateIndexes() live streaming')

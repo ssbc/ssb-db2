@@ -27,39 +27,38 @@ module.exports = class Plugin {
     let notPersistedOffset = -1
     this.batch = []
 
-    this.writeBatch = function writeBatch(cb) {
-      if (notPersistedOffset > -1 && !this.level.isClosed()) {
-        this.flushBatch((err) => {
-          if (err) return cb(err)
+    this.flush = (cb) => {
+      if (notPersistedOffset < 0 || this.level.isClosed()) return cb()
 
-          // we can't batch this as the encoding might not be the same as the plugin
-          if (!this.level.isClosed()) {
-            this.level.put(
-              META,
-              { version, offset: notPersistedOffset, processed },
-              { valueEncoding: 'json' },
-              (err) => {
-                if (err) cb(err)
-                else {
-                  this.offset.set(notPersistedOffset)
-                  cb()
-                }
-              }
-            )
+      this.flushBatch((err) => {
+        if (err) return cb(err)
+        if (this.level.isClosed()) return cb()
+
+        // we can't batch this as the valueEncoding might be different
+        this.level.put(
+          META,
+          { version, offset: notPersistedOffset, processed },
+          { valueEncoding: 'json' },
+          (err) => {
+            if (err) cb(err)
+            else {
+              this.offset.set(notPersistedOffset)
+              cb()
+            }
           }
-        })
-      } else cb()
+        )
+      })
     }
 
-    const liveWriteBatch = debounce(this.writeBatch.bind(this), 250)
+    const liveFlush = debounce(this.flush, 250)
 
     this.onData = function onData(record, isLive) {
       this.handleData(record, processed)
       notPersistedOffset = record.offset
       processed++
 
-      if (this.batch.length > chunkSize) this.writeBatch(() => {})
-      else if (isLive) liveWriteBatch(() => {})
+      if (this.batch.length > chunkSize) this.flush(() => {})
+      else if (isLive) liveFlush(() => {})
     }
 
     this.level.get(META, { valueEncoding: 'json' }, (err, data) => {
