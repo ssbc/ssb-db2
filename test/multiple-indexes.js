@@ -64,13 +64,6 @@ test('second index', (t) => {
         t.error(err, 'no err')
         t.equal(results.length, 1)
         t.equal(results[0].value.content.text, mentionFeed.text)
-        /*
-        const ebtIndex = db.getIndex('ebt')
-        const fullMentionsIndex = db.getIndex('fullMentions')
-        console.log("ebt", ebtIndex)
-        console.log("full", fullMentionsIndex)
-        t.equal(ebtIndex.processed, fullMentionsIndex.processed)
-        */
         sbot.close(t.end)
       })
     )
