@@ -48,7 +48,7 @@ exports.init = function (sbot, config) {
   const privateIndex = PrivateIndex(dir, config.keys)
   const log = Log(dir, config, privateIndex)
   const jitdb = JITDb(log, indexesPath(dir))
-  const baseIndex = BaseIndex(log, dir, privateIndex)
+  const baseIndex = new BaseIndex(log, dir, privateIndex)
   const status = Status(log, jitdb)
 
   const debug = Debug('ssb:db2')
@@ -248,7 +248,7 @@ exports.init = function (sbot, config) {
   }
 
   function registerIndex(Index) {
-    const index = Index(log, dir)
+    const index = new Index(log, dir)
 
     if (indexes[index.name]) throw 'Index already exists'
 
@@ -272,7 +272,9 @@ exports.init = function (sbot, config) {
       },
       end() {
         debug(`updateIndexes() scan time: ${Date.now() - start}ms`)
-        const writeTasks = indexesArr.map((idx) => promisify(idx.writeBatch)())
+        const writeTasks = indexesArr.map((idx) =>
+          promisify(idx.writeBatch.bind(idx))()
+        )
         Promise.all(writeTasks).then(() => {
           debug('updateIndexes() live streaming')
           log.stream({ gt: indexes['base'].offset.value, live: true }).pipe({
@@ -337,7 +339,8 @@ exports.init = function (sbot, config) {
     const tasks = []
     tasks.push(promisify(log.close)())
     for (const indexName in indexes) {
-      tasks.push(promisify(indexes[indexName].close)())
+      const index = indexes[indexName]
+      tasks.push(promisify(index.close.bind(index))())
     }
     return Promise.all(tasks).then(cb)
   }
@@ -389,8 +392,8 @@ exports.init = function (sbot, config) {
 
     // needed primarily internally by other plugins in this project:
     post,
-    getLatest: baseIndex.getLatest,
-    getAllLatest: baseIndex.getAllLatest,
+    getLatest: baseIndex.getLatest.bind(baseIndex),
+    getAllLatest: baseIndex.getAllLatest.bind(baseIndex),
     getLog: () => log,
     registerIndex,
     getIndexes: () => indexes,

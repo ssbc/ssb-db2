@@ -8,43 +8,37 @@ const { or, seqs, liveSeqs } = require('../operators')
 // 1 index:
 // - mentions (msgId) => msg offsets
 
-module.exports = function (log, dir) {
-  const bKey = Buffer.from('key')
-  const bValue = Buffer.from('value')
-  const bContent = Buffer.from('content')
-  const bMentions = Buffer.from('mentions')
+const bKey = Buffer.from('key')
+const bValue = Buffer.from('value')
+const bContent = Buffer.from('content')
+const bMentions = Buffer.from('mentions')
 
-  let batch = []
+function parseInt10(x) {
+  return parseInt(x, 10)
+}
 
-  const name = 'fullMentions'
-  const { level, offset, stateLoaded, onData, writeBatch } = Plugin(
-    dir,
-    name,
-    1,
-    handleData,
-    writeData
-  )
-
-  function writeData(cb) {
-    level.batch(batch, { keyEncoding: jsonCodec }, cb)
-    batch = []
+module.exports = class FullMentions extends Plugin {
+  constructor(log, dir) {
+    super(dir, 'fullMentions', 1)
+    this.batch = []
   }
 
-  function handleData(record, processed) {
+  handleData(record, seq) {
+    if (record.offset < this.offset.value) return this.batch.length
     const recBuffer = record.value
-    if (!recBuffer) return batch.length // deleted
+    if (!recBuffer) return this.batch.length // deleted
 
     const pKey = bipf.seekKey(recBuffer, 0, bKey)
 
     let p = 0 // note you pass in p!
     p = bipf.seekKey(recBuffer, p, bValue)
-    if (p < 0) return batch.length
+    if (p < 0) return this.batch.length
     p = bipf.seekKey(recBuffer, p, bContent)
-    if (p < 0) return batch.length
+    if (p < 0) return this.batch.length
     p = bipf.seekKey(recBuffer, p, bMentions)
-    if (p < 0) return batch.length
+    if (p < 0) return this.batch.length
     const mentionsData = bipf.decode(recBuffer, p)
-    if (!Array.isArray(mentionsData)) return batch.length
+    if (!Array.isArray(mentionsData)) return this.batch.length
     const shortKey = bipf.decode(recBuffer, pKey).slice(1, 10)
     mentionsData.forEach((mention) => {
       if (
@@ -52,28 +46,29 @@ module.exports = function (log, dir) {
         typeof mention.link === 'string' &&
         (mention.link[0] === '@' || mention.link[0] === '%')
       ) {
-        batch.push({
+        this.batch.push({
           type: 'put',
           key: [mention.link, shortKey],
-          value: processed,
+          value: seq,
         })
       }
     })
-    return batch.length
+    return this.batch.length
   }
 
-  function parseInt10(x) {
-    return parseInt(x, 10)
+  writeData(cb) {
+    this.level.batch(this.batch, { keyEncoding: jsonCodec }, cb)
+    this.batch = []
   }
 
-  function getResults(opts, live, cb) {
+  getResults(opts, live, cb) {
     pull(
-      pl.read(level, opts),
+      pl.read(this.level, opts),
       pull.collect((err, data) => {
         if (err) return cb(err)
         if (live) {
           const ps = pull(
-            pl.read(level, Object.assign({}, opts, { live, old: false })),
+            pl.read(this.level, Object.assign({}, opts, { live, old: false })),
             pull.map(parseInt10)
           )
           cb(null, or(seqs(data.map(parseInt10)), liveSeqs(ps))())
@@ -82,27 +77,16 @@ module.exports = function (log, dir) {
     )
   }
 
-  return {
-    offset,
-    stateLoaded,
-    onData,
-    writeBatch,
-
-    name,
-    remove: level.clear,
-    close: level.close.bind(level),
-
-    getMessagesByMention: function (key, live, cb) {
-      getResults(
-        {
-          gte: [key, ''],
-          lte: [key, undefined],
-          keyEncoding: jsonCodec,
-          keys: false,
-        },
-        live,
-        cb
-      )
-    },
+  getMessagesByMention(key, live, cb) {
+    this.getResults(
+      {
+        gte: [key, ''],
+        lte: [key, undefined],
+        keyEncoding: jsonCodec,
+        keys: false,
+      },
+      live,
+      cb
+    )
   }
 }
