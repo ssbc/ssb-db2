@@ -16,7 +16,7 @@ module.exports = class AboutSelf extends Plugin {
     this.profiles = {}
   }
 
-  onLoadedMeta(cb) {
+  onLoaded(cb) {
     pull(
       pl.read(this.level, {
         gte: '',

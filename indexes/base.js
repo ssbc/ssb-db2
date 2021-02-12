@@ -17,7 +17,7 @@ module.exports = class BaseIndex extends Plugin {
     this.authorLatest = {}
   }
 
-  onLoadedMeta(cb) {
+  onLoaded(cb) {
     this.getAllLatest((err, latest) => {
       this.authorLatest = latest
       cb()

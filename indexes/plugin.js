@@ -72,8 +72,8 @@ module.exports = class Plugin {
 
       if (status && status.version === version) {
         processed = status.processed
-        if (this.onLoadedMeta) {
-          this.onLoadedMeta(() => {
+        if (this.onLoaded) {
+          this.onLoaded(() => {
             this.offset.set(status.offset)
             this._stateLoaded.resolve()
           })
