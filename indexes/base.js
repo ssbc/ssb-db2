@@ -40,7 +40,6 @@ module.exports = function (log, dir, privateIndex) {
   }
 
   function handleData(record, processed) {
-    if (record.offset < offset.value) return batch.length
     const buf = record.value
     if (!buf) return batch.length // deleted
 
