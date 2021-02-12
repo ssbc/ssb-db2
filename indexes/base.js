@@ -26,7 +26,7 @@ module.exports = class BaseIndex extends Plugin {
     })
   }
 
-  handleRecord(record, seq) {
+  processRecord(record, seq) {
     const buf = record.value
 
     const pValue = bipf.seekKey(buf, 0, bValue)

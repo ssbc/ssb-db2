@@ -15,7 +15,7 @@ module.exports = class EBT extends Plugin {
     this.log = log
   }
 
-  handleRecord(record, seq) {
+  processRecord(record, seq) {
     const buf = record.value
     const pValue = bipf.seekKey(buf, 0, bValue)
     if (pValue < 0) return

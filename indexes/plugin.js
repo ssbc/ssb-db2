@@ -57,7 +57,7 @@ module.exports = class Plugin {
     this.onRecord = function onRecord(record, isLive) {
       let changes = 0
       if (record.offset > this.offset.value) {
-        if (record.value) this.handleRecord(record, processed)
+        if (record.value) this.processRecord(record, processed)
         changes = this.batch.length
         processed++
       }
@@ -102,8 +102,8 @@ module.exports = class Plugin {
     this.level.close(cb)
   }
 
-  handleRecord() {
-    throw new Error('handleRecord() is missing an implementation')
+  processRecord() {
+    throw new Error('processRecord() is missing an implementation')
   }
 
   flushBatch(cb) {

@@ -21,7 +21,7 @@ module.exports = class FullMentions extends Plugin {
     super(dir, 'fullMentions', 1, 'json')
   }
 
-  handleRecord(record, seq) {
+  processRecord(record, seq) {
     const buf = record.value
     const pKey = bipf.seekKey(buf, 0, bKey)
 
