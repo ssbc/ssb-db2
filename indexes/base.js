@@ -3,15 +3,13 @@ const pl = require('pull-level')
 const pull = require('pull-stream')
 const Plugin = require('./plugin')
 
-// 1 index:
-// - author => latest { msg key, sequence timestamp } (validate state & EBT)
-
 const bKey = Buffer.from('key')
 const bValue = Buffer.from('value')
 const bAuthor = Buffer.from('author')
 const bSequence = Buffer.from('sequence')
 const bTimestamp = Buffer.from('timestamp')
 
+// author => latest { msg key, sequence timestamp } (validate state & EBT)
 module.exports = class BaseIndex extends Plugin {
   constructor(log, dir, privateIndex) {
     super(dir, 'base', 1, undefined, 'json')
@@ -28,13 +26,11 @@ module.exports = class BaseIndex extends Plugin {
 
   processRecord(record, seq) {
     const buf = record.value
-
     const pValue = bipf.seekKey(buf, 0, bValue)
     if (pValue < 0) return
     const author = bipf.decode(buf, bipf.seekKey(buf, pValue, bAuthor))
     const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, bSequence))
     const timestamp = bipf.decode(buf, bipf.seekKey(buf, pValue, bTimestamp))
-
     let latestSequence = 0
     if (this.authorLatest[author])
       latestSequence = this.authorLatest[author].sequence

@@ -22,7 +22,6 @@ module.exports = class FullMentions extends Plugin {
   processRecord(record, seq) {
     const buf = record.value
     const pKey = bipf.seekKey(buf, 0, bKey)
-
     let p = 0 // note you pass in p!
     p = bipf.seekKey(buf, p, bValue)
     if (p < 0) return
