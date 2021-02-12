@@ -267,8 +267,8 @@ exports.init = function (sbot, config) {
 
     log.stream({ gt: lowestOffset }).pipe({
       paused: false,
-      write(data) {
-        indexesArr.forEach((idx) => idx.onData(data, false))
+      write(record) {
+        indexesArr.forEach((idx) => idx.onRecord(record, false))
       },
       end() {
         debug(`updateIndexes() scan time: ${Date.now() - start}ms`)
@@ -279,8 +279,8 @@ exports.init = function (sbot, config) {
           debug('updateIndexes() live streaming')
           log.stream({ gt: indexes['base'].offset.value, live: true }).pipe({
             paused: false,
-            write(data) {
-              indexesArr.forEach((idx) => idx.onData(data, true))
+            write(record) {
+              indexesArr.forEach((idx) => idx.onRecord(record, true))
             },
           })
         })
