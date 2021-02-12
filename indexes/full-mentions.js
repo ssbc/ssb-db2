@@ -22,22 +22,19 @@ module.exports = class FullMentions extends Plugin {
   }
 
   handleRecord(record, seq) {
-    if (record.offset < this.offset.value) return
-    const recBuffer = record.value
-    if (!recBuffer) return // deleted
-
-    const pKey = bipf.seekKey(recBuffer, 0, bKey)
+    const buf = record.value
+    const pKey = bipf.seekKey(buf, 0, bKey)
 
     let p = 0 // note you pass in p!
-    p = bipf.seekKey(recBuffer, p, bValue)
+    p = bipf.seekKey(buf, p, bValue)
     if (p < 0) return
-    p = bipf.seekKey(recBuffer, p, bContent)
+    p = bipf.seekKey(buf, p, bContent)
     if (p < 0) return
-    p = bipf.seekKey(recBuffer, p, bMentions)
+    p = bipf.seekKey(buf, p, bMentions)
     if (p < 0) return
-    const mentionsData = bipf.decode(recBuffer, p)
+    const mentionsData = bipf.decode(buf, p)
     if (!Array.isArray(mentionsData)) return
-    const shortKey = bipf.decode(recBuffer, pKey).slice(1, 10)
+    const shortKey = bipf.decode(buf, pKey).slice(1, 10)
     mentionsData.forEach((mention) => {
       if (
         mention.link &&
@@ -51,7 +48,6 @@ module.exports = class FullMentions extends Plugin {
         })
       }
     })
-    return
   }
 
   getResults(opts, live, cb) {

@@ -27,30 +27,26 @@ module.exports = class BaseIndex extends Plugin {
   }
 
   handleRecord(record, seq) {
-    if (record.offset < this.offset.value) return
     const buf = record.value
-    if (!buf) return // deleted
 
     const pValue = bipf.seekKey(buf, 0, bValue)
-    if (pValue >= 0) {
-      const author = bipf.decode(buf, bipf.seekKey(buf, pValue, bAuthor))
-      const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, bSequence))
-      const timestamp = bipf.decode(buf, bipf.seekKey(buf, pValue, bTimestamp))
+    if (pValue < 0) return
+    const author = bipf.decode(buf, bipf.seekKey(buf, pValue, bAuthor))
+    const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, bSequence))
+    const timestamp = bipf.decode(buf, bipf.seekKey(buf, pValue, bTimestamp))
 
-      let latestSequence = 0
-      if (this.authorLatest[author])
-        latestSequence = this.authorLatest[author].sequence
-      if (sequence > latestSequence) {
-        const key = bipf.decode(buf, bipf.seekKey(buf, 0, bKey))
-        this.authorLatest[author] = { id: key, sequence, timestamp }
-        this.batch.push({
-          type: 'put',
-          key: author,
-          value: this.authorLatest[author],
-        })
-      }
+    let latestSequence = 0
+    if (this.authorLatest[author])
+      latestSequence = this.authorLatest[author].sequence
+    if (sequence > latestSequence) {
+      const key = bipf.decode(buf, bipf.seekKey(buf, 0, bKey))
+      this.authorLatest[author] = { id: key, sequence, timestamp }
+      this.batch.push({
+        type: 'put',
+        key: author,
+        value: this.authorLatest[author],
+      })
     }
-    return
   }
 
   getAllLatest(cb) {

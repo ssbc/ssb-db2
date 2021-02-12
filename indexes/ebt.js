@@ -16,22 +16,16 @@ module.exports = class EBT extends Plugin {
   }
 
   handleRecord(record, seq) {
-    if (record.offset < this.offset.value) return
     const buf = record.value
-    if (!buf) return // deleted
-
     const pValue = bipf.seekKey(buf, 0, bValue)
-    if (pValue >= 0) {
-      const author = bipf.decode(buf, bipf.seekKey(buf, pValue, bAuthor))
-      const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, bSequence))
-      this.batch.push({
-        type: 'put',
-        key: [author, sequence],
-        value: record.offset,
-      })
-    }
-
-    return
+    if (pValue < 0) return
+    const author = bipf.decode(buf, bipf.seekKey(buf, pValue, bAuthor))
+    const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, bSequence))
+    this.batch.push({
+      type: 'put',
+      key: [author, sequence],
+      value: record.offset,
+    })
   }
 
   levelKeyToMessage(key, cb) {

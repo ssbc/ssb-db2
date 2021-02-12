@@ -55,7 +55,9 @@ module.exports = class Plugin {
     const liveFlush = debounce(this.flush, 250)
 
     this.onData = function onData(record, isLive) {
-      this.handleRecord(record, processed)
+      if (record.offset >= this.offset.value && record.value) {
+        this.handleRecord(record, processed)
+      }
       notPersistedOffset = record.offset
       processed++
 
