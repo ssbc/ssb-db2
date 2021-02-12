@@ -9,7 +9,7 @@ const caps = require('ssb-caps')
 const { and, toCallback } = require('../operators')
 const mentions = require('../operators/full-mentions')
 
-const dir = '/tmp/ssb-db2-ebt'
+const dir = '/tmp/ssb-db2-multiple'
 
 rimraf.sync(dir)
 mkdirp.sync(dir)
