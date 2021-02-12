@@ -21,7 +21,7 @@ module.exports = class FullMentions extends Plugin {
     super(dir, 'fullMentions', 1, 'json')
   }
 
-  handleData(record, seq) {
+  handleRecord(record, seq) {
     if (record.offset < this.offset.value) return
     const recBuffer = record.value
     if (!recBuffer) return // deleted

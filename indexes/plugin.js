@@ -55,7 +55,7 @@ module.exports = class Plugin {
     const liveFlush = debounce(this.flush, 250)
 
     this.onData = function onData(record, isLive) {
-      this.handleData(record, processed)
+      this.handleRecord(record, processed)
       notPersistedOffset = record.offset
       processed++
 
@@ -98,8 +98,8 @@ module.exports = class Plugin {
     this.level.close(cb)
   }
 
-  handleData() {
-    throw new Error('handleData() is missing an implementation')
+  handleRecord() {
+    throw new Error('handleRecord() is missing an implementation')
   }
 
   flushBatch(cb) {

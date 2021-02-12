@@ -26,7 +26,7 @@ module.exports = class BaseIndex extends Plugin {
     })
   }
 
-  handleData(record, seq) {
+  handleRecord(record, seq) {
     if (record.offset < this.offset.value) return
     const buf = record.value
     if (!buf) return // deleted

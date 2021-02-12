@@ -15,7 +15,7 @@ module.exports = class EBT extends Plugin {
     this.log = log
   }
 
-  handleData(record, seq) {
+  handleRecord(record, seq) {
     if (record.offset < this.offset.value) return
     const buf = record.value
     if (!buf) return // deleted
