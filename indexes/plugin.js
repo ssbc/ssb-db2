@@ -67,18 +67,18 @@ module.exports = class Plugin {
       else if (isLive) liveFlush(() => {})
     }
 
-    this.level.get(META, { valueEncoding: 'json' }, (err, data) => {
-      debug(`got index status:`, data)
+    this.level.get(META, { valueEncoding: 'json' }, (err, status) => {
+      debug(`got index status:`, status)
 
-      if (data && data.version === version) {
-        processed = data.processed
+      if (status && status.version === version) {
+        processed = status.processed
         if (this.beforeIndexUpdate) {
           this.beforeIndexUpdate(() => {
-            this.offset.set(data.offset)
+            this.offset.set(status.offset)
             this._stateLoaded.resolve()
           })
         } else {
-          this.offset.set(data.offset)
+          this.offset.set(status.offset)
           this._stateLoaded.resolve()
         }
       } else {
