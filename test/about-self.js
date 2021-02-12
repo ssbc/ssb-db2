@@ -2,10 +2,10 @@ const test = require('tape')
 const ssbKeys = require('ssb-keys')
 const path = require('path')
 const rimraf = require('rimraf')
+const pull = require('pull-stream')
 const mkdirp = require('mkdirp')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
-const { and, toCallback } = require('../operators')
 
 const dir = '/tmp/ssb-db2-about-self-index'
 
@@ -39,14 +39,15 @@ test('get self assigned', (t) => {
         t.equal(profile.image, about.image)
 
         const newAbout = {
-          type: 'about', about: sbot.id,
+          type: 'about',
+          about: sbot.id,
           name: 'arj2',
           image: {
             link: '%blob',
-            size: 1024
-          }
+            size: 1024,
+          },
         }
-        
+
         db.publish(newAbout, (err) => {
           t.error(err, 'no err')
 
@@ -54,12 +55,49 @@ test('get self assigned', (t) => {
             const profile = sbot.db.getIndex('aboutSelf').getProfile(sbot.id)
             t.equal(profile.name, newAbout.name)
             t.equal(profile.image, newAbout.image.link)
-            
+
             t.end()
-            sbot.close()
           })
         })
       })
     })
   })
+})
+
+test('get live profile', (t) => {
+  const about = { type: 'about', about: sbot.id, name: 'arj', image: '%blob' }
+  const aboutOther = { type: 'about', about: '@other', name: 'staltz' }
+
+  db.publish(about, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    db.publish(aboutOther, (err) => {
+      t.error(err, 'no err')
+
+      sbot.db.onDrain('aboutSelf', () => {
+        const profile = sbot.db.getIndex('aboutSelf').getProfile(sbot.id)
+        t.equal(profile.name, about.name)
+        t.equal(profile.image, about.image)
+
+        const newAbout = { type: 'about', about: sbot.id, name: 'arj03' }
+
+        pull(
+          sbot.db.getIndex('aboutSelf').getLiveProfile(sbot.id),
+          pull.drain((profile) => {
+            t.equal(profile.name, newAbout.name)
+            t.equal(profile.image, about.image)
+            t.end()
+          })
+        )
+
+        db.publish(newAbout, (err) => {
+          t.error(err, 'no err')
+        })
+      })
+    })
+  })
+})
+
+test('teardown sbot', (t) => {
+  sbot.close(t.end)
 })

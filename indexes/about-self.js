@@ -58,32 +58,29 @@ module.exports = function (log, dir) {
       batch.push({
         type: 'put',
         key: author,
-        value: profiles[author]
+        value: profiles[author],
       })
     }
 
     return batch.length
   }
-  
+
   function updateProfileData(author, content) {
     let profile = profiles[author] || {}
 
-    if (content.name)
-      profile.name = content.name
+    if (content.name) profile.name = content.name
 
-    if (content.description)
-      profile.description = content.description
+    if (content.description) profile.description = content.description
 
     if (content.image && typeof content.image.link === 'string')
       profile.image = content.image.link
-    else if (typeof content.image === 'string')
-      profile.image = content.image
+    else if (typeof content.image === 'string') profile.image = content.image
 
     profiles[author] = profile
   }
 
   let profiles = {}
-  
+
   function beforeIndexUpdate(cb) {
     pull(
       pl.read(level, {
@@ -91,17 +88,26 @@ module.exports = function (log, dir) {
         lte: undefined,
         keyEncoding: jsonCodec,
         valueEncoding: jsonCodec,
-        keys: true
+        keys: true,
       }),
-      pull.drain(
-        (data) => profiles[data.key] = data.value,
-        cb
-      )
+      pull.drain((data) => (profiles[data.key] = data.value), cb)
     )
   }
 
   function getProfile(feedId) {
     return profiles[feedId] || {}
+  }
+
+  function getLiveProfile(feedId) {
+    return pl.read(level, {
+      gte: feedId,
+      lte: feedId,
+      keyEncoding: 'json',
+      valueEncoding: 'json',
+      keys: false,
+      live: true,
+      old: false,
+    })
   }
 
   function getProfiles() {
@@ -119,6 +125,7 @@ module.exports = function (log, dir) {
     close: level.close.bind(level),
 
     getProfile,
-    getProfiles
+    getProfiles,
+    getLiveProfile,
   }
 }
