@@ -16,7 +16,6 @@ module.exports = class BaseIndex extends Plugin {
   constructor(log, dir, privateIndex) {
     super(dir, 'base', 1)
     this.privateIndex = privateIndex
-    this.batch = []
     this.authorLatest = {}
   }
 
@@ -29,9 +28,9 @@ module.exports = class BaseIndex extends Plugin {
   }
 
   handleData(record, seq) {
-    if (record.offset < this.offset.value) return this.batch.length
+    if (record.offset < this.offset.value) return
     const buf = record.value
-    if (!buf) return this.batch.length // deleted
+    if (!buf) return // deleted
 
     const pValue = bipf.seekKey(buf, 0, bValue)
     if (pValue >= 0) {
@@ -52,7 +51,7 @@ module.exports = class BaseIndex extends Plugin {
         })
       }
     }
-    return this.batch.length
+    return
   }
 
   getAllLatest(cb) {

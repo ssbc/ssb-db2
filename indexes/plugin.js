@@ -25,6 +25,7 @@ module.exports = class Plugin {
     this.offset = Obv() // persisted offset
     this._stateLoaded = DeferredPromise()
     let notPersistedOffset = -1
+    this.batch = []
 
     this.writeBatch = function writeBatch(cb) {
       if (notPersistedOffset > -1 && !this.level.isClosed()) {
@@ -53,11 +54,11 @@ module.exports = class Plugin {
     const liveWriteBatch = debounce(this.writeBatch.bind(this), 250)
 
     this.onData = function onData(record, isLive) {
-      const changes = this.handleData(record, processed)
+      this.handleData(record, processed)
       notPersistedOffset = record.offset
       processed++
 
-      if (changes > chunkSize) this.writeBatch(() => {})
+      if (this.batch.length > chunkSize) this.writeBatch(() => {})
       else if (isLive) liveWriteBatch(() => {})
     }
 

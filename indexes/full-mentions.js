@@ -20,25 +20,24 @@ function parseInt10(x) {
 module.exports = class FullMentions extends Plugin {
   constructor(log, dir) {
     super(dir, 'fullMentions', 1)
-    this.batch = []
   }
 
   handleData(record, seq) {
-    if (record.offset < this.offset.value) return this.batch.length
+    if (record.offset < this.offset.value) return
     const recBuffer = record.value
-    if (!recBuffer) return this.batch.length // deleted
+    if (!recBuffer) return // deleted
 
     const pKey = bipf.seekKey(recBuffer, 0, bKey)
 
     let p = 0 // note you pass in p!
     p = bipf.seekKey(recBuffer, p, bValue)
-    if (p < 0) return this.batch.length
+    if (p < 0) return
     p = bipf.seekKey(recBuffer, p, bContent)
-    if (p < 0) return this.batch.length
+    if (p < 0) return
     p = bipf.seekKey(recBuffer, p, bMentions)
-    if (p < 0) return this.batch.length
+    if (p < 0) return
     const mentionsData = bipf.decode(recBuffer, p)
-    if (!Array.isArray(mentionsData)) return this.batch.length
+    if (!Array.isArray(mentionsData)) return
     const shortKey = bipf.decode(recBuffer, pKey).slice(1, 10)
     mentionsData.forEach((mention) => {
       if (
@@ -53,7 +52,7 @@ module.exports = class FullMentions extends Plugin {
         })
       }
     })
-    return this.batch.length
+    return
   }
 
   writeData(cb) {

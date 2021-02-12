@@ -13,7 +13,6 @@ module.exports = class EBT extends Plugin {
   constructor(log, dir) {
     super(dir, 'ebt', 1)
     this.log = log
-    this.batch = []
   }
 
   writeData(cb) {
@@ -22,9 +21,9 @@ module.exports = class EBT extends Plugin {
   }
 
   handleData(record, seq) {
-    if (record.offset < this.offset.value) return this.batch.length
+    if (record.offset < this.offset.value) return
     const buf = record.value
-    if (!buf) return this.batch.length // deleted
+    if (!buf) return // deleted
 
     const pValue = bipf.seekKey(buf, 0, bValue)
     if (pValue >= 0) {
@@ -37,7 +36,7 @@ module.exports = class EBT extends Plugin {
       })
     }
 
-    return this.batch.length
+    return
   }
 
   levelKeyToMessage(key, cb) {
