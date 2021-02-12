@@ -4,9 +4,6 @@ const pull = require('pull-stream')
 const Plugin = require('./plugin')
 const { or, seqs, liveSeqs } = require('../operators')
 
-// 1 index:
-// - mentions (msgId) => msg offsets
-
 const bKey = Buffer.from('key')
 const bValue = Buffer.from('value')
 const bContent = Buffer.from('content')
@@ -16,6 +13,7 @@ function parseInt10(x) {
   return parseInt(x, 10)
 }
 
+// [destMsgId, origShortMsgId] => seq
 module.exports = class FullMentions extends Plugin {
   constructor(log, dir) {
     super(dir, 'fullMentions', 1, 'json')
@@ -50,32 +48,26 @@ module.exports = class FullMentions extends Plugin {
     })
   }
 
-  getResults(opts, live, cb) {
+  getMessagesByMention(key, live, cb) {
+    const opts = {
+      gte: [key, ''],
+      lte: [key, undefined],
+      keyEncoding: this.keyEncoding,
+      keys: false,
+    }
+
     pull(
       pl.read(this.level, opts),
-      pull.collect((err, data) => {
+      pull.collect((err, seqArr) => {
         if (err) return cb(err)
         if (live) {
           const ps = pull(
             pl.read(this.level, Object.assign({}, opts, { live, old: false })),
             pull.map(parseInt10)
           )
-          cb(null, or(seqs(data.map(parseInt10)), liveSeqs(ps))())
-        } else cb(null, seqs(data.map(parseInt10)))
+          cb(null, or(seqs(seqArr.map(parseInt10)), liveSeqs(ps))())
+        } else cb(null, seqs(seqArr.map(parseInt10)))
       })
-    )
-  }
-
-  getMessagesByMention(key, live, cb) {
-    this.getResults(
-      {
-        gte: [key, ''],
-        lte: [key, undefined],
-        keyEncoding: this.keyEncoding,
-        keys: false,
-      },
-      live,
-      cb
     )
   }
 }
