@@ -17,10 +17,10 @@ module.exports = class BaseIndex extends Plugin {
     this.authorLatest = {}
   }
 
-  flushBatch(cb) {
-    super.flushBatch((err) => {
-      if (err) return cb(err)
-      else this.privateIndex.saveIndexes(cb)
+  onLoadedMeta(cb) {
+    this.getAllLatest((err, latest) => {
+      this.authorLatest = latest
+      cb()
     })
   }
 
@@ -45,6 +45,13 @@ module.exports = class BaseIndex extends Plugin {
     }
   }
 
+  flushBatch(cb) {
+    super.flushBatch((err) => {
+      if (err) return cb(err)
+      else this.privateIndex.saveIndexes(cb)
+    })
+  }
+
   getAllLatest(cb) {
     const META = '\x00'
     pull(
@@ -61,13 +68,6 @@ module.exports = class BaseIndex extends Plugin {
         cb(null, result)
       })
     )
-  }
-
-  beforeIndexUpdate(cb) {
-    this.getAllLatest((err, latest) => {
-      this.authorLatest = latest
-      cb()
-    })
   }
 
   // returns { id (msg key), sequence, timestamp }
