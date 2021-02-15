@@ -25,32 +25,43 @@ module.exports = class Plugin {
 
     const META = '\x00'
     const chunkSize = 2048
-    let processed = 0 // processed seq
+    let processedSeq = 0
+    let processedOffset = -1
     this.offset = Obv() // persisted offset
     this._stateLoaded = DeferredPromise()
-    let notPersistedOffset = -1
     this.batch = []
 
     this.flush = (cb) => {
-      if (notPersistedOffset < 0 || this.level.isClosed()) return cb()
+      if (processedOffset < 0 || this.level.isClosed()) return cb()
+      if (!this.onFlush) this.onFlush = (cb2) => cb2()
 
-      this.flushBatch((err) => {
-        if (err) return cb(err)
-        if (this.level.isClosed()) return cb()
+      this.onFlush((err) => {
+        if (err) return cb(err2)
 
-        // we can't batch this as the valueEncoding might be different
-        this.level.put(
-          META,
-          { version, offset: notPersistedOffset, processed },
-          { valueEncoding: 'json' },
-          (err) => {
-            if (err) cb(err)
-            else {
-              this.offset.set(notPersistedOffset)
-              cb()
-            }
+        // 1st, persist the operations in the batch array
+        this.level.batch(
+          this.batch,
+          { keyEncoding: this.keyEncoding, valueEncoding: this.valueEncoding },
+          (err2) => {
+            if (err2) return cb(err2)
+            if (this.level.isClosed()) return cb()
+
+            // 2nd, persist the META because it has its own valueEncoding
+            this.level.put(
+              META,
+              { version, offset: processedOffset, processed: processedSeq },
+              { valueEncoding: 'json' },
+              (err3) => {
+                if (err3) cb(err3)
+                else {
+                  this.offset.set(processedOffset)
+                  cb()
+                }
+              }
+            )
           }
         )
+        this.batch = []
       })
     }
 
@@ -59,13 +70,16 @@ module.exports = class Plugin {
     this.onRecord = function onRecord(record, isLive) {
       let changes = 0
       if (record.offset > this.offset.value) {
-        if (record.value) this.processRecord(record, processed)
+        if (record.value) this.processRecord(record, processedSeq)
         changes = this.batch.length
-        processed++
+        processedSeq++
       }
-      notPersistedOffset = record.offset
+      processedOffset = record.offset
 
-      if (changes > chunkSize) this.flush(() => {})
+      if (changes > chunkSize)
+        this.flush((err) => {
+          console.error(err)
+        })
       else if (isLive) liveFlush(() => {})
     }
 
@@ -73,7 +87,7 @@ module.exports = class Plugin {
       debug(`got index status:`, status)
 
       if (status && status.version === version) {
-        processed = status.processed
+        processedSeq = status.processed
         if (this.onLoaded) {
           this.onLoaded(() => {
             this.offset.set(status.offset)
@@ -121,14 +135,5 @@ module.exports = class Plugin {
 
   processRecord() {
     throw new Error('processRecord() is missing an implementation')
-  }
-
-  flushBatch(cb) {
-    this.level.batch(
-      this.batch,
-      { keyEncoding: this.keyEncoding, valueEncoding: this.valueEncoding },
-      cb
-    )
-    this.batch = []
   }
 }

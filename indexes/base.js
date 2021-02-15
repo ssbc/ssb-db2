@@ -45,11 +45,8 @@ module.exports = class BaseIndex extends Plugin {
     }
   }
 
-  flushBatch(cb) {
-    super.flushBatch((err) => {
-      if (err) return cb(err)
-      else this.privateIndex.saveIndexes(cb)
-    })
+  onFlush(cb) {
+    this.privateIndex.saveIndexes(cb)
   }
 
   getAllLatest(cb) {
