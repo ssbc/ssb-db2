@@ -83,6 +83,8 @@ exports.init = function (sbot, config) {
     stateFeedsReady.resolve()
   })
 
+  baseIndex.offset((o) => status.updateIndex('base', o))
+
   // Crunch stats numbers to produce one number for the "indexing" progress
   status.obv((stats) => {
     const logSize = Math.max(1, stats.log) // 1 prevents division by zero
