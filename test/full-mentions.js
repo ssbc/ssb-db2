@@ -72,7 +72,7 @@ test('getMessagesByMention', (t) => {
   })
 })
 
-test('getMessagesByMention live', (t) => {
+test('getMessagesByMention live', { timeout: 5000 }, (t) => {
   const feedId = '@abc'
   const mentionFeed = {
     type: 'post',
