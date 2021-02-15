@@ -81,11 +81,16 @@ function reportMem() {
   return `${rss} MB = ${heap} MB + etc`
 }
 
+let keys
+test('setup', (t) => {
+  keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  t.end()
+})
+
 test('migrate (+db1)', async (t) => {
   rimraf.sync(db2Path)
   t.pass('delete db2 folder to start clean')
 
-  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('ssb-db'))
     .use(require('../migrate'))
@@ -126,7 +131,6 @@ test('migrate (alone)', async (t) => {
   rimraf.sync(db2Path)
   t.pass('delete db2 folder to start clean')
 
-  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../migrate'))
     .call(null, { keys, path: dir })
@@ -159,7 +163,6 @@ test('migrate (+db1 +db2)', async (t) => {
   rimraf.sync(db2Path)
   t.pass('delete db2 folder to start clean')
 
-  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('ssb-db'))
     .use(require('../'))
@@ -193,7 +196,6 @@ test('migrate (+db2)', async (t) => {
   rimraf.sync(db2Path)
   t.pass('delete db2 folder to start clean')
 
-  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .call(null, { keys, path: dir })
@@ -226,7 +228,6 @@ test('migrate continuation (+db2)', async (t) => {
   rimraf.sync(db2Path)
   t.pass('delete db2 folder to start clean')
 
-  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   let sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .call(null, { keys, path: dir })
@@ -291,7 +292,6 @@ test('Memory usage without indexes', (t) => {
 })
 
 test('initial indexing', async (t) => {
-  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .call(null, { keys, path: dir })
@@ -329,7 +329,6 @@ test('initial indexing maxcpu 86', async (t) => {
   rimraf.sync(indexesPath)
   t.pass('delete indexes folder to start clean')
 
-  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .call(null, { keys, path: dir, db2: { maxCpu: 86 } })
@@ -367,7 +366,6 @@ test('initial indexing maxcpu 86', async (t) => {
 })
 
 test('initial indexing compat', async (t) => {
-  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .use(require('../compat'))
@@ -398,7 +396,6 @@ test('initial indexing compat', async (t) => {
 })
 
 test('Two indexes updating concurrently', async (t) => {
-  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .use(require('../compat'))
@@ -430,7 +427,6 @@ test('Two indexes updating concurrently', async (t) => {
 })
 
 test.skip('ssb-threads and ssb-friends', async (t) => {
-  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .use(require('ssb-friends'))
@@ -467,7 +463,6 @@ test.skip('ssb-threads and ssb-friends', async (t) => {
 })
 
 test.skip('ssb-threads and ssb-friends again', async (t) => {
-  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .use(require('ssb-friends'))
@@ -508,6 +503,7 @@ const KEY2 = '%EpzOw6sOBb4RGtofVD43GnfImoiw6NzEEsraHsNXF1g=.sha25' // contact
 const KEY3 = '%55wBq68+p45q7/OuPgL+TC07Ifx8ihEW93u/EZaYv6c=.sha256' // another post
 const AUTHOR1 = '@ZngOKXHjrvG+cy7Gjx5pSFunUqcePfmDQQxoUlHFUdU=.ed2551'
 const AUTHOR2 = '@58u/J9+5bOXeYRDCYQ9cJ7kklghIpQFPBYxlhKq1/qs=.ed2551'
+const REBOOT = 'reboot'
 
 const queries = {
   'key one initial': [and(key(KEY1))],
@@ -515,6 +511,10 @@ const queries = {
   'key two': [and(key(KEY2))],
 
   'key one again': [and(key(KEY1))],
+
+  [REBOOT]: true,
+
+  'reboot and key one again': [and(key(KEY1))],
 
   'latest root posts': [
     and(type('post'), isRoot(), isPublic()),
@@ -569,7 +569,6 @@ const queries = {
 
 let sbot
 test('setup', (t) => {
-  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .call(null, { keys, path: dir })
@@ -578,6 +577,16 @@ test('setup', (t) => {
 
 for (const title in queries) {
   test(title, (t) => {
+    if (title === REBOOT) {
+      sbot.close(() => {
+        sbot = SecretStack({ appKey: caps.shs })
+          .use(require('../'))
+          .call(null, { keys, path: dir })
+        t.end()
+      })
+      return
+    }
+
     const start = Date.now()
 
     sbot.db.query(
