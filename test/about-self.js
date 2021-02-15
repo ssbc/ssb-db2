@@ -111,7 +111,6 @@ test('should load about-self from disk', (t) => {
 
     sbot.db.onDrain('aboutSelf', () => {
       const profiles = sbot.db.getIndex('aboutSelf').getProfiles()
-      console.log(profiles)
       t.equal(profiles[sbot.id].name, 'arj03')
       t.end()
     })
