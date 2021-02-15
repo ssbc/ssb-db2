@@ -73,8 +73,11 @@ module.exports = class BaseIndex extends Plugin {
   }
 
   removeFeedFromLatest(feedId) {
-    this.level.del(feedId, (err) => {
+    this.flush((err) => {
       if (err) throw err
+      this.level.del(feedId, (err2) => {
+        if (err2) throw err2
+      })
     })
   }
 }

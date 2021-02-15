@@ -185,7 +185,7 @@ test('validate needs to load', (t) => {
       db.publish(post, (err, msg) => {
         t.error(err, 'no err')
 
-        t.notEqual(msg.value.previous, null)
+        t.equal(msg.value.previous, null)
 
         db.onDrain(() => {
           sbot.close(() => {
