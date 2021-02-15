@@ -76,7 +76,7 @@ module.exports = function (log, dir) {
             pl.read(level, Object.assign({}, opts, { live, old: false })),
             pull.map(parseInt10)
           )
-          cb(null, or(seqs(data.map(parseInt10)), liveSeqs(ps)))
+          cb(null, or(seqs(data.map(parseInt10)), liveSeqs(ps))())
         } else cb(null, seqs(data.map(parseInt10)))
       })
     )

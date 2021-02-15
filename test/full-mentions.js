@@ -5,7 +5,8 @@ const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
-const { and, toCallback } = require('../operators')
+const pull = require('pull-stream')
+const { and, live, toCallback, toPullStream } = require('../operators')
 const mentions = require('../operators/full-mentions')
 
 const dir = '/tmp/ssb-db2-mentions-index'
@@ -62,7 +63,6 @@ test('getMessagesByMention', (t) => {
                 t.equal(results2.length, 1)
                 t.equal(results2[0].value.content.text, mentionMsg.text)
                 t.end()
-                sbot.close()
               })
             )
           })
@@ -70,4 +70,41 @@ test('getMessagesByMention', (t) => {
       })
     })
   })
+})
+
+test('getMessagesByMention live', (t) => {
+  const feedId = '@abc'
+  const mentionFeed = {
+    type: 'post',
+    text: 'Goodbye @abc',
+    mentions: [{ link: feedId }],
+  }
+  const unrelatedMsg = {
+    type: 'post',
+    text: 'random',
+  }
+
+  pull(
+    db.query(and(mentions(feedId)), live(), toPullStream()),
+    pull.drain((msg) => {
+      t.equal(msg.value.content.text, 'Goodbye @abc')
+      t.end()
+      return false // abort the drain
+    })
+  )
+
+  setTimeout(() => {
+    db.publish(unrelatedMsg, (err) => {
+      t.pass('published unrelated new msg')
+    })
+  }, 200)
+  setTimeout(() => {
+    db.publish(mentionFeed, (err) => {
+      t.pass('published related new msg')
+    })
+  }, 400)
+})
+
+test('teardown sbot', (t) => {
+  sbot.close(t.end)
 })
