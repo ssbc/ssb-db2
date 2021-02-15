@@ -7,6 +7,10 @@ const Debug = require('debug')
 const DeferredPromise = require('p-defer')
 const { indexesPath } = require('../defaults')
 
+function thenMaybeReportError(err) {
+  if (err) console.error(err)
+}
+
 module.exports = class Plugin {
   constructor(log, dir, name, version, keyEncoding, valueEncoding) {
     this.log = log
@@ -76,11 +80,8 @@ module.exports = class Plugin {
       }
       processedOffset = record.offset
 
-      if (changes > chunkSize)
-        this.flush((err) => {
-          console.error(err)
-        })
-      else if (isLive) liveFlush(() => {})
+      if (changes > chunkSize) this.flush(thenMaybeReportError)
+      else if (isLive) liveFlush(thenMaybeReportError)
     }
 
     this.level.get(META, { valueEncoding: 'json' }, (err, status) => {
