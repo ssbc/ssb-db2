@@ -76,6 +76,7 @@ test('getStatus', (t) => {
     t.ok(stats.indexes)
     t.true(stats['log'] > 0)
     t.equal(stats.jit['seq'], stats['log'])
+    t.equal(stats.indexes['base'], stats['log'])
     t.equal(stats.indexes['ebt'], stats['log'])
     t.end()
   })
