@@ -63,7 +63,11 @@ sbot.db.query(
 )
 ```
 
-### Extra plugins
+### Leveldb plugins
+
+The queries you've seen above use JITDB, but there are some queries that cannot rely on JITDB alone, and we need to depend on Leveldb. This section shows some example leveldb indexes, explains when you need leveldb, and how to make your own leveldb plugin in ssb-db2.
+
+#### Full-mentions
 
 An extra index plugin that is commonly needed in SSB communities is
 the **full-mentions** index. It has one method: getMessagesByMention.
@@ -102,6 +106,8 @@ sbot.db.query(
 )
 ```
 
+#### About-self
+
 Another extra index plugin that is commonly needed in SSB communities
 is the **about-self** index. This indexes only self-assigned about
 messages in contrast to [ssb-social-index] that indexes all about
@@ -120,9 +126,75 @@ const sbot = SecretStack({ caps })
 
 sbot.db.onDrain('aboutSelf', () => {
   const profile = sbot.db.getIndex('aboutSelf').getProfile(alice.id)
-  console.log("Alice has name:" + profile.name)
+  console.log('Alice has name:' + profile.name)
 })
 ```
+
+#### Your own leveldb index plugin
+
+It's wise to use JITDB when:
+
+1. You want the query output to be the msg itself, not state derived from msgs
+2. You want the query output ordered by timestamp (either descending or ascending)
+
+There are some cases where the assumptions above are not met. For instance, with abouts, we often want to aggregate all `type: "about"` msgs and return all recent values for each field (`name`, `image`, `description`, etc). So assumption number 1 does not apply.
+
+In that case, you can make a leveldb index for ssb-db2, by creating a class that extends the class at `require('ssb-db2/indexes/plugin')`, like this:
+
+```js
+const Plugin = require('ssb-db2/indexes/plugin')
+
+// This is a secret-stack plugin
+exports.init = function (sbot, config) {
+  class MyIndex extends Plugin {
+    constructor(log, dir) {
+      //    log, dir, name, version, keyEncoding, valueEncoding
+      super(log, dir, 'myindex', 1, 'utf8', 'json')
+    }
+
+    processRecord(record, seq) {
+      const buf = record.value // this is a BIPF buffer, directly from the log
+      // ...
+      // Use BIPF seeking functions to decode some fields
+      // ...
+      this.batch.push({
+        type: 'put',
+        key: key, // some utf8 string here (see keyEncoding in the constructor)
+        value: value, // some object here (see valueEncoding in the constructor)
+      })
+    }
+
+    myOwnMethodToGetStuff(key, cb) {
+      this.level.get(key, cb)
+    }
+  }
+
+  sbot.db.registerIndex(MyIndex)
+}
+```
+
+There are three parts you'll always need:
+
+- `constructor`: here you set configurations for the Leveldb index
+  - `log` and `dir` you probably don't need to fiddle with, but you can use `this.log` methods if you know how to use async-append-only-log
+  - `name` is a string that you'll use in `getIndex(name)`, it's also used as a directory name
+  - `version`, upon changing, will cause a full rebuild of this index
+  - `keyEncoding` and `valueEncoding` must be strings from [level-codec](https://github.com/Level/codec#builtin-encodings)
+- `processRecord`: here you handle a msg (in [bipf]) and potentially write something to the index using `this.batch.push(leveldbOperation)`
+- **custom method**: this is an API of your own choosing, that allows you to read data from the index
+
+To call your custom methods, you'll have to pick them like this:
+
+```js
+sbot.db.getIndex('myindex').myOwnMethodToGetStuff()
+```
+
+Or you can wrap that in a secret-stack plugin (in the example above, `exports.init` should return an object with the API functions).
+
+There are other special methods you can implement in order to add "hooks" in the `Plugin` subclass:
+
+- `onLoaded(cb)`: called once, at startup, when the index is successfully loaded from disk and is ready to receive queries
+- `onFlush(cb)`: called when the leveldb index is about to be saved to disk
 
 ### Compatibility plugins
 

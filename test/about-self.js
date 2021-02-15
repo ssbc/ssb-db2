@@ -14,7 +14,7 @@ mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
-const sbot = SecretStack({ appKey: caps.shs })
+let sbot = SecretStack({ appKey: caps.shs })
   .use(require('../'))
   .use(require('../about-self'))
   .call(null, {
@@ -94,6 +94,25 @@ test('get live profile', (t) => {
           t.error(err, 'no err')
         })
       })
+    })
+  })
+})
+
+test('should load about-self from disk', (t) => {
+  sbot.close(() => {
+    t.pass('closed sbot')
+    sbot = SecretStack({ appKey: caps.shs })
+      .use(require('../'))
+      .use(require('../about-self'))
+      .call(null, {
+        keys,
+        path: dir,
+      })
+
+    sbot.db.onDrain('aboutSelf', () => {
+      const profiles = sbot.db.getIndex('aboutSelf').getProfiles()
+      t.equal(profiles[sbot.id].name, 'arj03')
+      t.end()
     })
   })
 })

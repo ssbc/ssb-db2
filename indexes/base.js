@@ -3,80 +3,58 @@ const pl = require('pull-level')
 const pull = require('pull-stream')
 const Plugin = require('./plugin')
 
-// 1 index:
-// - author => latest { msg key, sequence timestamp } (validate state & EBT)
+const bKey = Buffer.from('key')
+const bValue = Buffer.from('value')
+const bAuthor = Buffer.from('author')
+const bSequence = Buffer.from('sequence')
+const bTimestamp = Buffer.from('timestamp')
 
-module.exports = function (log, dir, privateIndex) {
-  const bKey = Buffer.from('key')
-  const bValue = Buffer.from('value')
-  const bAuthor = Buffer.from('author')
-  const bSequence = Buffer.from('sequence')
-  const bTimestamp = Buffer.from('timestamp')
-
-  const throwOnError = function (err) {
-    if (err) throw err
+// author => latest { msg key, sequence timestamp } (validate state & EBT)
+module.exports = class BaseIndex extends Plugin {
+  constructor(log, dir, privateIndex) {
+    super(log, dir, 'base', 1, undefined, 'json')
+    this.privateIndex = privateIndex
+    this.authorLatest = {}
   }
 
-  let batch = []
-  let authorLatest = {}
-  const META = '\x00'
-
-  const { level, offset, stateLoaded, onData, writeBatch } = Plugin(
-    dir,
-    'base',
-    1,
-    handleData,
-    writeData,
-    beforeIndexUpdate
-  )
-
-  function writeData(cb) {
-    level.batch(batch, { valueEncoding: 'json' }, (err) => {
-      if (err) return cb(err)
-      else privateIndex.saveIndexes(cb)
-    })
-
-    batch = []
-  }
-
-  function handleData(record, processed) {
-    const buf = record.value
-    if (!buf) return batch.length // deleted
-
-    const pValue = bipf.seekKey(buf, 0, bValue)
-    if (pValue >= 0) {
-      const author = bipf.decode(buf, bipf.seekKey(buf, pValue, bAuthor))
-      const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, bSequence))
-      const timestamp = bipf.decode(buf, bipf.seekKey(buf, pValue, bTimestamp))
-
-      let latestSequence = 0
-      if (authorLatest[author]) latestSequence = authorLatest[author].sequence
-      if (sequence > latestSequence) {
-        const key = bipf.decode(buf, bipf.seekKey(buf, 0, bKey))
-        authorLatest[author] = { id: key, sequence, timestamp }
-        batch.push({
-          type: 'put',
-          key: author,
-          value: authorLatest[author],
-        })
-      }
-    }
-
-    return batch.length
-  }
-
-  function beforeIndexUpdate(cb) {
-    getAllLatest((err, latest) => {
-      authorLatest = latest
+  onLoaded(cb) {
+    this.getAllLatest((err, latest) => {
+      this.authorLatest = latest
       cb()
     })
   }
 
-  function getAllLatest(cb) {
+  processRecord(record, seq) {
+    const buf = record.value
+    const pValue = bipf.seekKey(buf, 0, bValue)
+    if (pValue < 0) return
+    const author = bipf.decode(buf, bipf.seekKey(buf, pValue, bAuthor))
+    const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, bSequence))
+    const timestamp = bipf.decode(buf, bipf.seekKey(buf, pValue, bTimestamp))
+    let latestSequence = 0
+    if (this.authorLatest[author])
+      latestSequence = this.authorLatest[author].sequence
+    if (sequence > latestSequence) {
+      const key = bipf.decode(buf, bipf.seekKey(buf, 0, bKey))
+      this.authorLatest[author] = { id: key, sequence, timestamp }
+      this.batch.push({
+        type: 'put',
+        key: author,
+        value: this.authorLatest[author],
+      })
+    }
+  }
+
+  onFlush(cb) {
+    this.privateIndex.saveIndexes(cb)
+  }
+
+  getAllLatest(cb) {
+    const META = '\x00'
     pull(
-      pl.read(level, {
+      pl.read(this.level, {
         gt: META,
-        valueEncoding: 'json',
+        valueEncoding: this.valueEncoding,
       }),
       pull.collect((err, data) => {
         if (err) return cb(err)
@@ -89,22 +67,14 @@ module.exports = function (log, dir, privateIndex) {
     )
   }
 
-  return {
-    offset,
-    stateLoaded,
-    onData,
-    writeBatch,
+  // returns { id (msg key), sequence, timestamp }
+  getLatest(feedId, cb) {
+    this.level.get(feedId, { valueEncoding: this.valueEncoding }, cb)
+  }
 
-    remove: level.clear,
-    close: level.close.bind(level),
-
-    // returns { id (msg key), sequence, timestamp }
-    getLatest: function (feedId, cb) {
-      level.get(feedId, { valueEncoding: 'json' }, cb)
-    },
-    getAllLatest,
-    removeFeedFromLatest: function (feedId) {
-      level.del(feedId, throwOnError)
-    },
+  removeFeedFromLatest(feedId) {
+    this.level.del(feedId, (err) => {
+      if (err) throw err
+    })
   }
 }

@@ -424,7 +424,7 @@ test('Two indexes updating concurrently', async (t) => {
   await ended.promise
 })
 
-test('ssb-threads and ssb-friends', async (t) => {
+test.skip('ssb-threads and ssb-friends', async (t) => {
   const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
@@ -461,7 +461,7 @@ test('ssb-threads and ssb-friends', async (t) => {
   await ended.promise
 })
 
-test('ssb-threads and ssb-friends again', async (t) => {
+test.skip('ssb-threads and ssb-friends again', async (t) => {
   const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
