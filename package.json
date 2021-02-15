@@ -19,6 +19,7 @@
     "hoox": "0.0.1",
     "jitdb": "^2.0.7",
     "level": "^6.0.1",
+    "level-codec": "^9.0.2",
     "lodash.debounce": "^4.0.8",
     "mkdirp": "^1.0.4",
     "obz": "^1.0.3",

@@ -1,6 +1,7 @@
 const Obv = require('obz')
 const Level = require('level')
 const debounce = require('lodash.debounce')
+const encodings = require('level-codec/lib/encodings')
 const path = require('path')
 const Debug = require('debug')
 const DeferredPromise = require('p-defer')
@@ -10,8 +11,8 @@ module.exports = class Plugin {
   constructor(log, dir, name, version, keyEncoding, valueEncoding) {
     this.log = log
     this.name = name
-    this.keyEncoding = keyEncoding
-    this.valueEncoding = valueEncoding
+    this._keyEncoding = keyEncoding
+    this._valueEncoding = valueEncoding
     const debug = Debug('ssb:db2:' + name)
 
     const indexPath = path.join(indexesPath(dir), name)
@@ -93,6 +94,21 @@ module.exports = class Plugin {
 
   get stateLoaded() {
     return this._stateLoaded.promise
+  }
+
+  // The reason why we need this is that `pull-level` (often used to read these
+  // level indexes) only supports objects of shape {encode,decode,type,buffer}
+  // for `keyEncoding` and `valueEncoding`. Actually, it's `level-post` that
+  // doesn't support it, but `level-post` is a dependency in `pull-level`.
+  // Note, this._keyEncoding and this._valueEncoding are strings.
+  get keyEncoding() {
+    if (encodings[this._keyEncoding]) return encodings[this._keyEncoding]
+    else return undefined
+  }
+
+  get valueEncoding() {
+    if (encodings[this._valueEncoding]) return encodings[this._valueEncoding]
+    else return undefined
   }
 
   remove(...args) {
