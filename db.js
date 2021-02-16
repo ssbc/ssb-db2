@@ -13,9 +13,10 @@ const { indexesPath } = require('./defaults')
 const Log = require('./log')
 const Status = require('./status')
 const makeBaseIndex = require('./indexes/base')
+const KeysIndex = require('./indexes/keys')
 const PrivateIndex = require('./indexes/private')
 
-const { and, fromDB, key, author, deferred, toCallback } = operators
+const { and, fromDB, key, author, deferred, toCallback, asOffsets } = operators
 
 function getId(msg) {
   return '%' + hash(JSON.stringify(msg, null, 2))
@@ -44,15 +45,14 @@ exports.manifest = {
 }
 
 exports.init = function (sbot, config) {
+  let self
+  const indexes = {}
   const dir = config.path
   const privateIndex = PrivateIndex(dir, config.keys)
   const log = Log(dir, config, privateIndex)
   const jitdb = JITDb(log, indexesPath(dir))
   const status = Status(log, jitdb)
-
   const debug = Debug('ssb:db2')
-
-  const indexes = {}
   const post = Obv()
   const hmac_key = null
   const stateFeedsReady = DeferredPromise()
@@ -65,6 +65,7 @@ exports.init = function (sbot, config) {
   })
 
   registerIndex(makeBaseIndex(privateIndex))
+  registerIndex(KeysIndex)
 
   // restore current state
   indexes.base.getAllLatest((err, last) => {
@@ -110,7 +111,7 @@ exports.init = function (sbot, config) {
   }
 
   function getHelper(id, onlyValue, cb) {
-    query(
+    self.query(
       and(key(id)),
       toCallback((err, results) => {
         if (err) return cb(err)
@@ -209,15 +210,20 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('del()')
     if (guard) return cb(guard)
 
-    jitdb.all(key(msgId), 0, false, true, (err, results) => {
-      if (err) return cb(err)
-      if (results.length === 0)
-        return cb(
-          new Error('cannot delete ' + msgId + ' because it was not found')
-        )
+    self.query(
+      and(key(msgId)),
+      asOffsets(),
+      toCallback((err, results) => {
+        if (err) return cb(err)
+        if (results.length === 0)
+          return cb(
+            new Error('cannot delete ' + msgId + ' because it was not found')
+          )
 
-      log.del(results[0], cb)
-    })
+        indexes['keys'].delMsg(msgId)
+        log.del(results[0], cb)
+      })
+    )
   }
 
   function deleteFeed(feedId, cb) {
@@ -375,7 +381,7 @@ exports.init = function (sbot, config) {
     }
   }
 
-  return {
+  return (self = {
     // API:
     get,
     getMsg,
@@ -400,5 +406,5 @@ exports.init = function (sbot, config) {
     clearIndexes,
     onDrain,
     getJITDB: () => jitdb,
-  }
+  })
 }

@@ -1,6 +1,5 @@
 const jitdbOperators = require('jitdb/operators')
 const {
-  seekKey,
   seekType,
   seekAuthor,
   seekChannel,
@@ -15,14 +14,13 @@ const {
   seekBranch,
   seekAbout,
 } = require('../seekers')
-const { and, equal, includes } = jitdbOperators
+const { and, equal, includes, deferred } = jitdbOperators
 
-function key(value) {
-  return equal(seekKey, value, {
-    prefix: 32,
-    prefixOffset: 1,
-    useMap: true,
-    indexType: 'key',
+function key(msgId) {
+  return deferred((meta, cb) => {
+    meta.db.onDrain('keys', () => {
+      meta.db.getIndex('keys').getMsgByKey(msgId, cb)
+    })
   })
 }
 
