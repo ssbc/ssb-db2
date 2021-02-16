@@ -11,6 +11,7 @@ const multicb = require('multicb')
 const pull = require('pull-stream')
 const fromEvent = require('pull-stream-util/from-event')
 const DeferredPromise = require('p-defer')
+const trammel = require('trammel')
 const sleep = require('util').promisify(setTimeout)
 const {
   and,
@@ -111,8 +112,6 @@ test('migrate (+db1)', async (t) => {
       const duration = Date.now() - start
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Migrate (+db1) | ${duration}ms |\n`)
-      updateMaxRAM()
-      global.gc()
       await sleep(2000) // wait for new log FS writes to finalize
       sbot.close(() => {
         ended.resolve()
@@ -146,13 +145,6 @@ test('migrate (alone)', async (t) => {
       const duration = Date.now() - start
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Migrate (alone) | ${duration}ms |\n`)
-      updateMaxRAM()
-      global.gc()
-      t.pass(`memory usage without indexes: ${reportMem()}`)
-      fs.appendFileSync(
-        reportPath,
-        `| Memory usage without indexes | ${reportMem()} |\n`
-      )
       await sleep(2000) // wait for new log FS writes to finalize
       sbot.close(() => {
         ended.resolve()
@@ -259,6 +251,10 @@ test('migrate continuation (+db2)', async (t) => {
         .use(require('../'))
         .call(null, { keys, path: dir })
 
+      global.gc()
+      await sleep(500)
+      updateMaxRAM() // will report later, just to make the report order pretty
+
       const start = Date.now()
       sbot.db2migrate.start()
 
@@ -283,6 +279,15 @@ test('migrate continuation (+db2)', async (t) => {
   )
 
   await ended.promise
+})
+
+test('Memory usage without indexes', (t) => {
+  t.pass(`memory usage without indexes: ${reportMem()}`)
+  fs.appendFileSync(
+    reportPath,
+    `| Memory usage without indexes | ${reportMem()} |\n`
+  )
+  t.end()
 })
 
 test('initial indexing', async (t) => {
@@ -593,6 +598,14 @@ test('maximum RAM used', (t) => {
   t.pass(`maximum memory usage: ${reportMem()}`)
   fs.appendFileSync(reportPath, `| Maximum memory usage | ${reportMem()} |\n`)
   t.end()
+})
+
+test('Indexes folder size', (t) => {
+  trammel(indexesPath).then((size) => {
+    t.pass(`indexes folder size: ${size}`)
+    fs.appendFileSync(reportPath, `| Indexes folder size | ${size} |\n`)
+    t.end()
+  })
 })
 
 test('teardown', (t) => {

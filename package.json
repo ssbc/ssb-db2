@@ -51,7 +51,8 @@
     "ssb-friends": "4.4.3",
     "ssb-threads": "7.0.0-rc4",
     "tap-spec": "^5.0.0",
-    "tape": "^5.0.1"
+    "tape": "^5.0.1",
+    "trammel": "~4.0.0"
   },
   "scripts": {
     "test": "tape test/*.js | tap-spec",
