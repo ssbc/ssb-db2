@@ -94,7 +94,6 @@ test('createLogStream (live, !sync)', function (t) {
   pull(
     sbot.createLogStream({ live: true, sync: false }),
     pull.drain(function (m) {
-      console.log(m)
       if (m.sync) t.fail('there should be no {sync: true}')
       t.true(m.timestamp > ts)
       t.equal(m.value.content.type, 'food')

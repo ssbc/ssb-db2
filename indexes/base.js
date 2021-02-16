@@ -73,12 +73,14 @@ module.exports = function makeBaseIndex(privateIndex) {
       this.level.get(feedId, { valueEncoding: this.valueEncoding }, cb)
     }
 
-    removeFeedFromLatest(feedId) {
+    removeFeedFromLatest(feedId, cb) {
       this.flush((err) => {
-        if (err) throw err
-        this.level.del(feedId, (err2) => {
-          if (err2) throw err2
-        })
+        if (err) cb(err)
+        else
+          this.level.del(feedId, (err2) => {
+            if (err2) cb(err2)
+            else cb()
+          })
       })
     }
   }
