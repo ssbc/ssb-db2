@@ -48,6 +48,11 @@ test('ready', (t) => {
   t.end()
 })
 
+test('keys', (t) => {
+  t.deepEqual(sbot.keys, keys)
+  t.end()
+})
+
 test('teardown sbot', (t) => {
   sbot.close(t.end)
 })
