@@ -10,74 +10,76 @@ const bSequence = Buffer.from('sequence')
 const bTimestamp = Buffer.from('timestamp')
 
 // author => latest { msg key, sequence timestamp } (validate state & EBT)
-module.exports = class BaseIndex extends Plugin {
-  constructor(log, dir, privateIndex) {
-    super(log, dir, 'base', 1, undefined, 'json')
-    this.privateIndex = privateIndex
-    this.authorLatest = {}
-  }
+module.exports = function makeBaseIndex(privateIndex) {
+  return class BaseIndex extends Plugin {
+    constructor(log, dir) {
+      super(log, dir, 'base', 1, undefined, 'json')
+      this.privateIndex = privateIndex
+      this.authorLatest = {}
+    }
 
-  onLoaded(cb) {
-    this.getAllLatest((err, latest) => {
-      this.authorLatest = latest
-      cb()
-    })
-  }
-
-  processRecord(record, seq) {
-    const buf = record.value
-    const pValue = bipf.seekKey(buf, 0, bValue)
-    if (pValue < 0) return
-    const author = bipf.decode(buf, bipf.seekKey(buf, pValue, bAuthor))
-    const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, bSequence))
-    const timestamp = bipf.decode(buf, bipf.seekKey(buf, pValue, bTimestamp))
-    let latestSequence = 0
-    if (this.authorLatest[author])
-      latestSequence = this.authorLatest[author].sequence
-    if (sequence > latestSequence) {
-      const key = bipf.decode(buf, bipf.seekKey(buf, 0, bKey))
-      this.authorLatest[author] = { id: key, sequence, timestamp }
-      this.batch.push({
-        type: 'put',
-        key: author,
-        value: this.authorLatest[author],
+    onLoaded(cb) {
+      this.getAllLatest((err, latest) => {
+        this.authorLatest = latest
+        cb()
       })
     }
-  }
 
-  onFlush(cb) {
-    this.privateIndex.saveIndexes(cb)
-  }
-
-  getAllLatest(cb) {
-    const META = '\x00'
-    pull(
-      pl.read(this.level, {
-        gt: META,
-        valueEncoding: this.valueEncoding,
-      }),
-      pull.collect((err, data) => {
-        if (err) return cb(err)
-        const result = {}
-        data.forEach((d) => {
-          result[d.key] = d.value
+    processRecord(record, seq) {
+      const buf = record.value
+      const pValue = bipf.seekKey(buf, 0, bValue)
+      if (pValue < 0) return
+      const author = bipf.decode(buf, bipf.seekKey(buf, pValue, bAuthor))
+      const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, bSequence))
+      const timestamp = bipf.decode(buf, bipf.seekKey(buf, pValue, bTimestamp))
+      let latestSequence = 0
+      if (this.authorLatest[author])
+        latestSequence = this.authorLatest[author].sequence
+      if (sequence > latestSequence) {
+        const key = bipf.decode(buf, bipf.seekKey(buf, 0, bKey))
+        this.authorLatest[author] = { id: key, sequence, timestamp }
+        this.batch.push({
+          type: 'put',
+          key: author,
+          value: this.authorLatest[author],
         })
-        cb(null, result)
-      })
-    )
-  }
+      }
+    }
 
-  // returns { id (msg key), sequence, timestamp }
-  getLatest(feedId, cb) {
-    this.level.get(feedId, { valueEncoding: this.valueEncoding }, cb)
-  }
+    onFlush(cb) {
+      this.privateIndex.saveIndexes(cb)
+    }
 
-  removeFeedFromLatest(feedId) {
-    this.flush((err) => {
-      if (err) throw err
-      this.level.del(feedId, (err2) => {
-        if (err2) throw err2
+    getAllLatest(cb) {
+      const META = '\x00'
+      pull(
+        pl.read(this.level, {
+          gt: META,
+          valueEncoding: this.valueEncoding,
+        }),
+        pull.collect((err, data) => {
+          if (err) return cb(err)
+          const result = {}
+          data.forEach((d) => {
+            result[d.key] = d.value
+          })
+          cb(null, result)
+        })
+      )
+    }
+
+    // returns { id (msg key), sequence, timestamp }
+    getLatest(feedId, cb) {
+      this.level.get(feedId, { valueEncoding: this.valueEncoding }, cb)
+    }
+
+    removeFeedFromLatest(feedId) {
+      this.flush((err) => {
+        if (err) throw err
+        this.level.del(feedId, (err2) => {
+          if (err2) throw err2
+        })
       })
-    })
+    }
   }
 }
