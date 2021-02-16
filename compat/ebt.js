@@ -5,6 +5,7 @@ exports.init = function (sbot, config) {
   if (!sbot.post) sbot.post = sbot.db.post
   const ebtIndex = sbot.db.getIndex('ebt')
   sbot.getAtSequence = ebtIndex.getMessageFromAuthorSequence.bind(ebtIndex)
+  sbot.add = sbot.db.add
   sbot.getVectorClock = function (cb) {
     sbot.db.getAllLatest((err, last) => {
       if (err) return cb(err)

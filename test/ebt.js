@@ -3,6 +3,7 @@ const ssbKeys = require('ssb-keys')
 const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
+const validate = require('ssb-validate')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 
@@ -75,8 +76,31 @@ test('Encrypted', (t) => {
     db.onDrain('ebt', () => {
       sbot.getAtSequence([keys.id, 4], (err, msg) => {
         t.equal(msg.value.content, content)
-        sbot.close(t.end)
+        t.end()
       })
     })
   })
+})
+
+test('add', (t) => {
+  let state = validate.initial()
+  const keys2 = ssbKeys.generate()
+
+  state = validate.appendNew(
+    state,
+    null,
+    keys2,
+    { type: 'post', text: 'testing sbot.add' },
+    Date.now()
+  )
+
+  sbot.add(state.queue[0].value, (err, added) => {
+    t.error(err)
+    t.equal(added.value.content.text, 'testing sbot.add')
+    t.end()
+  })
+})
+
+test('teardown sbot', (t) => {
+  sbot.close(t.end)
 })
