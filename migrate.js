@@ -1,5 +1,7 @@
 const fs = require('fs')
 const pull = require('pull-stream')
+const drainGently = require('pull-drain-gently')
+const TooHot = require('too-hot')
 const FlumeLog = require('flumelog-offset')
 const AsyncLog = require('async-append-only-log')
 const bipf = require('bipf')
@@ -48,12 +50,26 @@ function toBIPF(msg) {
   return buf
 }
 
-function scanAndCount(pushstream, cb) {
+function scanAndCount(pushstream, config, cb) {
   let count = 0
+  const tooHot =
+    config.db2 && config.db2.maxCpu
+      ? TooHot({ ceiling: config.db2.maxCpu, wait: 90, maxPause: 200 })
+      : () => false
   pushstream.pipe({
     paused: false,
     write: () => {
-      count += 1
+      const hot = tooHot()
+      if (hot && !pushstream.sink.paused) {
+        pushstream.sink.paused = true
+        hot.then(() => {
+          count += 1
+          pushstream.sink.paused = false
+          pushstream.resume()
+        })
+      } else {
+        count += 1
+      }
     },
     end: function (err) {
       if (this.ended) return
@@ -81,32 +97,38 @@ function guardAgainstDecryptedMsg(msg) {
  * log to count how many msgs there exists, then it scans the old log to match
  * that count.
  */
-function inefficientFindMigratedOffset(newLog, oldLog, cb) {
-  scanAndCount(newLog.stream({ gte: 0, decrypt: false }), (err, msgCount) => {
+function inefficientFindMigratedOffset(config, oldLog, newLog, cb) {
+  const pushstream = newLog.stream({ gte: 0, decrypt: false })
+
+  scanAndCount(pushstream, config, (err, msgCount) => {
     if (err) return cb(err) // TODO: might need an explain() here
     if (!msgCount) return cb(null, -1)
 
     let result = -1
+    function op(x) {
+      result = x.seq
+    }
+    function opDone(err) {
+      if (err) return cb(err) // TODO: might need an explain() here
+      cb(null, result)
+    }
+
+    const gentlyOpts = { ceiling: config.db2.maxCpu, wait: 90, maxPause: 200 }
+
     pull(
       oldLog.getStream({ gte: 0 }),
       pull.take(msgCount),
-      pull.drain(
-        (x) => {
-          result = x.seq
-        },
-        (err) => {
-          if (err) return cb(err) // TODO: might need an explain() here
-          cb(null, result)
-        }
-      )
+      config.db2 && config.db2.maxCpu
+        ? drainGently(gentlyOpts, op, opDone)
+        : pull.drain(op, opDone)
     )
   })
 }
 
-function findMigratedOffset(sbot, oldLog, newLog, cb) {
+function findMigratedOffset(sbot, config, oldLog, newLog, cb) {
   if (!sbot.get) {
     debug('running in inefficient mode because no ssb-db is installed')
-    inefficientFindMigratedOffset(newLog, oldLog, cb)
+    inefficientFindMigratedOffset(config, oldLog, newLog, cb)
     return
   }
 
@@ -135,7 +157,7 @@ function findMigratedOffset(sbot, oldLog, newLog, cb) {
             'running in inefficient mode because your ssb-db ' +
               'does not support returning byte offset from ssb.get()'
           )
-          inefficientFindMigratedOffset(newLog, oldLog, cb)
+          inefficientFindMigratedOffset(config, oldLog, newLog, cb)
         }
       })
     })
@@ -244,7 +266,7 @@ exports.init = function init(sbot, config) {
       else cb()
     }
 
-    findMigratedOffset(sbot, oldLog, newLog, (err, migratedOffset) => {
+    findMigratedOffset(sbot, config, oldLog, newLog, (err, migratedOffset) => {
       if (err) return console.error(err)
 
       if (migratedOffset >= 0) {

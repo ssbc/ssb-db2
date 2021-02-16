@@ -159,6 +159,42 @@ test('migrate (alone)', async (t) => {
   await ended.promise
 })
 
+test('migrate (alone) maxcpu 86', async (t) => {
+  rimraf.sync(db2Path)
+  t.pass('delete db2 folder to start clean')
+
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../migrate'))
+    .call(null, { keys, path: dir, db2: { maxCpu: 86 } })
+
+  await sleep(500) // some silence to make it easier to read the CPU profiler
+
+  const ended = DeferredPromise()
+  const start = Date.now()
+  sbot.db2migrate.start()
+
+  pull(
+    fromEvent('ssb:db2:migrate:progress', sbot),
+    pull.filter((progress) => progress === 1),
+    pull.take(1),
+    pull.drain(async () => {
+      const duration = Date.now() - start
+      t.pass(`duration: ${duration}ms`)
+      fs.appendFileSync(
+        reportPath,
+        `| Migrate (alone) maxCpu=86 | ${duration}ms |\n`
+      )
+      await sleep(2000) // wait for new log FS writes to finalize
+      sbot.close(() => {
+        ended.resolve()
+      })
+    })
+  )
+
+  await ended.promise
+})
+
 test('migrate (+db1 +db2)', async (t) => {
   rimraf.sync(db2Path)
   t.pass('delete db2 folder to start clean')
