@@ -11,6 +11,7 @@ const multicb = require('multicb')
 const pull = require('pull-stream')
 const fromEvent = require('pull-stream-util/from-event')
 const DeferredPromise = require('p-defer')
+const trammel = require('trammel')
 const sleep = require('util').promisify(setTimeout)
 const {
   and,
@@ -593,6 +594,14 @@ test('maximum RAM used', (t) => {
   t.pass(`maximum memory usage: ${reportMem()}`)
   fs.appendFileSync(reportPath, `| Maximum memory usage | ${reportMem()} |\n`)
   t.end()
+})
+
+test('Indexes folder size', (t) => {
+  trammel(indexesPath).then((size) => {
+    t.pass(`indexes folder size: ${size}`)
+    fs.appendFileSync(reportPath, `| Indexes folder size | ${size} |\n`)
+    t.end()
+  })
 })
 
 test('teardown', (t) => {
