@@ -12,7 +12,7 @@ const DeferredPromise = require('p-defer')
 const { indexesPath } = require('./defaults')
 const Log = require('./log')
 const Status = require('./status')
-const BaseIndex = require('./indexes/base')
+const makeBaseIndex = require('./indexes/base')
 const PrivateIndex = require('./indexes/private')
 
 const { and, fromDB, key, author, deferred, toCallback } = operators
@@ -48,14 +48,11 @@ exports.init = function (sbot, config) {
   const privateIndex = PrivateIndex(dir, config.keys)
   const log = Log(dir, config, privateIndex)
   const jitdb = JITDb(log, indexesPath(dir))
-  const baseIndex = new BaseIndex(log, dir, privateIndex)
   const status = Status(log, jitdb)
 
   const debug = Debug('ssb:db2')
 
-  const indexes = {
-    base: baseIndex,
-  }
+  const indexes = {}
   const post = Obv()
   const hmac_key = null
   const stateFeedsReady = DeferredPromise()
@@ -67,8 +64,10 @@ exports.init = function (sbot, config) {
     })
   })
 
+  registerIndex(makeBaseIndex(privateIndex))
+
   // restore current state
-  baseIndex.getAllLatest((err, last) => {
+  indexes.base.getAllLatest((err, last) => {
     // copy to so we avoid weirdness, because this object
     // tracks the state coming in to the database.
     for (const k in last) {
@@ -82,8 +81,6 @@ exports.init = function (sbot, config) {
     debug('getAllLatest is done setting up initial validate state')
     stateFeedsReady.resolve()
   })
-
-  baseIndex.offset((o) => status.updateIndex('base', o))
 
   // Crunch stats numbers to produce one number for the "indexing" progress
   status.obv((stats) => {
@@ -237,7 +234,7 @@ exports.init = function (sbot, config) {
           if (err) cb(err)
           else {
             delete state.feeds[feedId]
-            baseIndex.removeFeedFromLatest(feedId)
+            indexes.base.removeFeedFromLatest(feedId)
             cb()
           }
         })
@@ -394,8 +391,8 @@ exports.init = function (sbot, config) {
 
     // needed primarily internally by other plugins in this project:
     post,
-    getLatest: baseIndex.getLatest.bind(baseIndex),
-    getAllLatest: baseIndex.getAllLatest.bind(baseIndex),
+    getLatest: indexes.base.getLatest.bind(indexes.base),
+    getAllLatest: indexes.base.getAllLatest.bind(indexes.base),
     getLog: () => log,
     registerIndex,
     getIndexes: () => indexes,
