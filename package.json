@@ -8,7 +8,7 @@
     "url": "git@github.com:ssb-ngi-pointer/ssb-db2.git"
   },
   "dependencies": {
-    "async-append-only-log": "^3.0.3",
+    "async-append-only-log": "^3.0.4",
     "atomically-universal": "^0.1.1",
     "binary-search-bounds": "^2.0.4",
     "bipf": "~1.4.0",
