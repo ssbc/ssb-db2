@@ -370,6 +370,18 @@ const config = {
      * Default: Infinity
      */
     maxCpu: 85,
+
+    /** This applies only if `maxCpu` is defined.
+     * See `maxPause` in the module `too-hot`, for its definition.
+     * Default: 300
+     */
+    maxCpuMaxPause: 180,
+
+    /** This applies only if `maxCpu` is defined.
+     * See `wait` in the module `too-hot`, for its definition.
+     * Default: 90
+     */
+    maxCpuWait: 90,
   }
 }
 ```
