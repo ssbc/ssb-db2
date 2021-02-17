@@ -51,7 +51,7 @@ module.exports = function (dir, config, privateIndex) {
   log.stream = function (opts) {
     const shouldDecrypt = opts.decrypt === false ? false : true
     const tooHot = config.db2.maxCpu
-      ? TooHot({ ceiling: config.db2.maxCpu, wait: 90, maxPause: 300 })
+      ? TooHot({ ceiling: config.db2.maxCpu, wait: 90, maxPause: 180 })
       : () => false
     const s = originalStream(opts)
     const originalPipe = s.pipe.bind(s)
