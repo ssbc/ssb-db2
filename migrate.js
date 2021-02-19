@@ -1,12 +1,13 @@
 const fs = require('fs')
 const pull = require('pull-stream')
+const drainGently = require('pull-drain-gently')
 const FlumeLog = require('flumelog-offset')
 const AsyncLog = require('async-append-only-log')
 const bipf = require('bipf')
 const jsonCodec = require('flumecodec/json')
 const Obv = require('obz')
 const debug = require('debug')('ssb:db2:migrate')
-const { BLOCK_SIZE, oldLogPath, newLogPath } = require('./defaults')
+const { BLOCK_SIZE, oldLogPath, newLogPath, tooHotOpts } = require('./defaults')
 const seekers = require('./seekers')
 
 function fileExists(filename) {
@@ -153,6 +154,8 @@ exports.manifest = {
 }
 
 exports.init = function init(sbot, config) {
+  config = config || {}
+  config.db2 = config.db2 || {}
   const oldLogExists = makeFileExistsObv(oldLogPath(config.path))
 
   /**
@@ -254,44 +257,46 @@ exports.init = function init(sbot, config) {
       }
 
       let msgCountOldLog = 0
+      function op() {
+        msgCountOldLog++
+      }
+      function opDone(err) {
+        if (err) return console.error(err)
+
+        // Inform the other parts of ssb-db2 that migration is done
+        synchronized.set(true)
+        debug('done migrating %s msgs from old log', msgCountOldLog)
+        drainAborter = null
+
+        // Setup periodic `debug` reporter of live msgs migrated
+        let liveMsgCount = 0
+        if (debug.enabled) {
+          setInterval(() => {
+            if (liveMsgCount === 0) return
+            debug('%d msgs synced from old log to new log', liveMsgCount)
+            liveMsgCount = 0
+          }, 2000).unref()
+        }
+
+        // Setup migration of live new msgs identified on the old log
+        oldLog.newMsgObv((msg) => {
+          const guard = guardAgainstDecryptedMsg(msg)
+          if (guard) throw guard
+
+          writeToNewLog(toBIPF(msg), () => {
+            liveMsgCount++
+          })
+        })
+      }
+
       pull(
         oldLog.getStream({ gt: migratedOffset }),
         pull.map(updateMigratedSizeAndPluck),
         pull.map(toBIPF),
         pull.asyncMap(writeToNewLog),
-        (drainAborter = pull.drain(
-          () => {
-            msgCountOldLog++
-          },
-          (err) => {
-            if (err) return console.error(err)
-
-            // Inform the other parts of ssb-db2 that migration is done
-            synchronized.set(true)
-            debug('done migrating %s msgs from old log', msgCountOldLog)
-            drainAborter = null
-
-            // Setup periodic `debug` reporter of live msgs migrated
-            let liveMsgCount = 0
-            if (debug.enabled) {
-              setInterval(() => {
-                if (liveMsgCount === 0) return
-                debug('%d msgs synced from old log to new log', liveMsgCount)
-                liveMsgCount = 0
-              }, 2000).unref()
-            }
-
-            // Setup migration of live new msgs identified on the old log
-            oldLog.newMsgObv((msg) => {
-              const guard = guardAgainstDecryptedMsg(msg)
-              if (guard) throw guard
-
-              writeToNewLog(toBIPF(msg), () => {
-                liveMsgCount++
-              })
-            })
-          }
-        ))
+        (drainAborter = config.db2.maxCpu
+          ? drainGently(tooHotOpts(), op, opDone)
+          : pull.drain(op, opDone))
       )
     })
   }

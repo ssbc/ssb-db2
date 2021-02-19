@@ -1,16 +1,11 @@
 const OffsetLog = require('async-append-only-log')
 const bipf = require('bipf')
 const TooHot = require('too-hot')
-const { BLOCK_SIZE, newLogPath } = require('./defaults')
+const { BLOCK_SIZE, newLogPath, tooHotOpts } = require('./defaults')
 
 module.exports = function (dir, config, privateIndex) {
   config = config || {}
   config.db2 = config.db2 || {}
-  const tooHotOpts = {
-    ceiling: config.db2.maxCpu,
-    wait: config.db2.maxCpuWait || 90,
-    maxPause: config.db2.maxCpuMaxPause || 300,
-  }
 
   const log = OffsetLog(newLogPath(dir), {
     blockSize: BLOCK_SIZE,
@@ -55,7 +50,7 @@ module.exports = function (dir, config, privateIndex) {
   const originalStream = log.stream
   log.stream = function (opts) {
     const shouldDecrypt = opts.decrypt === false ? false : true
-    const tooHot = config.db2.maxCpu ? TooHot(tooHotOpts) : () => false
+    const tooHot = config.db2.maxCpu ? TooHot(tooHotOpts(config)) : () => false
     const s = originalStream(opts)
     const originalPipe = s.pipe.bind(s)
     s.pipe = function pipe(o) {
