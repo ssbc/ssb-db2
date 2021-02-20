@@ -57,8 +57,6 @@ function scanAndCount(pushstream, cb) {
       count += 1
     },
     end: function (err) {
-      if (this.ended) return
-      this.ended = err || true
       cb(null, count)
     },
   })
