@@ -8,7 +8,7 @@
     "url": "git@github.com:ssb-ngi-pointer/ssb-db2.git"
   },
   "dependencies": {
-    "async-append-only-log": "^3.0.5",
+    "async-append-only-log": "^3.0.7",
     "atomically-universal": "^0.1.1",
     "binary-search-bounds": "^2.0.4",
     "bipf": "~1.4.0",
@@ -17,7 +17,7 @@
     "flumecodec": "0.0.1",
     "flumelog-offset": "3.4.4",
     "hoox": "0.0.1",
-    "jitdb": "^2.1.0",
+    "jitdb": "^2.2.0",
     "level": "^6.0.1",
     "level-codec": "^9.0.2",
     "lodash.debounce": "^4.0.8",
