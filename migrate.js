@@ -293,7 +293,7 @@ exports.init = function init(sbot, config) {
         pull.map(toBIPF),
         pull.asyncMap(writeToNewLog),
         (drainAborter = config.db2.maxCpu
-          ? drainGently(tooHotOpts(), op, opDone)
+          ? drainGently(tooHotOpts(config), op, opDone)
           : pull.drain(op, opDone))
       )
     })
