@@ -42,37 +42,27 @@ test('migrate moves msgs from old log to new log', (t) => {
 
   sbot.db2migrate.start()
 
-  let progressEventsReceived = false
   pull(
     fromEvent('ssb:db2:migrate:progress', sbot),
-    pull.take(TOTAL),
+    pull.take(1),
     pull.collect((err, nums) => {
       t.error(err)
-      t.equals(nums.length, TOTAL, `${TOTAL} progress events emitted`)
-      t.equals(nums[0], 0, 'first progress event is zero')
-      t.true(nums[0] < nums[1], 'monotonically increasing')
-      t.true(nums[1] < nums[2], 'monotonically increasing')
-      t.equals(nums[TOTAL - 1], 1, 'last progress event is one')
-      progressEventsReceived = true
-    })
-  )
+      t.equals(nums[nums.length - 1], 1, 'last progress event is one')
 
-  pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
-    pull.filter((x) => x === 1),
-    pull.take(1),
-    // we need to make sure async-log has written the data
-    pull.asyncMap((_, cb) => sbot.db.getLog().onDrain(cb)),
-    pull.drain(() => {
-      t.true(fs.existsSync(path.join(dir, 'db2', 'log.bipf')), 'migration done')
-      sbot.db.query(
-        toCallback((err1, msgs) => {
-          t.error(err1, 'no err')
-          t.equal(msgs.length, TOTAL)
-          t.true(progressEventsReceived, 'progress events received')
-          sbot.close(t.end)
-        })
-      )
+      // we need to make sure async-log has written the data
+      sbot.db.getLog().onDrain(() => {
+        t.true(
+          fs.existsSync(path.join(dir, 'db2', 'log.bipf')),
+          'migration done'
+        )
+        sbot.db.query(
+          toCallback((err1, msgs) => {
+            t.error(err1, 'no err')
+            t.equal(msgs.length, TOTAL)
+            sbot.close(t.end)
+          })
+        )
+      })
     })
   )
 })
@@ -89,37 +79,27 @@ test('migrate moves msgs from ssb-db to new log', (t) => {
 
   sbot.db2migrate.start()
 
-  let progressEventsReceived = false
   pull(
     fromEvent('ssb:db2:migrate:progress', sbot),
-    pull.take(TOTAL),
+    pull.take(1),
     pull.collect((err, nums) => {
       t.error(err)
-      t.equals(nums.length, TOTAL, `${TOTAL} progress events emitted`)
-      t.equals(nums[0], 0, 'first progress event is zero')
-      t.true(nums[0] < nums[1], 'monotonically increasing')
-      t.true(nums[1] < nums[2], 'monotonically increasing')
-      t.equals(nums[TOTAL - 1], 1, 'last progress event is one')
-      progressEventsReceived = true
-    })
-  )
+      t.equals(nums[nums.length - 1], 1, 'last progress event is one')
 
-  pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
-    pull.filter((x) => x === 1),
-    pull.take(1),
-    // we need to make sure async-log has written the data
-    pull.asyncMap((_, cb) => sbot.db.getLog().onDrain(cb)),
-    pull.drain(() => {
-      t.true(fs.existsSync(path.join(dir, 'db2', 'log.bipf')), 'migration done')
-      sbot.db.query(
-        toCallback((err1, msgs) => {
-          t.error(err1, 'no err')
-          t.equal(msgs.length, TOTAL)
-          t.true(progressEventsReceived, 'progress events received')
-          sbot.close(t.end)
-        })
-      )
+      // we need to make sure async-log has written the data
+      sbot.db.getLog().onDrain(() => {
+        t.true(
+          fs.existsSync(path.join(dir, 'db2', 'log.bipf')),
+          'migration done'
+        )
+        sbot.db.query(
+          toCallback((err1, msgs) => {
+            t.error(err1, 'no err')
+            t.equal(msgs.length, TOTAL)
+            sbot.close(t.end)
+          })
+        )
+      })
     })
   )
 })
@@ -149,21 +129,16 @@ test('migrate keeps new log synced with ssb-db being updated', (t) => {
           t.equal(msgs.length, TOTAL, `${TOTAL} msgs`)
 
           // This should run after the sbot.publish completes
-          pull(
-            fromEvent('ssb:db2:migrate:progress', sbot),
-            pull.filter((x) => x === 1),
-            pull.take(1),
-            pull.drain(() => {
-              sbot.db.query(
-                toCallback((err3, msgs2) => {
-                  t.error(err3, '2nd query suceeded')
-                  t.equal(msgs2.length, TOTAL + 1, `${TOTAL + 1} msgs`)
-                  t.equal(msgs2[TOTAL].value.content.text, 'Extra post')
-                  sbot.close(t.end)
-                })
-              )
-            })
-          )
+          setTimeout(() => {
+            sbot.db.query(
+              toCallback((err3, msgs2) => {
+                t.error(err3, '2nd query suceeded')
+                t.equal(msgs2.length, TOTAL + 1, `${TOTAL + 1} msgs`)
+                t.equal(msgs2[TOTAL].value.content.text, 'Extra post')
+                sbot.close(t.end)
+              })
+            )
+          }, 200)
 
           sbot.publish({ type: 'post', text: 'Extra post' }, (err2, posted) => {
             t.error(err2, 'publish suceeded')
@@ -188,38 +163,27 @@ test('migrate does not read decrypted from old log', (t) => {
       },
     })
 
-  const onMigrationDone = (cb) =>
-    pull(
-      fromEvent('ssb:db2:migrate:progress', sbot),
-      pull.filter((x) => x === 1),
-      pull.take(1),
-      pull.drain(cb)
+  // This should run after the sbot.publish (below) completes
+  setTimeout(() => {
+    sbot.db.query(
+      and(type('post'), isPrivate()),
+      toCallback((err, msgs) => {
+        t.error(err, 'no err')
+        t.equal(msgs.length, 1)
+        t.equal(msgs[0].value.content.text, 'super secret')
+        sbot.close(t.end)
+      })
     )
+  }, 500)
 
-  // This should run on init, to signal that nothing needed to be migrated
-  onMigrationDone(() => {
-    // This should run after the sbot.publish (below) completes
-    onMigrationDone(() => {
-      sbot.db.query(
-        and(type('post'), isPrivate()),
-        toCallback((err, msgs) => {
-          t.error(err, 'no err')
-          t.equal(msgs.length, 1)
-          t.equal(msgs[0].value.content.text, 'super secret')
-          sbot.close(t.end)
-        })
-      )
-    })
-
-    let content = { type: 'post', text: 'super secret', recps: [keys.id] }
-    content = ssbKeys.box(
-      content,
-      content.recps.map((x) => x.substr(1))
-    )
-    sbot.publish(content, (err, posted) => {
-      t.error(err, 'publish suceeded')
-      t.equals(typeof posted.value.content, 'string', 'private msg posted')
-    })
+  let content = { type: 'post', text: 'super secret', recps: [keys.id] }
+  content = ssbKeys.box(
+    content,
+    content.recps.map((x) => x.substr(1))
+  )
+  sbot.publish(content, (err, posted) => {
+    t.error(err, 'publish suceeded')
+    t.equals(typeof posted.value.content, 'string', 'private msg posted')
   })
 })
 
