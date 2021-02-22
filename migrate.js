@@ -211,7 +211,7 @@ exports.init = function init(sbot, config) {
         ? sbot.db.getLog()
         : AsyncLog(newLogPath(config.path), { blockSize: BLOCK_SIZE })
 
-    let migratedSize = null
+    let migratedSize = 0
 
     function updateMigratedSizeAndPluck(obj) {
       // "seq" in flumedb is an abstract num, here it actually means "offset"
@@ -219,19 +219,15 @@ exports.init = function init(sbot, config) {
       return obj.value
     }
 
-    let progressCalls = 0
     function emitProgressEvent() {
       const oldSize = oldLog.getSize()
-      if (oldSize > 0 && migratedSize !== null) {
-        const progress = Math.min(migratedSize / oldSize, 1)
-        if (
-          progress === 1 ||
-          progressCalls < 100 ||
-          progressCalls++ % 1000 === 0
-        ) {
-          sbot.emit('ssb:db2:migrate:progress', progress)
-        }
+      if (migratedSize === 0 && oldSize === 0) {
+        sbot.emit('ssb:db2:migrate:progress', 1)
+        return
       }
+      if (!oldSize) return // avoid division by zero
+      const progress = Math.min(migratedSize / oldSize, 1)
+      sbot.emit('ssb:db2:migrate:progress', progress)
     }
 
     let dataTransferred = 0 // FIXME: does this only work if the new log is empty?
@@ -240,7 +236,6 @@ exports.init = function init(sbot, config) {
       // FIXME: could we use log.add since it already converts to BIPF?
       // FIXME: see also issue #16
       newLog.append(data, () => {})
-      emitProgressEvent()
       if (dataTransferred % BLOCK_SIZE === 0) newLog.onDrain(cb)
       else cb()
     }
@@ -251,17 +246,21 @@ exports.init = function init(sbot, config) {
       if (migratedOffset >= 0) {
         debug('continue migrating from previous offset %s', migratedOffset)
         migratedSize = migratedOffset
-        emitProgressEvent()
       }
+      emitProgressEvent()
 
       let msgCountOldLog = 0
       function op() {
         msgCountOldLog++
       }
+
+      const progressInterval = setInterval(emitProgressEvent, 3000)
       function opDone(err) {
         if (err) return console.error(err)
 
         // Inform the other parts of ssb-db2 that migration is done
+        clearInterval(progressInterval)
+        emitProgressEvent()
         synchronized.set(true)
         debug('done migrating %s msgs from old log', msgCountOldLog)
         drainAborter = null
@@ -283,6 +282,7 @@ exports.init = function init(sbot, config) {
 
           writeToNewLog(toBIPF(msg), () => {
             liveMsgCount++
+            if (liveMsgCount % 100 === 0) emitProgressEvent()
           })
         })
       }

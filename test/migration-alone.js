@@ -43,14 +43,10 @@ test('migrate (alone) moves msgs from old log to new log', (t) => {
 
   pull(
     fromEvent('ssb:db2:migrate:progress', sbot),
-    pull.take(TOTAL),
-    pull.collect((err, nums) => {
+    pull.filter((x) => x === 1),
+    pull.take(1),
+    pull.collect((err) => {
       t.error(err)
-      t.equals(nums.length, TOTAL, `${TOTAL} progress events emitted`)
-      t.equals(nums[0], 0, 'first progress event is zero')
-      t.true(nums[0] < nums[1], 'monotonically increasing')
-      t.true(nums[1] < nums[2], 'monotonically increasing')
-      t.equals(nums[TOTAL - 1], 1, 'last progress event is one')
       setTimeout(() => {
         t.true(
           fs.existsSync(path.join(dir, 'db2', 'log.bipf')),
