@@ -214,6 +214,65 @@ test('refuses to db2.add() while old log exists', (t) => {
   )
 })
 
+test('regenerate fixture with flumelog-offset', (t) => {
+  // delete previous
+  rimraf.sync(dir)
+
+  generateFixture({
+    outputDir: dir,
+    seed: 'migrate',
+    messages: TOTAL,
+    authors: 5,
+    slim: true,
+  }).then(() => {
+    t.true(
+      fs.existsSync(path.join(dir, 'flume', 'log.offset')),
+      'log.offset was created'
+    )
+    t.end()
+  })
+})
+
+test('queues db2.publish() calls until old log exists', (t) => {
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../index'))
+    .call(null, {
+      keys,
+      path: dir,
+      db2: { automigrate: true, dangerouslyKillFlumeWhenMigrated: true },
+    })
+
+  sbot.db.publish({ type: 'post', text: 'queued' }, (err, posted) => {
+    t.error(err, 'no err when publishing')
+    t.equal(posted.value.content.text, 'queued', 'published msg is correct')
+  })
+
+  pull(
+    fromEvent('ssb:db2:migrate:progress', sbot),
+    pull.filter((x) => x === 1),
+    pull.take(1),
+    pull.drain(() => {
+      t.pass('migration done')
+      // Wait for queued publish calls to complete
+      setTimeout(() => {
+        sbot.db.query(
+          toCallback((err1, msgs) => {
+            t.error(err1, 'no err when querying')
+            t.equal(msgs.length, TOTAL + 1, `there are ${TOTAL + 1} msgs`)
+            t.equal(
+              msgs[msgs.length - 1].value.content.text,
+              'queued',
+              'last msg is the queued one'
+            )
+            sbot.close(t.end)
+          })
+        )
+      }, 300)
+    })
+  )
+})
+
 test('migrate does nothing when there is no old log', (t) => {
   const emptyDir = '/tmp/ssb-db2-migrate-empty'
   rimraf.sync(emptyDir)

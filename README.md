@@ -17,8 +17,8 @@ By default SSB-DB2 only loads a base index (indexes/base), this index
 includes the basic functionality for getting messages from the log and
 for doing EBT.
 
-By default the database is stored in ~/.ssb/db2/log.bipf and indexes
-are stored in ~/.ssb/db2/indexes/.
+By default the database is stored in `~/.ssb/db2/log.bipf` and indexes
+are stored in `~/.ssb/db2/indexes/`.
 
 ## Usage
 
@@ -226,9 +226,38 @@ const sbot = SecretStack({ caps })
 
 ## Migrating from ssb-db
 
-The flumelog used underneath ssb-db2 is different than that one in
-ssb-db, this means we need to scan over the old log and copy all
-messages onto the new log, if you wish to use ssb-db2 to make queries.
+The log used underneath ssb-db2 is different than that one in ssb-db,
+this means we need to scan over the old log and copy all messages onto
+the new log, if you wish to use ssb-db2 to make queries.
+
+**⚠️ Warning: please read the following instructions** about using two
+logs and carefully apply them to avoid forking feeds into an
+irrecoverable state.
+
+### Preventing forking feeds
+
+The log is the source of truth in SSB, and now with ssb-db2, we
+introduce a new log alongside the previous one. **One of them, not both**
+has to be considered the source of truth.
+
+While the old log exists, it will be continously migrated to the
+new log, and ssb-db2 forbids you to use its database-writing APIs
+such as `add()`, `publish()`, `del()` and so forth, to prevent the
+two logs from diverging into inconsistent states. The old log will
+remain the source of truth and the new log will just mirror it.
+
+If you want to switch the source of truth to be the new log, we must
+delete the old log, after it has been fully migrated. Only then can you use
+database-writing APIs such as `publish()`. To delete the old log, one
+method is to use the
+[config `dangerouslyKillFlumeWhenMigrated`](#configuration). Set it to
+`true` only when you are **absolutely sure** that no other app will attempt
+to read/write to `~/.ssb/flume/log.offset` or wherever the old log lives. It
+will delete the entire flume folder once migration has completed writing the
+messages to the new log. From that point onwards, using APIs such as
+`publish()` will succeed to append messages to the new log.
+
+### Triggering migration
 
 ssb-db2 comes with migration methods built-in, you can enable them
 (they are off by default!) in your config file (or object):
@@ -268,14 +297,6 @@ const sbot = SecretStack({ caps })
   .use(require('ssb-db2/compat'))
   .call(null, config)
 ```
-
-However, note that while the old log exists, it will be continously
-migrated to the new log, and ssb-db2 forbids you to use its
-database-writing APIs such as `add()`, `publish()`, `del()` and so
-forth, to prevent the two logs from diverging into inconsistent
-states. The old log will remain the source of truth and keep getting
-copied into the new log, until the old log file does not exist
-anymore.
 
 ### Migrating without including ssb-db2
 
@@ -362,6 +383,20 @@ const config = {
      * Default: false
      */
     automigrate: true,
+
+    /**
+     * If the migration plugin is used, then when migration has completed, we
+     * will remove the entire `~/.ssb/flume` directory, including the log.
+     *
+     * As the name indicates, this is dangerous, because if there are other apps
+     * that still use `~/.ssb/flume`, they will see an empty log and progress to
+     * write on that empty log using the `~/.ssb/secret` and this will very
+     * likely fork the feed in comparison to new posts on the new log. Only use
+     * this when you know the risks and you know that only the new log will be
+     * written.
+     * Default: false
+     */
+    dangerouslyKillFlumeWhenMigrated: false,
 
     /**
      * An upper limit on the CPU load that ssb-db2 can use while indexing

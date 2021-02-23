@@ -6,8 +6,15 @@ const AsyncLog = require('async-append-only-log')
 const bipf = require('bipf')
 const jsonCodec = require('flumecodec/json')
 const Obv = require('obz')
+const rimraf = require('rimraf')
 const debug = require('debug')('ssb:db2:migrate')
-const { BLOCK_SIZE, oldLogPath, newLogPath, tooHotOpts } = require('./defaults')
+const {
+  BLOCK_SIZE,
+  flumePath,
+  oldLogPath,
+  newLogPath,
+  tooHotOpts,
+} = require('./defaults')
 const seekers = require('./seekers')
 
 function fileExists(filename) {
@@ -240,6 +247,29 @@ exports.init = function init(sbot, config) {
       else cb()
     }
 
+    function migrateLive() {
+      // Setup periodic `debug` reporter of live msgs migrated
+      let liveMsgCount = 0
+      if (debug.enabled) {
+        setInterval(() => {
+          if (liveMsgCount === 0) return
+          debug('%d msgs synced from old log to new log', liveMsgCount)
+          liveMsgCount = 0
+        }, 2000).unref()
+      }
+
+      // Setup migration of live new msgs identified on the old log
+      oldLog.newMsgObv((msg) => {
+        const guard = guardAgainstDecryptedMsg(msg)
+        if (guard) throw guard
+
+        writeToNewLog(toBIPF(msg), () => {
+          liveMsgCount++
+          if (liveMsgCount % 100 === 0) emitProgressEvent()
+        })
+      })
+    }
+
     findMigratedOffset(sbot, oldLog, newLog, (err, migratedOffset) => {
       if (err) return console.error(err)
 
@@ -259,32 +289,23 @@ exports.init = function init(sbot, config) {
         if (err) return console.error(err)
 
         // Inform the other parts of ssb-db2 that migration is done
-        clearInterval(progressInterval)
-        emitProgressEvent()
-        synchronized.set(true)
-        debug('done migrating %s msgs from old log', msgCountOldLog)
-        drainAborter = null
-
-        // Setup periodic `debug` reporter of live msgs migrated
-        let liveMsgCount = 0
-        if (debug.enabled) {
-          setInterval(() => {
-            if (liveMsgCount === 0) return
-            debug('%d msgs synced from old log to new log', liveMsgCount)
-            liveMsgCount = 0
-          }, 2000).unref()
+        function doneMigrating() {
+          clearInterval(progressInterval)
+          emitProgressEvent()
+          synchronized.set(true)
+          debug('done migrating %s msgs from old log', msgCountOldLog)
+          drainAborter = null
         }
 
-        // Setup migration of live new msgs identified on the old log
-        oldLog.newMsgObv((msg) => {
-          const guard = guardAgainstDecryptedMsg(msg)
-          if (guard) throw guard
-
-          writeToNewLog(toBIPF(msg), () => {
-            liveMsgCount++
-            if (liveMsgCount % 100 === 0) emitProgressEvent()
+        if (config.db2.dangerouslyKillFlumeWhenMigrated) {
+          rimraf(flumePath(config.path), (err) => {
+            if (!err) oldLogExists.set(false)
+            doneMigrating()
           })
-        })
+        } else {
+          doneMigrating()
+          migrateLive()
+        }
       }
 
       pull(

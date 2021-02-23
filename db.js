@@ -46,6 +46,8 @@ exports.manifest = {
 
 exports.init = function (sbot, config) {
   let self
+  config = config || {}
+  config.db2 = config.db2 || {}
   const indexes = {}
   const dir = config.path
   const privateIndex = PrivateIndex(dir, config.keys)
@@ -98,6 +100,35 @@ exports.init = function (sbot, config) {
     sbot.emit('ssb:db2:indexing:progress', progress)
   })
 
+  const queues = {
+    add: [],
+    addOOO: [],
+    addOOOStrictOrder: [],
+    publish: [],
+    del: [],
+    deleteFeed: [],
+  }
+
+  // Publish msgs that were queued to happen after migrate
+  // The `setTimeout` is here because the db2migrate secret-stack plugin is
+  // installed (synchronously) **after** this `db` plugin.
+  setTimeout(() => {
+    if (!sbot.db2migrate) return
+    sbot.db2migrate.synchronized((isSynced) => {
+      if (!isSynced) return
+      if (sbot.db2migrate.doesOldLogExist()) return
+
+      let arr = []
+      while ((arr = queues.add).length) add(...arr.shift())
+      while ((arr = queues.addOOO).length) addOOO(...arr.shift())
+      while ((arr = queues.addOOOStrictOrder).length)
+        addOOOStrictOrder(...arr.shift())
+      while ((arr = queues.publish).length) publish(...arr.shift())
+      while ((arr = queues.del).length) del(...arr.shift())
+      while ((arr = queues.deleteFeed).length) deleteFeed(...arr.shift())
+    })
+  })
+
   function guardAgainstDuplicateLogs(methodName) {
     if (sbot.db2migrate && sbot.db2migrate.doesOldLogExist()) {
       return new Error(
@@ -108,6 +139,12 @@ exports.init = function (sbot, config) {
           'into an irrecoverable state.'
       )
     }
+  }
+
+  function waitingForMigrated() {
+    // if this config is false, there is no point in queueing publish calls
+    if (!config.db2.dangerouslyKillFlumeWhenMigrated) return false
+    return sbot.db2migrate && sbot.db2migrate.doesOldLogExist()
   }
 
   function getHelper(id, onlyValue, cb) {
@@ -143,6 +180,7 @@ exports.init = function (sbot, config) {
   }
 
   function add(msg, cb) {
+    if (waitingForMigrated()) return queues.add.push([msg, cb])
     const guard = guardAgainstDuplicateLogs('add()')
     if (guard) return cb(guard)
 
@@ -158,6 +196,7 @@ exports.init = function (sbot, config) {
   }
 
   function addOOO(msg, cb) {
+    if (waitingForMigrated()) return queues.addOOO.push([msg, cb])
     const guard = guardAgainstDuplicateLogs('addOOO()')
     if (guard) return cb(guard)
 
@@ -174,6 +213,8 @@ exports.init = function (sbot, config) {
   }
 
   function addOOOStrictOrder(msg, strictOrderState, cb) {
+    if (waitingForMigrated())
+      return queues.addOOOStrictOrder.push([msg, strictOrderState, cb])
     const guard = guardAgainstDuplicateLogs('addOOOStrictOrder()')
     if (guard) return cb(guard)
 
@@ -193,6 +234,7 @@ exports.init = function (sbot, config) {
   }
 
   function publish(msg, cb) {
+    if (waitingForMigrated()) return queues.publish.push([msg, cb])
     const guard = guardAgainstDuplicateLogs('publish()')
     if (guard) return cb(guard)
 
@@ -207,6 +249,7 @@ exports.init = function (sbot, config) {
   }
 
   function del(msgId, cb) {
+    if (waitingForMigrated()) return queues.del.push([msgId, cb])
     const guard = guardAgainstDuplicateLogs('del()')
     if (guard) return cb(guard)
 
@@ -227,6 +270,7 @@ exports.init = function (sbot, config) {
   }
 
   function deleteFeed(feedId, cb) {
+    if (waitingForMigrated()) return queues.deleteFeed.push([feedId, cb])
     const guard = guardAgainstDuplicateLogs('deleteFeed()')
     if (guard) return cb(guard)
 
@@ -356,9 +400,7 @@ exports.init = function (sbot, config) {
     const waitUntilReady = deferred((meta, cb) => {
       if (sbot.db2migrate) {
         sbot.db2migrate.synchronized((isSynced) => {
-          if (isSynced) {
-            log.onDrain(cb)
-          }
+          if (isSynced) log.onDrain(cb)
         })
       } else {
         log.onDrain(cb)
