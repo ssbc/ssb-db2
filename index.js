@@ -1,4 +1,1 @@
-const dbPlugin = require('./db')
-const migratePlugin = require('./migrate')
-
-module.exports = [dbPlugin, migratePlugin]
+module.exports = [require('./db'), require('./migrate')]
