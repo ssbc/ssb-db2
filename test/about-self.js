@@ -99,7 +99,8 @@ test('get live profile', (t) => {
 })
 
 test('should load about-self from disk', (t) => {
-  sbot.close(() => {
+  sbot.close((err) => {
+    t.error(err)
     t.pass('closed sbot')
     sbot = SecretStack({ appKey: caps.shs })
       .use(require('../'))
@@ -118,5 +119,7 @@ test('should load about-self from disk', (t) => {
 })
 
 test('teardown sbot', (t) => {
-  sbot.close(t.end)
+  setTimeout(() => {
+    sbot.close(() => t.end())
+  }, 500)
 })

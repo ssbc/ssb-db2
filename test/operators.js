@@ -108,7 +108,7 @@ test('dedicated author index', (t) => {
             .find((f) => f.startsWith('value_author_@') && f.endsWith('.index'))
           t.ok(dedicatedIndex, 'dedicated index exists')
           t.end()
-        }, 500)
+        }, 1000)
       })
     )
   })
@@ -565,5 +565,7 @@ test('live alone', (t) => {
 })
 
 test('teardown sbot', (t) => {
-  sbot.close(t.end)
+  setTimeout(() => {
+    sbot.close(() => t.end())
+  }, 500)
 })
