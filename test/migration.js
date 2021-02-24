@@ -163,8 +163,14 @@ test('migrate does not read decrypted from old log', (t) => {
       },
     })
 
-  // This should run after the sbot.publish (below) completes
-  setTimeout(() => {
+  let content = { type: 'post', text: 'super secret', recps: [keys.id] }
+  content = ssbKeys.box(
+    content,
+    content.recps.map((x) => x.substr(1))
+  )
+  sbot.publish(content, (err, posted) => {
+    t.error(err, 'publish suceeded')
+    t.equals(typeof posted.value.content, 'string', 'private msg posted')
     sbot.db.query(
       and(type('post'), isPrivate()),
       toCallback((err, msgs) => {
@@ -174,16 +180,6 @@ test('migrate does not read decrypted from old log', (t) => {
         sbot.close(t.end)
       })
     )
-  }, 500)
-
-  let content = { type: 'post', text: 'super secret', recps: [keys.id] }
-  content = ssbKeys.box(
-    content,
-    content.recps.map((x) => x.substr(1))
-  )
-  sbot.publish(content, (err, posted) => {
-    t.error(err, 'publish suceeded')
-    t.equals(typeof posted.value.content, 'string', 'private msg posted')
   })
 })
 
