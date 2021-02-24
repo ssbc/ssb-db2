@@ -234,6 +234,8 @@ test('regenerate fixture with flumelog-offset', (t) => {
 })
 
 test('queues db2.publish() calls until old log exists', (t) => {
+  t.true(fs.existsSync(path.join(dir, 'flume')), 'flume folder exists')
+
   const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../index'))
@@ -254,6 +256,10 @@ test('queues db2.publish() calls until old log exists', (t) => {
     pull.take(1),
     pull.drain(() => {
       t.pass('migration done')
+      t.false(
+        fs.existsSync(path.join(dir, 'flume')),
+        'flume folder was deleted'
+      )
       // Wait for queued publish calls to complete
       setTimeout(() => {
         sbot.db.query(
