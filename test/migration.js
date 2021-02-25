@@ -233,7 +233,7 @@ test('regenerate fixture with flumelog-offset', (t) => {
   })
 })
 
-test('queues db2.publish() calls until old log exists', (t) => {
+test('dangerouslyKillFlumeWhenMigrated and refusing db2.publish()', (t) => {
   t.true(fs.existsSync(path.join(dir, 'flume')), 'flume folder exists')
 
   const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
@@ -246,8 +246,15 @@ test('queues db2.publish() calls until old log exists', (t) => {
     })
 
   sbot.db.publish({ type: 'post', text: 'queued' }, (err, posted) => {
-    t.error(err, 'no err when publishing')
-    t.equal(posted.value.content.text, 'queued', 'published msg is correct')
+    t.ok(err)
+    t.notOk(posted)
+    t.true(
+      err.message.includes(
+        'refusing to publish() because migration is in ' +
+          'progress and dangerouslyKillFlumeWhenMigrated is enabled.'
+      ),
+      'error message is migration in progress'
+    )
   })
 
   pull(
@@ -265,12 +272,7 @@ test('queues db2.publish() calls until old log exists', (t) => {
         sbot.db.query(
           toCallback((err1, msgs) => {
             t.error(err1, 'no err when querying')
-            t.equal(msgs.length, TOTAL + 1, `there are ${TOTAL + 1} msgs`)
-            t.equal(
-              msgs[msgs.length - 1].value.content.text,
-              'queued',
-              'last msg is the queued one'
-            )
+            t.equal(msgs.length, TOTAL, `there are ${TOTAL} msgs`)
             sbot.close(t.end)
           })
         )

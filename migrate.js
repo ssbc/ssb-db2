@@ -192,6 +192,15 @@ exports.init = function init(sbot, config) {
     }
   }
 
+  function guardAgainstMigrationDangers() {
+    if (sbot.messagesByType && config.db2.dangerouslyKillFlumeWhenMigrated) {
+      return new Error(
+        'we cannot have ssb-db installed simultaneously with ' +
+          'config.db2.dangerouslyKillFlumeWhenMigrated enabled'
+      )
+    }
+  }
+
   if (config.db2 && config.db2.automigrate) {
     start()
   }
@@ -206,6 +215,8 @@ exports.init = function init(sbot, config) {
 
   function start() {
     if (started) return
+    const guard = guardAgainstMigrationDangers()
+    if (guard) throw guard
     if (oldLogMissingThenRetry(start)) return
     started = true
     debug('started')
@@ -325,6 +336,5 @@ exports.init = function init(sbot, config) {
     stop,
     doesOldLogExist: () => oldLogExists.value,
     synchronized,
-    // dangerouslyKillOldLog, // FIXME: implement this
   }
 }
