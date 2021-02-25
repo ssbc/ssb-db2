@@ -46,6 +46,8 @@ exports.manifest = {
 
 exports.init = function (sbot, config) {
   let self
+  config = config || {}
+  config.db2 = config.db2 || {}
   const indexes = {}
   const dir = config.path
   const privateIndex = PrivateIndex(dir, config.keys)
@@ -356,9 +358,7 @@ exports.init = function (sbot, config) {
     const waitUntilReady = deferred((meta, cb) => {
       if (sbot.db2migrate) {
         sbot.db2migrate.synchronized((isSynced) => {
-          if (isSynced) {
-            log.onDrain(cb)
-          }
+          if (isSynced) log.onDrain(cb)
         })
       } else {
         log.onDrain(cb)
