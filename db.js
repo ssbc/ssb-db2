@@ -100,19 +100,6 @@ exports.init = function (sbot, config) {
     sbot.emit('ssb:db2:indexing:progress', progress)
   })
 
-  function guardAgainstMigrationDangers(methodName) {
-    if (
-      config.db2.dangerouslyKillFlumeWhenMigrated &&
-      sbot.db2migrate &&
-      sbot.db2migrate.doesOldLogExist()
-    ) {
-      return new Error(
-        `ssb-db2: refusing to ${methodName} because migration is in progress ` +
-          'and dangerouslyKillFlumeWhenMigrated is enabled.'
-      )
-    }
-  }
-
   function guardAgainstDuplicateLogs(methodName) {
     if (sbot.db2migrate && sbot.db2migrate.doesOldLogExist()) {
       return new Error(
@@ -158,9 +145,7 @@ exports.init = function (sbot, config) {
   }
 
   function add(msg, cb) {
-    var guard = guardAgainstMigrationDangers('add()')
-    if (guard) return cb(guard)
-    var guard = guardAgainstDuplicateLogs('add()')
+    const guard = guardAgainstDuplicateLogs('add()')
     if (guard) return cb(guard)
 
     stateFeedsReady.promise.then(() => {
@@ -175,9 +160,7 @@ exports.init = function (sbot, config) {
   }
 
   function addOOO(msg, cb) {
-    var guard = guardAgainstMigrationDangers('addOOO()')
-    if (guard) return cb(guard)
-    var guard = guardAgainstDuplicateLogs('addOOO()')
+    const guard = guardAgainstDuplicateLogs('addOOO()')
     if (guard) return cb(guard)
 
     try {
@@ -193,9 +176,7 @@ exports.init = function (sbot, config) {
   }
 
   function addOOOStrictOrder(msg, strictOrderState, cb) {
-    var guard = guardAgainstMigrationDangers('addOOOStrictOrder()')
-    if (guard) return cb(guard)
-    var guard = guardAgainstDuplicateLogs('addOOOStrictOrder()')
+    const guard = guardAgainstDuplicateLogs('addOOOStrictOrder()')
     if (guard) return cb(guard)
 
     const knownAuthor = msg.author in strictOrderState.feeds
@@ -214,9 +195,7 @@ exports.init = function (sbot, config) {
   }
 
   function publish(msg, cb) {
-    var guard = guardAgainstMigrationDangers('publish()')
-    if (guard) return cb(guard)
-    var guard = guardAgainstDuplicateLogs('publish()')
+    const guard = guardAgainstDuplicateLogs('publish()')
     if (guard) return cb(guard)
 
     stateFeedsReady.promise.then(() => {
@@ -230,9 +209,7 @@ exports.init = function (sbot, config) {
   }
 
   function del(msgId, cb) {
-    var guard = guardAgainstMigrationDangers('del()')
-    if (guard) return cb(guard)
-    var guard = guardAgainstDuplicateLogs('del()')
+    const guard = guardAgainstDuplicateLogs('del()')
     if (guard) return cb(guard)
 
     self.query(
@@ -252,9 +229,7 @@ exports.init = function (sbot, config) {
   }
 
   function deleteFeed(feedId, cb) {
-    var guard = guardAgainstMigrationDangers('deleteFeed()')
-    if (guard) return cb(guard)
-    var guard = guardAgainstDuplicateLogs('deleteFeed()')
+    const guard = guardAgainstDuplicateLogs('deleteFeed()')
     if (guard) return cb(guard)
 
     jitdb.all(author(feedId), 0, false, true, (err, offsets) => {
