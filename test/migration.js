@@ -249,10 +249,7 @@ test('dangerouslyKillFlumeWhenMigrated and refusing db2.publish()', (t) => {
     t.ok(err)
     t.notOk(posted)
     t.true(
-      err.message.includes(
-        'refusing to publish() because migration is in ' +
-          'progress and dangerouslyKillFlumeWhenMigrated is enabled.'
-      ),
+      err.message.includes('refusing to publish()'),
       'error message is migration in progress'
     )
   })
