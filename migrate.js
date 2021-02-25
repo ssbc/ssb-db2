@@ -237,6 +237,7 @@ exports.init = function init(sbot, config) {
       return obj.value
     }
 
+    let previousProgress = -1
     function emitProgressEvent() {
       const oldSize = oldLog.getSize()
       if (migratedSize === 0 && oldSize === 0) {
@@ -245,7 +246,10 @@ exports.init = function init(sbot, config) {
       }
       if (!oldSize) return // avoid division by zero
       const progress = Math.min(migratedSize / oldSize, 1)
-      sbot.emit('ssb:db2:migrate:progress', progress)
+      if (progress === 1 || progress !== previousProgress) {
+        sbot.emit('ssb:db2:migrate:progress', progress)
+        previousProgress = progress
+      }
     }
 
     let dataTransferred = 0 // FIXME: does this only work if the new log is empty?
@@ -259,15 +263,15 @@ exports.init = function init(sbot, config) {
     }
 
     function migrateLive() {
-      // Setup periodic `debug` reporter of live msgs migrated
       let liveMsgCount = 0
-      if (debug.enabled) {
-        setInterval(() => {
-          if (liveMsgCount === 0) return
+      // Setup periodic progress event and `debug` reporter of live migrate
+      setInterval(() => {
+        emitProgressEvent()
+        if (liveMsgCount > 0) {
           debug('%d msgs synced from old log to new log', liveMsgCount)
           liveMsgCount = 0
-        }, 2000).unref()
-      }
+        }
+      }, 3000).unref()
 
       // Setup migration of live new msgs identified on the old log
       oldLog.newMsgObv((msg) => {
@@ -276,7 +280,6 @@ exports.init = function init(sbot, config) {
 
         writeToNewLog(toBIPF(msg), () => {
           liveMsgCount++
-          if (liveMsgCount % 100 === 0) emitProgressEvent()
         })
       })
     }
