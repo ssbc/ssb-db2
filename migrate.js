@@ -327,7 +327,11 @@ exports.init = function init(sbot, config) {
             }
           })
         } else {
-          if (sbot.db) sbot.db.loadStateFeeds()
+          if (sbot.db) {
+            sbot.db.loadStateFeeds(() => {
+              sbot.db.setStateFeedsReady(true)
+            })
+          }
           doneMigrating()
           migrateLive()
         }
