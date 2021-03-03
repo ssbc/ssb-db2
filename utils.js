@@ -9,10 +9,16 @@ function onceWhen(obv, filter, cb) {
   remove = obv((x) => {
     if (!filter(x)) return
     if (answered) {
-      if (remove) remove(), (remove = null)
+      if (remove) {
+        remove()
+        remove = null
+      }
     } else {
       answered = true
-      if (remove) remove(), (remove = null)
+      if (remove) {
+        remove()
+        remove = null
+      }
       cb()
     }
   })
