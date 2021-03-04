@@ -9,6 +9,8 @@ const caps = require('ssb-caps')
 const ssbKeys = require('ssb-keys')
 const multicb = require('multicb')
 const pull = require('pull-stream')
+const asyncFilter = require('pull-async-filter')
+const validate = require('ssb-validate')
 const fromEvent = require('pull-stream-util/from-event')
 const DeferredPromise = require('p-defer')
 const trammel = require('trammel')
@@ -29,10 +31,13 @@ const {
 } = require('../operators')
 
 const dir = '/tmp/ssb-db2-benchmark'
+const dirAdd = '/tmp/ssb-db2-benchmark-add'
 const oldLogPath = path.join(dir, 'flume', 'log.offset')
 const db2Path = path.join(dir, 'db2')
 const indexesPath = path.join(dir, 'db2', 'indexes')
 const reportPath = path.join(dir, 'benchmark.md')
+
+rimraf.sync(dirAdd)
 
 const skipCreate = process.argv[2] === 'noCreate'
 
@@ -87,6 +92,42 @@ test('setup', (t) => {
   t.end()
 })
 
+test('add a bunch of messages', async (t) => {
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .call(null, { keys, path: dirAdd })
+
+  let state = validate.initial()
+  for (var i = 0; i < 1000; ++i) {
+    state = validate.appendNew(state, null, keys, { type: 'tick', count: i }, Date.now())
+  }
+
+  const messages = state.queue.map(x => x.value)
+
+  const ended = DeferredPromise()
+  const start = Date.now()
+
+  pull(
+    pull.values(messages),
+    asyncFilter(sbot.db.add),
+    pull.collect((err) => {
+      const duration = Date.now() - start
+
+      if (err) t.fail(err)
+
+      t.pass(`duration: ${duration}ms`)
+      fs.appendFileSync(
+        reportPath,
+        `| add 1000 elements | ${duration}ms |\n`
+      )
+
+      sbot.close(() => ended.resolve())
+    })
+  )
+
+  await ended.promise
+})
+
 test('migrate (+db1)', async (t) => {
   rimraf.sync(db2Path)
   t.pass('delete db2 folder to start clean')
@@ -118,9 +159,7 @@ test('migrate (+db1)', async (t) => {
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Migrate (+db1) | ${duration}ms |\n`)
       await sleep(2000) // wait for new log FS writes to finalize
-      sbot.close(() => {
-        ended.resolve()
-      })
+      sbot.close(() => ended.resolve())
     })
   )
 
@@ -150,9 +189,7 @@ test('migrate (alone)', async (t) => {
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Migrate (alone) | ${duration}ms |\n`)
       await sleep(2000) // wait for new log FS writes to finalize
-      sbot.close(() => {
-        ended.resolve()
-      })
+      sbot.close(() => ended.resolve())
     })
   )
 
@@ -183,9 +220,7 @@ test('migrate (+db1 +db2)', async (t) => {
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Migrate (+db1 +db2) | ${duration}ms |\n`)
       await new Promise((resolve) => sbot.db.onDrain(resolve))
-      sbot.close(() => {
-        ended.resolve()
-      })
+      sbot.close(() => ended.resolve())
     })
   )
 
@@ -215,9 +250,7 @@ test('migrate (+db2)', async (t) => {
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Migrate (+db2) | ${duration}ms |\n`)
       await new Promise((resolve) => sbot.db.onDrain(resolve))
-      sbot.close(() => {
-        ended.resolve()
-      })
+      sbot.close(() => ended.resolve())
     })
   )
 
@@ -271,9 +304,7 @@ test('migrate continuation (+db2)', async (t) => {
             `| Migrate continuation (+db2) | ${duration}ms |\n`
           )
           await new Promise((resolve) => sbot.db.onDrain(resolve))
-          sbot.close(() => {
-            ended.resolve()
-          })
+          sbot.close(() => ended.resolve())
         })
       )
     })
@@ -316,9 +347,7 @@ test('initial indexing', async (t) => {
       fs.appendFileSync(reportPath, `| Initial indexing | ${duration}ms |\n`)
       updateMaxRAM()
       global.gc()
-      sbot.close(() => {
-        ended.resolve()
-      })
+      sbot.close(() => ended.resolve())
     })
   )
 
@@ -356,9 +385,7 @@ test('initial indexing maxcpu 86', async (t) => {
       )
       updateMaxRAM()
       global.gc()
-      sbot.close(() => {
-        ended.resolve()
-      })
+      sbot.close(() => ended.resolve())
     })
   )
 
@@ -386,9 +413,7 @@ test('initial indexing compat', async (t) => {
       )
       updateMaxRAM()
       global.gc()
-      sbot.close(() => {
-        ended.resolve()
-      })
+      sbot.close(() => ended.resolve())
     })
   })
 
