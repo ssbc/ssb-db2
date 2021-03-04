@@ -102,26 +102,26 @@ test('add a bunch of messages', async (t) => {
     state = validate.appendNew(state, null, keys, { type: 'tick', count: i }, Date.now())
   }
 
+  const messages = state.queue.map(x => x.value)
+
   const ended = DeferredPromise()
   const start = Date.now()
 
   pull(
-    pull.values(state.queue.map(x => x.value)),
+    pull.values(messages),
     asyncFilter(sbot.db.add),
     pull.collect((err) => {
+      const duration = Date.now() - start
+
       if (err) t.fail(err)
 
-      const duration = Date.now() - start
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(
         reportPath,
         `| add 1000 elements | ${duration}ms |\n`
       )
 
-      sbot.close(() => {
-        t.end()
-        ended.resolve()
-      })
+      sbot.close(() => ended.resolve())
     })
   )
 
@@ -159,10 +159,7 @@ test('migrate (+db1)', async (t) => {
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Migrate (+db1) | ${duration}ms |\n`)
       await sleep(2000) // wait for new log FS writes to finalize
-      sbot.close(() => {
-        t.end()
-        ended.resolve()
-      })
+      sbot.close(() => ended.resolve())
     })
   )
 
@@ -192,10 +189,7 @@ test('migrate (alone)', async (t) => {
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Migrate (alone) | ${duration}ms |\n`)
       await sleep(2000) // wait for new log FS writes to finalize
-      sbot.close(() => {
-        t.end()
-        ended.resolve()
-      })
+      sbot.close(() => ended.resolve())
     })
   )
 
@@ -226,10 +220,7 @@ test('migrate (+db1 +db2)', async (t) => {
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Migrate (+db1 +db2) | ${duration}ms |\n`)
       await new Promise((resolve) => sbot.db.onDrain(resolve))
-      sbot.close(() => {
-        t.end()
-        ended.resolve()
-      })
+      sbot.close(() => ended.resolve())
     })
   )
 
@@ -259,10 +250,7 @@ test('migrate (+db2)', async (t) => {
       t.pass(`duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| Migrate (+db2) | ${duration}ms |\n`)
       await new Promise((resolve) => sbot.db.onDrain(resolve))
-      sbot.close(() => {
-        t.end()
-        ended.resolve()
-      })
+      sbot.close(() => ended.resolve())
     })
   )
 
@@ -316,10 +304,7 @@ test('migrate continuation (+db2)', async (t) => {
             `| Migrate continuation (+db2) | ${duration}ms |\n`
           )
           await new Promise((resolve) => sbot.db.onDrain(resolve))
-          sbot.close(() => {
-            t.end()
-            ended.resolve()
-          })
+          sbot.close(() => ended.resolve())
         })
       )
     })
@@ -362,10 +347,7 @@ test('initial indexing', async (t) => {
       fs.appendFileSync(reportPath, `| Initial indexing | ${duration}ms |\n`)
       updateMaxRAM()
       global.gc()
-      sbot.close(() => {
-        t.end()
-        ended.resolve()
-      })
+      sbot.close(() => ended.resolve())
     })
   )
 
@@ -403,10 +385,7 @@ test('initial indexing maxcpu 86', async (t) => {
       )
       updateMaxRAM()
       global.gc()
-      sbot.close(() => {
-        t.end()
-        ended.resolve()
-      })
+      sbot.close(() => ended.resolve())
     })
   )
 
@@ -434,10 +413,7 @@ test('initial indexing compat', async (t) => {
       )
       updateMaxRAM()
       global.gc()
-      sbot.close(() => {
-        t.end()
-        ended.resolve()
-      })
+      sbot.close(() => ended.resolve())
     })
   })
 
@@ -469,10 +445,7 @@ test('Two indexes updating concurrently', async (t) => {
     )
     updateMaxRAM()
     global.gc()
-    sbot.close(() => {
-      t.end()
-      ended.resolve()
-    })
+    sbot.close(() => ended.resolve())
   })
 
   await ended.promise
