@@ -221,6 +221,7 @@ exports.init = function init(sbot, config) {
     started = true
     debug('started')
 
+    if (sbot.db) sbot.db.setStateFeedsReady('migrating')
     synchronized.set(false)
 
     const oldLog = getOldLog(sbot, config)
@@ -313,10 +314,24 @@ exports.init = function init(sbot, config) {
 
         if (config.db2.dangerouslyKillFlumeWhenMigrated) {
           rimraf(flumePath(config.path), (err) => {
-            if (!err) oldLogExists.set(false)
-            doneMigrating()
+            if (err) return console.error(err)
+            if (sbot.db) {
+              sbot.db.loadStateFeeds(() => {
+                sbot.db.setStateFeedsReady(true)
+                oldLogExists.set(false)
+                doneMigrating()
+              })
+            } else {
+              oldLogExists.set(false)
+              doneMigrating()
+            }
           })
         } else {
+          if (sbot.db) {
+            sbot.db.loadStateFeeds(() => {
+              sbot.db.setStateFeedsReady(true)
+            })
+          }
           doneMigrating()
           migrateLive()
         }

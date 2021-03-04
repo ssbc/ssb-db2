@@ -1,4 +1,5 @@
 const EBTIndex = require('../indexes/ebt')
+const { onceWhen } = require('../utils')
 
 exports.init = function (sbot, config) {
   sbot.db.registerIndex(EBTIndex)
@@ -7,15 +8,23 @@ exports.init = function (sbot, config) {
   sbot.getAtSequence = ebtIndex.getMessageFromAuthorSequence.bind(ebtIndex)
   sbot.add = sbot.db.add
   sbot.getVectorClock = function (cb) {
-    sbot.db.getAllLatest((err, last) => {
-      if (err) return cb(err)
+    onceWhen(
+      sbot.db2migrate && sbot.db2migrate.synchronized,
+      (isSynced) => isSynced,
+      () => {
+        sbot.db.onDrain('base', () => {
+          sbot.db.getAllLatest((err, last) => {
+            if (err) return cb(err)
 
-      const clock = {}
-      for (const k in last) {
-        clock[k] = last[k].sequence
+            const clock = {}
+            for (const k in last) {
+              clock[k] = last[k].sequence
+            }
+
+            cb(null, clock)
+          })
+        })
       }
-
-      cb(null, clock)
-    })
+    )
   }
 }

@@ -7,9 +7,9 @@ const jitdbOperators = require('jitdb/operators')
 const operators = require('./operators')
 const JITDb = require('jitdb')
 const Debug = require('debug')
-const DeferredPromise = require('p-defer')
 
 const { indexesPath } = require('./defaults')
+const { onceWhen } = require('./utils')
 const Log = require('./log')
 const Status = require('./status')
 const makeBaseIndex = require('./indexes/base')
@@ -57,7 +57,7 @@ exports.init = function (sbot, config) {
   const debug = Debug('ssb:db2')
   const post = Obv()
   const hmac_key = null
-  const stateFeedsReady = DeferredPromise()
+  const stateFeedsReady = Obv().set(false)
   let state = validate.initial()
 
   sbot.close.hook(function (fn, args) {
@@ -69,21 +69,32 @@ exports.init = function (sbot, config) {
   registerIndex(makeBaseIndex(privateIndex))
   registerIndex(KeysIndex)
 
-  // restore current state
-  indexes.base.getAllLatest((err, last) => {
-    // copy to so we avoid weirdness, because this object
-    // tracks the state coming in to the database.
-    for (const k in last) {
-      state.feeds[k] = {
-        id: last[k].id,
-        timestamp: last[k].timestamp,
-        sequence: last[k].sequence,
-        queue: [],
-      }
-    }
-    debug('getAllLatest is done setting up initial validate state')
-    stateFeedsReady.resolve()
-  })
+  loadStateFeeds()
+
+  function setStateFeedsReady(x) {
+    stateFeedsReady.set(x)
+  }
+
+  function loadStateFeeds(cb) {
+    // restore current state
+    onDrain('base', () => {
+      indexes.base.getAllLatest((err, last) => {
+        // copy to so we avoid weirdness, because this object
+        // tracks the state coming in to the database.
+        for (const k in last) {
+          state.feeds[k] = {
+            id: last[k].id,
+            timestamp: last[k].timestamp,
+            sequence: last[k].sequence,
+            queue: [],
+          }
+        }
+        debug('getAllLatest is done setting up initial validate state')
+        if (!stateFeedsReady.value) stateFeedsReady.set(true)
+        if (cb) cb()
+      })
+    })
+  }
 
   // Crunch stats numbers to produce one number for the "indexing" progress
   status.obv((stats) => {
@@ -148,15 +159,19 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('add()')
     if (guard) return cb(guard)
 
-    stateFeedsReady.promise.then(() => {
-      try {
-        state = validate.append(state, hmac_key, msg)
-        if (state.error) return cb(state.error)
-        rawAdd(msg, true, cb)
-      } catch (ex) {
-        return cb(ex)
+    onceWhen(
+      stateFeedsReady,
+      (ready) => ready === true,
+      () => {
+        try {
+          state = validate.append(state, hmac_key, msg)
+          if (state.error) return cb(state.error)
+          rawAdd(msg, true, cb)
+        } catch (ex) {
+          return cb(ex)
+        }
       }
-    })
+    )
   }
 
   function addOOO(msg, cb) {
@@ -198,14 +213,18 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('publish()')
     if (guard) return cb(guard)
 
-    stateFeedsReady.promise.then(() => {
-      state.queue = []
-      state = validate.appendNew(state, null, config.keys, msg, Date.now())
-      rawAdd(state.queue[0].value, true, (err, data) => {
-        post.set(data)
-        cb(err, data)
-      })
-    })
+    onceWhen(
+      stateFeedsReady,
+      (ready) => ready === true,
+      () => {
+        state.queue = []
+        state = validate.appendNew(state, null, config.keys, msg, Date.now())
+        rawAdd(state.queue[0].value, true, (err, data) => {
+          post.set(data)
+          cb(err, data)
+        })
+      }
+    )
   }
 
   function del(msgId, cb) {
@@ -301,25 +320,28 @@ exports.init = function (sbot, config) {
       indexName = 'base'
     }
 
-    onIndexesStateLoaded(() => {
-      log.onDrain(() => {
-        const index = indexes[indexName]
-        if (!index) return cb('Unknown index:' + indexName)
+    // setTimeout to make sure extra indexes from secret-stack are also included
+    setTimeout(() => {
+      onIndexesStateLoaded(() => {
+        log.onDrain(() => {
+          const index = indexes[indexName]
+          if (!index) return cb('Unknown index:' + indexName)
 
-        status.updateLog()
+          status.updateLog()
 
-        if (index.offset.value === log.since.value) {
-          status.updateIndex(indexName, index.offset.value)
-          cb()
-        } else {
-          const remove = index.offset(() => {
-            if (index.offset.value === log.since.value) {
-              remove()
-              status.updateIndex(indexName, index.offset.value)
-              cb()
-            }
-          })
-        }
+          if (index.offset.value === log.since.value) {
+            status.updateIndex(indexName, index.offset.value)
+            cb()
+          } else {
+            const remove = index.offset(() => {
+              if (index.offset.value === log.since.value) {
+                remove()
+                status.updateIndex(indexName, index.offset.value)
+                cb()
+              }
+            })
+          }
+        })
       })
     })
   }
@@ -400,6 +422,8 @@ exports.init = function (sbot, config) {
     getAllLatest: indexes.base.getAllLatest.bind(indexes.base),
     getLog: () => log,
     registerIndex,
+    setStateFeedsReady,
+    loadStateFeeds,
     getIndexes: () => indexes,
     getIndex: (index) => indexes[index],
     clearIndexes,
