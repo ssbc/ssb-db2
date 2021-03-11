@@ -1,4 +1,5 @@
 const push = require('push-stream')
+const ssbKeys = require('ssb-keys')
 const hash = require('ssb-keys/util').hash
 const validate = require('ssb-validate')
 const Obv = require('obz')
@@ -217,8 +218,16 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
+        if (msg.recps) {
+          msg = ssbKeys.box(
+            msg,
+            msg.recps.map((x) => x.substr(1))
+          )
+        }
+
         state.queue = []
         state = validate.appendNew(state, null, config.keys, msg, Date.now())
+
         rawAdd(state.queue[0].value, true, (err, data) => {
           post.set(data)
           cb(err, data)
