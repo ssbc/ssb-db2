@@ -89,7 +89,7 @@ test('get all latest', (t) => {
         t.equal(postMsg.value.sequence, status.sequence)
         t.equal(postMsg.value.timestamp, status.timestamp)
 
-        t.end()
+        sbot.close(t.end)
       })
     })
   })
