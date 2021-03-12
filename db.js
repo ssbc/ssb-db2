@@ -218,9 +218,7 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        if (msg.recps) {
-          msg = ssbKeys.box(msg, msg.recps)
-        }
+        if (msg.recps) msg = ssbKeys.box(msg, msg.recps)
 
         state.queue = []
         state = validate.appendNew(state, null, config.keys, msg, Date.now())
