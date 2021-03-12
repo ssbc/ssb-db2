@@ -345,7 +345,8 @@ method is safe to use.
 ### publish(msg, cb)
 
 Convenience method for validating and adding a message to the database
-written by the feed running the secret-stack.
+written by the feed running the secret-stack. If message contains
+recps, the message will automatically be encrypted.
 
 ### add(msg, cb)
 

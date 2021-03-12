@@ -89,25 +89,8 @@ test('get all latest', (t) => {
         t.equal(postMsg.value.sequence, status.sequence)
         t.equal(postMsg.value.timestamp, status.timestamp)
 
-        t.end()
+        sbot.close(t.end)
       })
-    })
-  })
-})
-
-test('encrypted', (t) => {
-  let content = { type: 'post', text: 'super secret', recps: [keys.id] }
-  content = ssbKeys.box(
-    content,
-    content.recps.map((x) => x.substr(1))
-  )
-
-  db.publish(content, (err, privateMsg) => {
-    t.error(err, 'no err')
-
-    db.get(privateMsg.key, (err, msg) => {
-      t.equal(msg.content.text, 'super secret')
-      sbot.close(t.end)
     })
   })
 })
