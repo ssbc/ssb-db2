@@ -219,10 +219,7 @@ exports.init = function (sbot, config) {
       (ready) => ready === true,
       () => {
         if (msg.recps) {
-          msg = ssbKeys.box(
-            msg,
-            msg.recps.map((x) => x.substr(1))
-          )
+          msg = ssbKeys.box(msg, msg.recps)
         }
 
         state.queue = []
