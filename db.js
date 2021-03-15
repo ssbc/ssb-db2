@@ -365,12 +365,13 @@ exports.init = function (sbot, config) {
 
   function close(cb) {
     const tasks = []
-    tasks.push(promisify(log.close)())
     for (const indexName in indexes) {
       const index = indexes[indexName]
       tasks.push(promisify(index.close.bind(index))())
     }
-    return Promise.all(tasks).then(cb)
+    return Promise.all(tasks)
+      .then(() => promisify(log.close)())
+      .then(cb)
   }
 
   // override query() from jitdb to implicitly call fromDB()
