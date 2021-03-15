@@ -119,7 +119,5 @@ test('should load about-self from disk', (t) => {
 })
 
 test('teardown sbot', (t) => {
-  setTimeout(() => {
-    sbot.close(() => t.end())
-  }, 500)
+  sbot.close(() => t.end())
 })

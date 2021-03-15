@@ -106,7 +106,5 @@ test('getMessagesByMention live', { timeout: 5000 }, (t) => {
 })
 
 test('teardown sbot', (t) => {
-  setTimeout(() => {
-    sbot.close(() => t.end())
-  }, 500)
+  sbot.close(() => t.end())
 })
