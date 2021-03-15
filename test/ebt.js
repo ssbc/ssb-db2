@@ -102,7 +102,5 @@ test('add', (t) => {
 })
 
 test('teardown sbot', (t) => {
-  setTimeout(() => {
-    sbot.close(t.end)
-  }, 500)
+  sbot.close(t.end)
 })
