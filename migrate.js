@@ -173,6 +173,7 @@ exports.init = function init(sbot, config) {
   let hasCloseHook = false
   let retryPeriod = 250
   let drainAborter = null
+  let liveProgressInterval = null
 
   function oldLogMissingThenRetry(retryFn) {
     if (!hasCloseHook) {
@@ -210,6 +211,10 @@ exports.init = function init(sbot, config) {
     if (drainAborter) {
       drainAborter.abort()
       drainAborter = null
+    }
+    if (liveProgressInterval) {
+      clearInterval(liveProgressInterval)
+      liveProgressInterval = null
     }
   }
 
@@ -266,7 +271,7 @@ exports.init = function init(sbot, config) {
     function migrateLive() {
       let liveMsgCount = 0
       // Setup periodic progress event and `debug` reporter of live migrate
-      setInterval(() => {
+      liveProgressInterval = setInterval(() => {
         emitProgressEvent()
         if (liveMsgCount > 0) {
           debug('%d msgs synced from old log to new log', liveMsgCount)
