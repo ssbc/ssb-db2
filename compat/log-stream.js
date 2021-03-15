@@ -1,6 +1,6 @@
 const pull = require('pull-stream')
 const cat = require('pull-cat')
-const { live, debug, toPullStream } = require('../operators')
+const { live, toPullStream } = require('../operators')
 
 // exports.name is blank to merge into global namespace
 
