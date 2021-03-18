@@ -40,7 +40,7 @@ module.exports = class Plugin {
       if (!this.onFlush) this.onFlush = (cb2) => cb2()
 
       this.onFlush((err) => {
-        if (err) return cb(err2)
+        if (err) return cb(err)
 
         // 1st, persist the operations in the batch array
         this.level.batch(
