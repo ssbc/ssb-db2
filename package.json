@@ -40,7 +40,7 @@
     "ssb-keys": "^8.0.0",
     "ssb-ref": "^2.14.3",
     "ssb-sort": "^1.1.3",
-    "ssb-tribes": "^0.4.1",
+    "ssb-tribes": "^2.0.1",
     "ssb-validate": "^4.1.3",
     "too-hot": "^1.0.0",
     "typedarray-to-buffer": "^4.0.0"

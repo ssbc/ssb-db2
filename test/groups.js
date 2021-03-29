@@ -76,8 +76,6 @@ test('Base', (t) => {
             db.privateIndex.onDrain(() => {
               console.log("db get!")
               db.get('%smnqZPO9Jzat+TGx5hc90w1/pUh3TgG6JesBfe3BvCk=.sha256', (err, msg) => {
-                console.log("err", err)
-                console.log("msg", msg.content)
                 t.equal(msg.content.content, 'a test message', 'can read group message')
                 sbot.close(t.end)
               })

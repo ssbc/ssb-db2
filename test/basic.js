@@ -190,6 +190,7 @@ test('validate needs to load', (t) => {
 
         db.onDrain(() => {
           sbot.close(() => {
+            setTimeout(() => { // something broke here after updating from ssb-tribes 0.4.1 -> 2.0.1
             // reload
             sbot = SecretStack({ appKey: caps.shs })
               .use(require('../'))
@@ -206,6 +207,7 @@ test('validate needs to load', (t) => {
               t.equal(msg.key, msg2.value.previous)
               sbot.close(t.end)
             })
+          }, 1000)
           })
         })
       })
