@@ -51,7 +51,7 @@ exports.init = function (sbot, config) {
   config.db2 = config.db2 || {}
   const indexes = {}
   const dir = config.path
-  const privateIndex = PrivateIndex(dir, config.keys)
+  const privateIndex = PrivateIndex(dir, config.keys, reindexEncrypted)
   const log = Log(dir, config, privateIndex)
   const jitdb = JITDb(log, indexesPath(dir))
   const status = Status(log, jitdb)
@@ -74,6 +74,16 @@ exports.init = function (sbot, config) {
 
   function setStateFeedsReady(x) {
     stateFeedsReady.set(x)
+  }
+
+  function reindexEncrypted(offsets, cb) {
+    const tasks = []
+    //tasks.push(promisify(jitdb.reindex)(offsets))
+    for (const indexName in indexes) {
+      const idx = indexes[indexName]
+      tasks.push(promisify(idx.reindex.bind(idx))(offsets))
+    }
+    return Promise.all(tasks).then(cb)
   }
 
   function loadStateFeeds(cb) {
@@ -369,6 +379,7 @@ exports.init = function (sbot, config) {
 
   function close(cb) {
     const tasks = []
+    tasks.push(promisify(privateIndex.close)())
     for (const indexName in indexes) {
       const index = indexes[indexName]
       tasks.push(promisify(index.close.bind(index))())
@@ -434,5 +445,6 @@ exports.init = function (sbot, config) {
     clearIndexes,
     onDrain,
     getJITDB: () => jitdb,
+    privateIndex,
   })
 }

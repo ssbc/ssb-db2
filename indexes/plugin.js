@@ -4,6 +4,7 @@ const debounce = require('lodash.debounce')
 const encodings = require('level-codec/lib/encodings')
 const path = require('path')
 const Debug = require('debug')
+const push = require('push-stream')
 const DeferredPromise = require('p-defer')
 const { indexesPath } = require('../defaults')
 
@@ -136,5 +137,30 @@ module.exports = class Plugin {
 
   processRecord() {
     throw new Error('processRecord() is missing an implementation')
+  }
+
+  reindex(offsets, cb) {
+    // FIXME: this is ultra hacky, basically full-mentions & keys needs the seq argument
+    const log = this.log, processRecord = this.processRecord.bind(this)
+    let seqMap = {}
+    let seq = 0
+    log.stream({ decrypt: false }).pipe({
+      paused: false,
+      write(record) {
+        seqMap[record.offset] = seq++
+      },
+      end() {
+        push(
+          push.values(offsets),
+          push.asyncMap((offset, cb) => {
+            log.get(offset, (err, record) => {
+              if (err) return cb(err)
+              else cb(null, processRecord({ value: record, offset }, seqMap[offset]))
+            })
+          }),
+          push.collect(cb)
+        )
+      }
+    })
   }
 }
