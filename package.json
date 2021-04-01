@@ -11,7 +11,7 @@
     "async-append-only-log": "^3.0.7",
     "atomically-universal": "^0.1.1",
     "binary-search-bounds": "^2.0.4",
-    "bipf": "~1.4.0",
+    "bipf": "~1.5.0",
     "debug": "~4.3.1",
     "fastintcompression": "0.0.4",
     "flumecodec": "0.0.1",
@@ -52,7 +52,7 @@
     "ssb-db": "19.3.1",
     "ssb-fixtures": "2.2.0",
     "ssb-friends": "4.4.4",
-    "ssb-threads": "7.0.0-rc4",
+    "ssb-threads": "7.0.0",
     "tap-spec": "^5.0.0",
     "tape": "^5.1.1",
     "trammel": "~4.0.0"
