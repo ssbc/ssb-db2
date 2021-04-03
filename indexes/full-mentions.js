@@ -64,7 +64,7 @@ module.exports = class FullMentions extends Plugin {
             pl.read(this.level, Object.assign({}, opts, { live, old: false })),
             pull.map(parseInt10)
           )
-          cb(null, or(seqs(seqArr.map(parseInt10)), liveSeqs(ps))())
+          cb(null, or(seqs(seqArr.map(parseInt10)), liveSeqs(ps)))
         } else cb(null, seqs(seqArr.map(parseInt10)))
       })
     )

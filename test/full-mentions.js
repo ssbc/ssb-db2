@@ -6,7 +6,7 @@ const mkdirp = require('mkdirp')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const pull = require('pull-stream')
-const { and, live, toCallback, toPullStream } = require('../operators')
+const { where, live, toCallback, toPullStream } = require('../operators')
 const mentions = require('../operators/full-mentions')
 
 const dir = '/tmp/ssb-db2-mentions-index'
@@ -50,14 +50,14 @@ test('getMessagesByMention', (t) => {
         t.error(err, 'no err')
 
         db.query(
-          and(mentions(feedId)),
+          where(mentions(feedId)),
           toCallback((err, results) => {
             t.error(err, 'no err')
             t.equal(results.length, 1)
             t.equal(results[0].value.content.text, mentionFeed.text)
 
             db.query(
-              and(mentions(postMsg.key)),
+              where(mentions(postMsg.key)),
               toCallback((err2, results2) => {
                 t.error(err2, 'no err')
                 t.equal(results2.length, 1)
@@ -85,7 +85,7 @@ test('getMessagesByMention live', { timeout: 5000 }, (t) => {
   }
 
   pull(
-    db.query(and(mentions(feedId)), live(), toPullStream()),
+    db.query(where(mentions(feedId)), live(), toPullStream()),
     pull.drain((msg) => {
       t.equal(msg.value.content.text, 'Goodbye @abc')
       t.end()

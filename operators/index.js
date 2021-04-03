@@ -59,7 +59,7 @@ function votesFor(msgKey) {
       useMap: true,
       indexType: 'value_content_vote_link',
     })
-  )()
+  )
 }
 
 function contact(feedId) {
@@ -71,7 +71,7 @@ function contact(feedId) {
       useMap: true,
       indexType: 'value_content_contact',
     })
-  )()
+  )
 }
 
 function mentions(key) {

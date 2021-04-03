@@ -6,7 +6,7 @@ const mkdirp = require('mkdirp')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 
-const { and, toCallback } = require('../operators')
+const { where, toCallback } = require('../operators')
 const mentions = require('../operators/full-mentions')
 
 const dir = '/tmp/ssb-db2-multiple'
@@ -47,7 +47,7 @@ test('second index', (t) => {
       path: dir,
     })
   let db = sbot.db
-  
+
   const feedId = '@abc'
   const mentionFeed = {
     type: 'post',
@@ -59,7 +59,7 @@ test('second index', (t) => {
     t.error(err, 'no err')
 
     db.query(
-      and(mentions(feedId)),
+      where(mentions(feedId)),
       toCallback((err, results) => {
         t.error(err, 'no err')
         t.equal(results.length, 1)
