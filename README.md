@@ -29,15 +29,19 @@ To get the post messages of a specific author, you can do:
 ```js
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
-const {and, type, author, toCallback} = require('ssb-db2/operators')
+const {where, and, type, author, toCallback} = require('ssb-db2/operators')
 
 const sbot = SecretStack({ caps })
   .use(require('ssb-db2'))
   .call(null, { path: './' })
 
 sbot.db.query(
-  and(type('post')),
-  and(author('@6CAxOI3f+LUOVrbAl0IemqiS7ATpQvr9Mdw9LC4+Uv0=.ed25519')),
+  where(
+    and(
+      type('post'),
+      author('@6CAxOI3f+LUOVrbAl0IemqiS7ATpQvr9Mdw9LC4+Uv0=.ed25519')
+    ),
+  ),
   toCallback((err, msgs) => {
     console.log('There are ' + msgs.length + ' messages of type "post" from arj')
     sbot.close()
@@ -50,14 +54,14 @@ To get post messages that mention Alice, you can do:
 ```js
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
-const {query, and, type, author, mentions, toCallback} = require('ssb-db2/operators')
+const {where, and, type, mentions, toCallback} = require('ssb-db2/operators')
 
 const sbot = SecretStack({ caps })
   .use(require('ssb-db2'))
   .call(null, { path: './' })
 
 sbot.db.query(
-  and(type('post'), mentions(alice.id))),
+  where(and(type('post'), mentions(alice.id)))),
   toCallback((err, msgs) => {
     console.log('There are ' + msgs.length + ' messages')
     sbot.close()
@@ -90,7 +94,7 @@ like this:
 ```js
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
-const {query, and, type, author, toCallback} = require('ssb-db2/operators')
+const {where, and, type, toCallback} = require('ssb-db2/operators')
 
 const sbot = SecretStack({ caps })
   .use(require('ssb-db2'))
@@ -100,7 +104,7 @@ const sbot = SecretStack({ caps })
 const {fullMentions} = sbot.db.operators
 
 sbot.db.query(
-  and(type('post'), fullMentions(alice.id))),
+  where(and(type('post'), fullMentions(alice.id)))),
   toCallback((err, msgs) => {
     console.log('There are ' + msgs.length + ' messages')
     sbot.close()
