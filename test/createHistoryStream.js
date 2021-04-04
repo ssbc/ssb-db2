@@ -82,6 +82,7 @@ test('createWriteStream', (t) => {
   s = validate.appendNew(s, null, rando, post2, Date.now() + 2)
   s = validate.appendNew(s, null, rando, post3, Date.now() + 3)
 
+  setTimeout(() => {
   let wrote = 0
   pull(
     pull.values(s.queue),
@@ -104,6 +105,7 @@ test('createWriteStream', (t) => {
       )
     })
   )
+  })
 })
 
 test('Seq', (t) => {
