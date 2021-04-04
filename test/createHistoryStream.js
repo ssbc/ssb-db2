@@ -78,9 +78,9 @@ test('createWriteStream', (t) => {
 
   let s = validate.initial()
 
-  s = validate.appendNew(s, null, rando, post1, Date.now() + 1)
-  s = validate.appendNew(s, null, rando, post2, Date.now() + 2)
-  s = validate.appendNew(s, null, rando, post3, Date.now() + 3)
+  s = validate.appendNew(s, null, rando, post1, Date.now() - 3)
+  s = validate.appendNew(s, null, rando, post2, Date.now() - 2)
+  s = validate.appendNew(s, null, rando, post3, Date.now() - 1)
 
   let wrote = 0
   pull(

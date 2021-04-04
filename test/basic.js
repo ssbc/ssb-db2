@@ -8,7 +8,7 @@ const pull = require('pull-stream')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 
-const { author } = require('../operators')
+const { where, author, toPullStream } = require('../operators')
 
 const dir = '/tmp/ssb-db2-basic'
 
@@ -165,6 +165,39 @@ test('delete all', (t) => {
       })
     })
   })
+})
+
+test('add 3 messages', (t) => {
+  const rando = ssbKeys.generate()
+  const post1 = { type: 'post', text: 'a' }
+  const post2 = { type: 'post', text: 'b' }
+  const post3 = { type: 'post', text: 'c' }
+
+  let s = validate.initial()
+
+  s = validate.appendNew(s, null, rando, post1, Date.now() - 3)
+  s = validate.appendNew(s, null, rando, post2, Date.now() - 2)
+  s = validate.appendNew(s, null, rando, post3, Date.now() - 1)
+
+  pull(
+    pull.values(s.queue),
+    pull.asyncMap((kvt, cb) => db.add(kvt.value, cb)),
+    pull.collect((err) => {
+      t.error(err)
+      db.onDrain(() => {
+        pull(
+          db.query(where(author(rando.id)), toPullStream()),
+          pull.collect((err2, results) => {
+            t.equals(results.length, 3)
+            t.equal(results[0].value.content.text, 'a')
+            t.equal(results[1].value.content.text, 'b')
+            t.equal(results[2].value.content.text, 'c')
+            t.end()
+          })
+        )
+      })
+    })
+  )
 })
 
 test('validate needs to load', (t) => {
