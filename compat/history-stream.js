@@ -62,6 +62,7 @@ exports.init = function (sbot, config) {
               })
           } else {
             sbot.db.getJITDB().all(query, 0, false, false, (err, results) => {
+              console.log("got", results)
               cb(err, pull.values(results.map(formatMsg)))
             })
           }

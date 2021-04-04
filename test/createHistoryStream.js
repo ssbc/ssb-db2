@@ -82,11 +82,14 @@ test('createWriteStream', (t) => {
   s = validate.appendNew(s, null, rando, post2, Date.now() + 2)
   s = validate.appendNew(s, null, rando, post3, Date.now() + 3)
 
+  console.log("q", s.queue)
+  
   let wrote = 0
   pull(
     pull.values(s.queue),
     pull.map((kvt) => kvt.value),
-    pull.through(() => {
+    pull.through((m) => {
+      console.log(m)
       wrote++
     }),
     sbot.createWriteStream((err) => {
@@ -95,6 +98,7 @@ test('createWriteStream', (t) => {
       pull(
         sbot.createHistoryStream({ id: rando.id, values: true }),
         pull.collect((err2, results) => {
+          console.log("results", results)
           t.equals(results.length, 3)
           t.equal(results[0].value.content.text, 'a')
           t.equal(results[1].value.content.text, 'b')
