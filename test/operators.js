@@ -183,7 +183,7 @@ test('execute isRoot()', (t) => {
   })
 })
 
-test('execute and(hasRoot(msgkey))', (t) => {
+test('execute hasRoot(msgkey)', (t) => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }
 
