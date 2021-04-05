@@ -9,7 +9,7 @@ const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const {
   and,
-  or,
+  where,
   type,
   isPrivate,
   isPublic,
@@ -49,7 +49,7 @@ test('can create a reusable query portion', (t) => {
   db.publish(about, (err, postMsg) => {
     t.error(err, 'no err')
 
-    const myAbouts = db.query(and(type('about'), author(keys.id)))
+    const myAbouts = db.query(where(and(type('about'), author(keys.id))))
 
     db.query(
       myAbouts,
@@ -79,7 +79,7 @@ test('execute and(type("post"), author(me))', (t) => {
     t.error(err, 'no err')
 
     db.query(
-      and(type('post'), author(keys.id)),
+      where(and(type('post'), author(keys.id))),
       toCallback((err2, msgs) => {
         t.error(err2, 'no err2')
         t.equal(msgs.length, 1)
@@ -97,7 +97,7 @@ test('dedicated author index', (t) => {
     t.error(err, 'no err')
 
     db.query(
-      and(type('dogs'), author(keys.id, { dedicated: true })),
+      where(and(type('dogs'), author(keys.id, { dedicated: true }))),
       toCallback((err2, msgs) => {
         t.error(err2, 'no err2')
         t.equal(msgs.length, 1)
@@ -125,7 +125,7 @@ test('execute and(type("post"), isPrivate())', (t) => {
     t.error(err, 'no err')
 
     db.query(
-      and(type('post'), isPrivate()),
+      where(and(type('post'), isPrivate())),
       toCallback((err2, msgs) => {
         t.error(err2, 'no err2')
         t.equal(msgs.length, 1)
@@ -148,7 +148,7 @@ test('execute and(type("post"), isPublic())', (t) => {
 
     db.publish({ type: 'posty', text: 'Testing public' }, (err, postMsg) => {
       db.query(
-        and(type('posty'), isPublic()),
+        where(and(type('posty'), isPublic())),
         toCallback((err2, msgs) => {
           t.error(err2, 'no err2')
           t.equal(msgs.length, 1)
@@ -170,7 +170,7 @@ test('execute isRoot()', (t) => {
         t.error(err2, 'no err2')
 
         db.query(
-          and(type('foo'), isRoot()),
+          where(and(type('foo'), isRoot())),
           toCallback((err3, msgs) => {
             t.error(err3, 'no err3')
             t.equal(msgs.length, 1)
@@ -183,7 +183,7 @@ test('execute isRoot()', (t) => {
   })
 })
 
-test('execute and(hasRoot(msgkey))', (t) => {
+test('execute hasRoot(msgkey)', (t) => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }
 
@@ -199,36 +199,7 @@ test('execute and(hasRoot(msgkey))', (t) => {
         t.error(err, 'no err')
 
         db.query(
-          and(hasRoot(postMsg.key)),
-          toCallback((err, results) => {
-            t.error(err, 'no err')
-            t.equal(results.length, 1)
-            t.equal(results[0].value.content.text, threadMsg1.text)
-            t.end()
-          })
-        )
-      })
-    })
-  })
-})
-
-test('execute or(hasRoot(msgkey))', (t) => {
-  const post = { type: 'post', text: 'Testing!' }
-  const post2 = { type: 'post', text: 'Testing 2!' }
-
-  db.publish(post, (err, postMsg) => {
-    t.error(err, 'no err')
-
-    db.publish(post2, (err) => {
-      t.error(err, 'no err')
-
-      const threadMsg1 = { type: 'post', text: 'reply', root: postMsg.key }
-
-      db.publish(threadMsg1, (err) => {
-        t.error(err, 'no err')
-
-        db.query(
-          or(hasRoot(postMsg.key)),
+          where(hasRoot(postMsg.key)),
           toCallback((err, results) => {
             t.error(err, 'no err')
             t.equal(results.length, 1)
@@ -257,7 +228,7 @@ test('execute hasFork(msgkey)', (t) => {
         t.error(err, 'no err')
 
         db.query(
-          and(hasFork(postMsg.key)),
+          where(hasFork(postMsg.key)),
           toCallback((err, results) => {
             t.error(err, 'no err')
             t.equal(results.length, 1)
@@ -286,7 +257,7 @@ test('execute hasBranch(msgkey)', (t) => {
         t.error(err, 'no err')
 
         db.query(
-          and(hasBranch(postMsg.key)),
+          where(hasBranch(postMsg.key)),
           toCallback((err, results) => {
             t.error(err, 'no err')
             t.equal(results.length, 1)
@@ -324,7 +295,7 @@ test('hasRoot() outputs encrypted replies too', (t) => {
         t.error(err, 'no err')
 
         db.query(
-          and(hasRoot(postMsg.key)),
+          where(hasRoot(postMsg.key)),
           toCallback((err, results) => {
             t.error(err, 'no err')
             t.equal(results.length, 1)
@@ -362,14 +333,14 @@ test('execute mentions(feedid) and mentions(msgkey)', (t) => {
         t.error(err, 'no err')
 
         db.query(
-          and(mentions(feedId)),
+          where(mentions(feedId)),
           toCallback((err, results) => {
             t.error(err, 'no err')
             t.equal(results.length, 1)
             t.equal(results[0].value.content.text, mentionFeed.text)
 
             db.query(
-              and(mentions(postMsg.key)),
+              where(mentions(postMsg.key)),
               toCallback((err2, results2) => {
                 t.error(err2, 'no err')
                 t.equal(results2.length, 1)
@@ -395,7 +366,7 @@ test('execute contact(feedid)', (t) => {
       t.error(err, 'no err')
 
       db.query(
-        and(contact(feedid)),
+        where(contact(feedid)),
         toCallback((err, results) => {
           t.error(err, 'no err')
           t.equal(results.length, 1)
@@ -418,7 +389,7 @@ test('execute about(feedid)', (t) => {
       t.error(err, 'no err')
 
       db.query(
-        and(about(feedid)),
+        where(about(feedid)),
         toCallback((err, results) => {
           t.error(err, 'no err')
           t.equal(results.length, 1)
@@ -461,7 +432,7 @@ test('execute votesFor(msgkey)', (t) => {
         t.error(err, 'no err')
 
         db.query(
-          and(votesFor(postMsg.key)),
+          where(votesFor(postMsg.key)),
           toCallback((err, results) => {
             t.error(err, 'no err')
             t.equal(results.length, 2)
@@ -483,7 +454,7 @@ test('operators are exposed', (t) => {
 
     pull(
       db.query(
-        db.operators.and(db.operators.key(postMsg.key)),
+        db.operators.where(db.operators.key(postMsg.key)),
         db.operators.toCallback((err, results) => {
           t.equal(results[0].key, postMsg.key)
           t.end()
@@ -528,7 +499,7 @@ test('live votesFor', (t) => {
       let i = 0
       pull(
         db.query(
-          and(votesFor(postMsg.key)),
+          where(votesFor(postMsg.key)),
           live({ old: true }),
           toPullStream()
         ),

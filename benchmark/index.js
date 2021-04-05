@@ -17,6 +17,7 @@ const trammel = require('trammel')
 const sleep = require('util').promisify(setTimeout)
 const {
   and,
+  where,
   type,
   author,
   key,
@@ -99,10 +100,16 @@ test('add a bunch of messages', async (t) => {
 
   let state = validate.initial()
   for (var i = 0; i < 1000; ++i) {
-    state = validate.appendNew(state, null, keys, { type: 'tick', count: i }, Date.now())
+    state = validate.appendNew(
+      state,
+      null,
+      keys,
+      { type: 'tick', count: i },
+      Date.now()
+    )
   }
 
-  const messages = state.queue.map(x => x.value)
+  const messages = state.queue.map((x) => x.value)
 
   const ended = DeferredPromise()
   const start = Date.now()
@@ -116,10 +123,7 @@ test('add a bunch of messages', async (t) => {
       if (err) t.fail(err)
 
       t.pass(`duration: ${duration}ms`)
-      fs.appendFileSync(
-        reportPath,
-        `| add 1000 elements | ${duration}ms |\n`
-      )
+      fs.appendFileSync(reportPath, `| add 1000 elements | ${duration}ms |\n`)
 
       sbot.close(() => ended.resolve())
     })
@@ -333,7 +337,7 @@ test('initial indexing', async (t) => {
   const start = Date.now()
 
   sbot.db.query(
-    and(type('post')),
+    where(type('post')),
     descending(),
     paginate(1),
     toCallback((err, { results, total }) => {
@@ -368,7 +372,7 @@ test('initial indexing maxcpu 86', async (t) => {
   const start = Date.now()
 
   sbot.db.query(
-    and(type('post')),
+    where(type('post')),
     descending(),
     paginate(1),
     toCallback((err, { results, total }) => {
@@ -432,8 +436,8 @@ test('Two indexes updating concurrently', async (t) => {
   const done = multicb({ pluck: 1 })
   const start = Date.now()
 
-  sbot.db.query(and(type('about')), toCallback(done()))
-  sbot.db.query(and(type('about'), isPublic()), toCallback(done()))
+  sbot.db.query(where(type('about')), toCallback(done()))
+  sbot.db.query(where(and(type('about'), isPublic())), toCallback(done()))
 
   done((err) => {
     if (err) t.fail(err)
@@ -531,61 +535,61 @@ const AUTHOR2 = '@58u/J9+5bOXeYRDCYQ9cJ7kklghIpQFPBYxlhKq1/qs=.ed2551'
 const REBOOT = 'reboot'
 
 const queries = {
-  'key one initial': [and(key(KEY1))],
+  'key one initial': [where(key(KEY1))],
 
-  'key two': [and(key(KEY2))],
+  'key two': [where(key(KEY2))],
 
-  'key one again': [and(key(KEY1))],
+  'key one again': [where(key(KEY1))],
 
   [REBOOT]: true,
 
-  'reboot and key one again': [and(key(KEY1))],
+  'reboot and key one again': [where(key(KEY1))],
 
   'latest root posts': [
-    and(type('post'), isRoot(), isPublic()),
+    where(and(type('post'), isRoot(), isPublic())),
     startFrom(0),
     paginate(25),
     descending(),
   ],
 
   'latest posts': [
-    and(type('post'), isPublic()),
+    where(and(type('post'), isPublic())),
     startFrom(0),
     paginate(25),
     descending(),
   ],
 
-  'votes one initial': [and(votesFor(KEY1))],
+  'votes one initial': [where(votesFor(KEY1))],
 
-  'votes again': [and(votesFor(KEY3))],
+  'votes again': [where(votesFor(KEY3))],
 
-  hasRoot: [and(hasRoot(KEY1))],
+  hasRoot: [where(hasRoot(KEY1))],
 
-  'hasRoot again': [and(hasRoot(KEY3))],
+  'hasRoot again': [where(hasRoot(KEY3))],
 
   'author one posts': [
-    and(type('post'), author(AUTHOR1), isPublic()),
+    where(and(type('post'), author(AUTHOR1), isPublic())),
     startFrom(0),
     paginate(25),
     descending(),
   ],
 
   'author two posts': [
-    and(type('post'), author(AUTHOR2), isPublic()),
+    where(and(type('post'), author(AUTHOR2), isPublic())),
     startFrom(0),
     paginate(25),
     descending(),
   ],
 
   'dedicated author one posts': [
-    and(type('post'), author(AUTHOR1, { dedicated: true }), isPublic()),
+    where(and(type('post'), author(AUTHOR1, { dedicated: true }), isPublic())),
     startFrom(0),
     paginate(25),
     descending(),
   ],
 
   'dedicated author one posts again': [
-    and(type('post'), author(AUTHOR1, { dedicated: true }), isPublic()),
+    where(and(type('post'), author(AUTHOR1, { dedicated: true }), isPublic())),
     startFrom(0),
     paginate(25),
     descending(),

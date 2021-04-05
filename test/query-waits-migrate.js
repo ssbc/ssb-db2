@@ -7,7 +7,13 @@ const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const generateFixture = require('ssb-fixtures')
 const fs = require('fs')
-const { and, type, descending, paginate, toCallback } = require('../operators')
+const {
+  where,
+  type,
+  descending,
+  paginate,
+  toCallback,
+} = require('../operators')
 
 const dir = '/tmp/ssb-db2-query-waits-migrate'
 
@@ -41,7 +47,7 @@ test('query() waits for migrate to sync old and new logs', (t) => {
   sbot.db2migrate.start()
 
   sbot.db.query(
-    and(type('post')),
+    where(type('post')),
     descending(),
     paginate(1),
     toCallback((err, response) => {
@@ -66,7 +72,7 @@ test.skip('config.maxCpu makes indexing last longer', (t) => {
 
   const start1 = Date.now()
   sbot1.db.query(
-    and(type('post')),
+    where(type('post')),
     descending(),
     paginate(1),
     toCallback(() => {
@@ -83,7 +89,7 @@ test.skip('config.maxCpu makes indexing last longer', (t) => {
 
         const start2 = Date.now()
         sbot2.db.query(
-          and(type('post')),
+          where(type('post')),
           descending(),
           paginate(1),
           toCallback(() => {

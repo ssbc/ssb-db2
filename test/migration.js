@@ -9,7 +9,7 @@ const generateFixture = require('ssb-fixtures')
 const fs = require('fs')
 const pull = require('pull-stream')
 const fromEvent = require('pull-stream-util/from-event')
-const { toCallback, and, isPrivate, type } = require('../operators')
+const { toCallback, and, where, isPrivate, type } = require('../operators')
 
 const dir = '/tmp/ssb-db2-migrate'
 
@@ -172,7 +172,7 @@ test('migrate does not read decrypted from old log', (t) => {
     t.error(err, 'publish suceeded')
     t.equals(typeof posted.value.content, 'string', 'private msg posted')
     sbot.db.query(
-      and(type('post'), isPrivate()),
+      where(and(type('post'), isPrivate())),
       toCallback((err, msgs) => {
         t.error(err, 'no err')
         t.equal(msgs.length, 1)

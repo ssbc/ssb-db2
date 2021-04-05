@@ -17,7 +17,15 @@ const makeBaseIndex = require('./indexes/base')
 const KeysIndex = require('./indexes/keys')
 const PrivateIndex = require('./indexes/private')
 
-const { and, fromDB, key, author, deferred, toCallback, asOffsets } = operators
+const {
+  where,
+  fromDB,
+  key,
+  author,
+  deferred,
+  toCallback,
+  asOffsets,
+} = operators
 
 function getId(msg) {
   return '%' + hash(JSON.stringify(msg, null, 2))
@@ -126,7 +134,7 @@ exports.init = function (sbot, config) {
 
   function getHelper(id, onlyValue, cb) {
     self.query(
-      and(key(id)),
+      where(key(id)),
       toCallback((err, results) => {
         if (err) return cb(err)
         else if (results.length)
@@ -236,7 +244,7 @@ exports.init = function (sbot, config) {
     if (guard) return cb(guard)
 
     self.query(
-      and(key(msgId)),
+      where(key(msgId)),
       asOffsets(),
       toCallback((err, results) => {
         if (err) return cb(err)
@@ -392,18 +400,12 @@ exports.init = function (sbot, config) {
       }
     })
 
-    if (rest.length === 0) {
-      const ops = fromDB(jitdb)
-      ops.meta.db = this
-      return jitdbOperators.query(ops, and(waitUntilReady), first)
-    }
-
-    if (!first.meta) {
-      const ops = fromDB(jitdb)
-      ops.meta.db = this
-      return jitdbOperators.query(ops, and(waitUntilReady, first), ...rest)
+    if (first.meta) {
+      return jitdbOperators.query(first, where(waitUntilReady), ...rest)
     } else {
-      return jitdbOperators.query(first, and(waitUntilReady), ...rest)
+      const ops = fromDB(jitdb)
+      ops.meta.db = this
+      return jitdbOperators.query(ops, where(waitUntilReady), first, ...rest)
     }
   }
 
