@@ -17,7 +17,7 @@
     "flumecodec": "0.0.1",
     "flumelog-offset": "3.4.4",
     "hoox": "0.0.1",
-    "jitdb": "^3.0.2",
+    "jitdb": "^3.0.3",
     "level": "^6.0.1",
     "level-codec": "^9.0.2",
     "lodash.debounce": "^4.0.8",
