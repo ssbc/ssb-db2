@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "async-append-only-log": "^3.0.8",
-    "atomically-universal": "^0.1.1",
+    "atomic-file-rw": "^0.1.0",
     "binary-search-bounds": "^2.0.4",
     "bipf": "~1.5.0",
     "debug": "~4.3.1",
