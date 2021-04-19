@@ -2,7 +2,7 @@ const Obv = require('obz')
 const bipf = require('bipf')
 const fic = require('fastintcompression')
 const bsb = require('binary-search-bounds')
-const { readFile, writeFile } = require('atomically-universal')
+const { readFile, writeFile } = require('atomic-file-rw')
 const toBuffer = require('typedarray-to-buffer')
 const ssbKeys = require('ssb-keys')
 const DeferredPromise = require('p-defer')
@@ -28,19 +28,21 @@ module.exports = function (dir, keys) {
     b.writeInt32LE(latestOffset.value, 0)
     buf.copy(b, 4)
 
-    writeFile(filename, b, { fsyncWait: false })
+    writeFile(filename, b, (err) => {
+      if (err) debug("failed to save file %o, got error %o", filename, err)
+    })
   }
 
   function load(filename, cb) {
-    readFile(filename)
-      .then((buf) => {
-        if (!buf) return cb(new Error('empty file'))
-        const offset = buf.readInt32LE(0)
-        const body = buf.slice(4)
+    readFile(filename, (err, buf) => {
+      if (err) return cb(err)
+      else if (!buf) return cb(new Error('empty file'))
 
-        cb(null, { offset, arr: fic.uncompress(body) })
-      })
-      .catch(cb)
+      const offset = buf.readInt32LE(0)
+      const body = buf.slice(4)
+
+      cb(null, { offset, arr: fic.uncompress(body) })
+    })
   }
 
   function loadIndexes(cb) {
