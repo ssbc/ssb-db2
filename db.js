@@ -1,6 +1,5 @@
 const push = require('push-stream')
 const ssbKeys = require('ssb-keys')
-const hash = require('ssb-keys/util').hash
 const validate = require('ssb-validate')
 const Obv = require('obz')
 const promisify = require('promisify-4loc')
@@ -26,10 +25,6 @@ const {
   toCallback,
   asOffsets,
 } = operators
-
-function getId(msg) {
-  return '%' + hash(JSON.stringify(msg, null, 2))
-}
 
 exports.name = 'db'
 
@@ -152,18 +147,6 @@ exports.init = function (sbot, config) {
     getHelper(id, false, cb)
   }
 
-  function rawAdd(msg, validated, cb) {
-    const id = getId(msg)
-    if (validated)
-      // ssb-validate makes sure things come in order
-      log.add(id, msg, cb)
-    else
-      get(id, (err, data) => {
-        if (data) cb(null, data)
-        else log.add(id, msg, cb)
-      })
-  }
-
   function add(msg, cb) {
     const guard = guardAgainstDuplicateLogs('add()')
     if (guard) return cb(guard)
@@ -175,7 +158,8 @@ exports.init = function (sbot, config) {
         try {
           state = validate.append(state, hmac_key, msg)
           if (state.error) return cb(state.error)
-          rawAdd(msg, true, cb)
+          const kv = state.queue[state.queue.length - 1]
+          log.add(kv.key, kv.value, cb)
         } catch (ex) {
           return cb(ex)
         }
@@ -193,7 +177,11 @@ exports.init = function (sbot, config) {
 
       if (oooState.error) return cb(oooState.error)
 
-      rawAdd(msg, false, cb)
+      const kv = oooState.queue[oooState.queue.length - 1]
+      get(kv.key, (err, data) => {
+        if (data) cb(null, data)
+        else log.add(kv.key, kv.value, cb)
+      })
     } catch (ex) {
       return cb(ex)
     }
@@ -212,7 +200,8 @@ exports.init = function (sbot, config) {
 
       if (strictOrderState.error) return cb(strictOrderState.error)
 
-      rawAdd(msg, true, cb)
+      const kv = strictOrderState.queue[strictOrderState.queue.length - 1]
+      log.add(kv.key, kv.value, cb)
     } catch (ex) {
       return cb(ex)
     }
@@ -231,7 +220,8 @@ exports.init = function (sbot, config) {
         state.queue = []
         state = validate.appendNew(state, null, config.keys, msg, Date.now())
 
-        rawAdd(state.queue[0].value, true, (err, data) => {
+        const kv = state.queue[state.queue.length - 1]
+        log.add(kv.key, kv.value, (err, data) => {
           post.set(data)
           cb(err, data)
         })
