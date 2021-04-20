@@ -178,7 +178,7 @@ exports.init = function (sbot, config) {
       if (oooState.error) return cb(oooState.error)
 
       const kv = oooState.queue[oooState.queue.length - 1]
-      get(q.key, (err, data) => {
+      get(kv.key, (err, data) => {
         if (data) cb(null, data)
         else log.add(kv.key, kv.value, cb)
       })
