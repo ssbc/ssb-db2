@@ -20,7 +20,7 @@ exports.init = function (sbot, config) {
         () => {},
         cb ||
           ((err) => {
-            if (err) throw err
+            console.error(`ssb-db2 createWriteStream got an error: ${err}`)
           })
       )
     )
