@@ -1,12 +1,14 @@
 const push = require('push-stream')
 const ssbKeys = require('ssb-keys')
 const validate = require('ssb-validate')
+const rValidate = require('./ssb-validate2-rsjs')
 const Obv = require('obz')
 const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
 const operators = require('./operators')
 const JITDb = require('jitdb')
 const Debug = require('debug')
+const multicb = require('multicb')
 
 const { indexesPath } = require('./defaults')
 const { onceWhen } = require('./utils')
@@ -145,6 +147,31 @@ exports.init = function (sbot, config) {
 
   function getMsg(id, cb) {
     getHelper(id, false, cb)
+  }
+
+  function addBatch(msgs, cb) {
+    const guard = guardAgainstDuplicateLogs('addBatch()')
+    if (guard) return cb(guard)
+
+    onceWhen(
+      stateFeedsReady,
+      (ready) => ready === true,
+      () => {
+        try {
+          const s = rValidate.validateBatch(msgs)
+          console.log(s)
+          // FIXME: error handling
+          const done = multicb({ pluck: 1 })
+          msgs.forEach((msg) => {
+            rawAdd(msg, true, done())
+          })
+
+          done(cb)
+        } catch (ex) {
+          return cb(ex)
+        }
+      }
+    )
   }
 
   function add(msg, cb) {
