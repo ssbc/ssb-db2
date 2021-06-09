@@ -39,7 +39,8 @@ exports.manifest = {
   del: 'async',
   deleteFeed: 'async',
   addOOO: 'async',
-  addOOOStrictOrder: 'async',
+  addBatch: 'async',
+  addOOOBatch: 'async',
   getStatus: 'sync',
 
   // `query` should be `sync`, but secret-stack is automagically converting it
@@ -227,12 +228,12 @@ exports.init = function (sbot, config) {
     if (guard) return cb(guard)
 
     const kvt = toKeyValueTimestamp(msg)
-    const err = validateOOOBatch([kvt])
+    const err = validate.validateOOOBatch([kvt])
     if (err) return cb(err)
 
     get(kvt.key, (err, data) => {
       if (data) cb(null, data)
-      else log.add(kv.key, kv.value, cb)
+      else log.add(kvt.key, kvt.value, cb)
     })
   }
 
@@ -459,11 +460,10 @@ exports.init = function (sbot, config) {
     del,
     deleteFeed,
     add,
+    addOOO,
     addBatch,
     addOOOBatch,
     publish,
-    addOOO,
-    addOOOStrictOrder,
     getStatus: () => status.obv,
     operators,
 
