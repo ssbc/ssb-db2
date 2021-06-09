@@ -1,7 +1,7 @@
 const push = require('push-stream')
 const ssbKeys = require('ssb-keys')
-const validate = require('ssb-validate')
-const rValidate = require('./ssb-validate2-rsjs')
+const validate = require('ssb-validate2-rsjs')
+const { toKeyValueTimestamp, create } = require('ssb-validate')
 const Obv = require('obz')
 const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
@@ -62,9 +62,10 @@ exports.init = function (sbot, config) {
   const status = Status(log, jitdb)
   const debug = Debug('ssb:db2')
   const post = Obv()
+  // FIXME: support
   const hmac_key = null
   const stateFeedsReady = Obv().set(false)
-  let state = validate.initial()
+  const state = {}
 
   sbot.close.hook(function (fn, args) {
     close(() => {
@@ -87,17 +88,20 @@ exports.init = function (sbot, config) {
       indexes.base.getAllLatest((err, last) => {
         // copy to so we avoid weirdness, because this object
         // tracks the state coming in to the database.
-        for (const k in last) {
-          state.feeds[k] = {
-            id: last[k].id,
-            timestamp: last[k].timestamp,
-            sequence: last[k].sequence,
-            queue: [],
-          }
-        }
-        debug('getAllLatest is done setting up initial validate state')
-        if (!stateFeedsReady.value) stateFeedsReady.set(true)
-        if (cb) cb()
+
+        const done = multicb({ pluck: 1 })
+
+        for (const k in last) getMsg(last[k].id, done())
+
+        done((err, latestMessages) => {
+          if (err) debug('error getting latest messages', err)
+
+          latestMessages.forEach(updateState)
+
+          debug('getAllLatest is done setting up initial validate state')
+          if (!stateFeedsReady.value) stateFeedsReady.set(true)
+          if (cb) cb()
+        })
       })
     })
   }
@@ -149,6 +153,10 @@ exports.init = function (sbot, config) {
     getHelper(id, false, cb)
   }
 
+  function updateState(kvt) {
+    state[kvt.value.author] = kvt
+  }
+
   function addBatch(msgs, cb) {
     const guard = guardAgainstDuplicateLogs('addBatch()')
     if (guard) return cb(guard)
@@ -157,19 +165,17 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        try {
-          const s = rValidate.validateBatch(msgs)
-          console.log(s)
-          // FIXME: error handling
-          const done = multicb({ pluck: 1 })
-          msgs.forEach((msg) => {
-            rawAdd(msg, true, done())
-          })
+        const kvts = msgs.map((m) => toKeyValueTimestamp(m))
+        const err = validate.validateBatch(kvts)
+        if (err) return cb(err)
 
-          done(cb)
-        } catch (ex) {
-          return cb(ex)
-        }
+        const done = multicb({ pluck: 1 })
+        kvts.forEach((kvt) => {
+          log.add(kvt.key, kvt.value, done())
+        })
+        updateState(kvts[kvts.length - 1])
+
+        done(cb)
       }
     )
   }
@@ -182,13 +188,13 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        try {
-          state = validate.append(state, hmac_key, msg)
-          if (state.error) return cb(state.error)
-          const kv = state.queue[state.queue.length - 1]
-          log.add(kv.key, kv.value, cb)
-        } catch (ex) {
-          return cb(ex)
+        const latest = state[msg.author]
+        const kvt = toKeyValueTimestamp(msg)
+        const err = validate.validateSingle(kvt, latest)
+        if (err) return cb(err)
+        else {
+          updateState(kvt)
+          log.add(kvt.key, kvt.value, cb)
         }
       }
     )
@@ -198,43 +204,34 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('addOOO()')
     if (guard) return cb(guard)
 
-    try {
-      let oooState = validate.initial()
-      validate.appendOOO(oooState, hmac_key, msg)
+    const kvt = toKeyValueTimestamp(msg)
+    const err = validateOOOBatch([kvt])
+    if (err) return cb(err)
 
-      if (oooState.error) return cb(oooState.error)
-
-      const kv = oooState.queue[oooState.queue.length - 1]
-      get(kv.key, (err, data) => {
-        if (data) cb(null, data)
-        else log.add(kv.key, kv.value, cb)
-      })
-    } catch (ex) {
-      return cb(ex)
-    }
+    get(kvt.key, (err, data) => {
+      if (data) cb(null, data)
+      else log.add(kv.key, kv.value, cb)
+    })
   }
 
-  function addOOOStrictOrder(msg, strictOrderState, cb) {
+  function addOOOStrictOrder(msg, previous, cb) {
     const guard = guardAgainstDuplicateLogs('addOOOStrictOrder()')
     if (guard) return cb(guard)
 
-    const knownAuthor = msg.author in strictOrderState.feeds
+    const kvt = toKeyValueTimestamp(msg)
 
-    try {
-      if (!knownAuthor)
-        strictOrderState = validate.appendOOO(strictOrderState, hmac_key, msg)
-      else strictOrderState = validate.append(strictOrderState, hmac_key, msg)
-
-      if (strictOrderState.error) return cb(strictOrderState.error)
-
-      const kv = strictOrderState.queue[strictOrderState.queue.length - 1]
-      log.add(kv.key, kv.value, cb)
-    } catch (ex) {
-      return cb(ex)
+    if (previous) {
+      const err = validate.validateSingle(kvt, previous)
+      if (err) return cb(err)
+      else log.add(kvt.key, kvt.value, cb)
+    } else {
+      const err = validateOOOBatch([kvt])
+      if (err) return cb(err)
+      else log.add(kvt.key, kvt.value, cb)
     }
   }
 
-  function publish(msg, cb) {
+  function publish(content, cb) {
     const guard = guardAgainstDuplicateLogs('publish()')
     if (guard) return cb(guard)
 
@@ -242,13 +239,19 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        if (msg.recps) msg = ssbKeys.box(msg, msg.recps)
+        if (content.recps) content = ssbKeys.box(content, content.recps)
 
-        state.queue = []
-        state = validate.appendNew(state, null, config.keys, msg, Date.now())
-
-        const kv = state.queue[state.queue.length - 1]
-        log.add(kv.key, kv.value, (err, data) => {
+        const latest = state[config.keys.id]
+        const value = create(
+          latest ? { queue: [latest] } : null,
+          config.keys,
+          null,
+          content,
+          Date.now()
+        )
+        const kvt = toKeyValueTimestamp(value)
+        updateState(kvt)
+        log.add(kvt.key, kvt.value, (err, data) => {
           post.set(data)
           cb(err, data)
         })
@@ -289,7 +292,7 @@ exports.init = function (sbot, config) {
         push.collect((err) => {
           if (err) cb(err)
           else {
-            delete state.feeds[feedId]
+            delete state[feedId]
             indexes.base.removeFeedFromLatest(feedId, cb)
           }
         })
@@ -434,6 +437,7 @@ exports.init = function (sbot, config) {
     del,
     deleteFeed,
     add,
+    addBatch,
     publish,
     addOOO,
     addOOOStrictOrder,
