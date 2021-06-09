@@ -157,6 +157,28 @@ exports.init = function (sbot, config) {
     state[kvt.value.author] = kvt
   }
 
+  function addOOOBatch(msgs, cb) {
+    const guard = guardAgainstDuplicateLogs('addOOOBatch()')
+    if (guard) return cb(guard)
+
+    onceWhen(
+      stateFeedsReady,
+      (ready) => ready === true,
+      () => {
+        const kvts = msgs.map((m) => toKeyValueTimestamp(m))
+        const err = validate.validateOOOBatch(kvts)
+        if (err) return cb(err)
+
+        const done = multicb({ pluck: 1 })
+        kvts.forEach((kvt) => {
+          log.add(kvt.key, kvt.value, done())
+        })
+
+        done(cb)
+      }
+    )
+  }
+
   function addBatch(msgs, cb) {
     const guard = guardAgainstDuplicateLogs('addBatch()')
     if (guard) return cb(guard)
@@ -438,6 +460,7 @@ exports.init = function (sbot, config) {
     deleteFeed,
     add,
     addBatch,
+    addOOOBatch,
     publish,
     addOOO,
     addOOOStrictOrder,
