@@ -237,23 +237,6 @@ exports.init = function (sbot, config) {
     })
   }
 
-  function addOOOStrictOrder(msg, previous, cb) {
-    const guard = guardAgainstDuplicateLogs('addOOOStrictOrder()')
-    if (guard) return cb(guard)
-
-    const kvt = toKeyValueTimestamp(msg)
-
-    if (previous) {
-      const err = validate.validateSingle(kvt, previous)
-      if (err) return cb(err)
-      else log.add(kvt.key, kvt.value, cb)
-    } else {
-      const err = validateOOOBatch([kvt])
-      if (err) return cb(err)
-      else log.add(kvt.key, kvt.value, cb)
-    }
-  }
-
   function publish(content, cb) {
     const guard = guardAgainstDuplicateLogs('publish()')
     if (guard) return cb(guard)
