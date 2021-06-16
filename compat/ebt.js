@@ -4,8 +4,11 @@ const { onceWhen } = require('../utils')
 exports.init = function (sbot, config) {
   sbot.db.registerIndex(EBTIndex)
   if (!sbot.post) sbot.post = sbot.db.post
-  const ebtIndex = sbot.db.getIndex('ebt')
-  sbot.getAtSequence = ebtIndex.getMessageFromAuthorSequence.bind(ebtIndex)
+  sbot.getAtSequence = (key, cb) => {
+    sbot.db.onDrain('ebt', () => {
+      sbot.db.getIndex('ebt').getMessageFromAuthorSequence(key, cb)
+    })
+  }
   sbot.add = sbot.db.add
   sbot.getVectorClock = function (cb) {
     onceWhen(
