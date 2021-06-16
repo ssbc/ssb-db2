@@ -29,11 +29,10 @@ test('Base', (t) => {
   db.publish(post, (err, postMsg) => {
     t.error(err, 'no err')
 
-    db.onDrain('ebt', () => {
-      sbot.getAtSequence([keys.id, 1], (err, msg) => {
-        t.equal(msg.value.content.text, postMsg.value.content.text)
-        t.end()
-      })
+    sbot.getAtSequence([keys.id, 1], (err, msg) => {
+      t.error(err)
+      t.equal(msg.value.content.text, postMsg.value.content.text)
+      t.end()
     })
   })
 })
@@ -73,11 +72,10 @@ test('Encrypted', (t) => {
   db.publish(content, (err) => {
     t.error(err, 'no err')
 
-    db.onDrain('ebt', () => {
-      sbot.getAtSequence([keys.id, 4], (err, msg) => {
-        t.equal(msg.value.content, content)
-        t.end()
-      })
+    sbot.getAtSequence([keys.id, 4], (err, msg) => {
+      t.error(err)
+      t.equal(msg.value.content, content)
+      t.end()
     })
   })
 })
