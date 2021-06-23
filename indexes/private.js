@@ -9,6 +9,10 @@ const DeferredPromise = require('p-defer')
 const path = require('path')
 const Debug = require('debug')
 
+const { unboxKey, unboxBody } = require('envelope-js')
+const directMessageKey = require('ssb-tribes/lib/direct-message-key')
+const SecretKey = require('ssb-tribes/lib/secret-key')
+
 const { indexesPath } = require('../defaults')
 
 module.exports = function (dir, keys) {
@@ -112,38 +116,118 @@ module.exports = function (dir, keys) {
 
   const B_VALUE = Buffer.from('value')
   const B_CONTENT = Buffer.from('content')
+  const B_AUTHOR = Buffer.from('author')
+  const B_PREVIOUS = Buffer.from('previous')
+
+  function decryptBox2Msg(envelope, feed_id, prev_msg_id, read_key) {
+    const plaintext = unboxBody(envelope, feed_id, prev_msg_id, read_key)
+    if (plaintext) return JSON.parse(plaintext.toString('utf8'))
+    else return ''
+  }
+
+  const dmCache = {}
+
+  keys = {
+    curve: 'ed25519',
+    public: 'YmlfB1mzp2hRFIOCKRUlSm3JYY4+GQbtVg7XHdTSe8Q=.ed25519',
+    private: '8ZHH11uPnZRFAw2/XS7jDL3vQw+pGSnLF8jSOq0xK+RiaV8HWbOnaFEUg4IpFSVKbclhjj4ZBu1WDtcd1NJ7xA==.ed25519',
+    id: '@YmlfB1mzp2hRFIOCKRUlSm3JYY4+GQbtVg7XHdTSe8Q=.ed25519'
+  }
+  
+  const buildDMKey = directMessageKey.easy(keys)
+  
+  function sharedDMKey(author) {
+    if (!dmCache[author])
+      dmCache[author] = buildDMKey(authorId)
+
+    return dmCache[author]
+  }
+
+  // can we derive this from seed?
+  const ownKey = new SecretKey().toBuffer()
+  console.log(keys.id)
+  console.log(ownKey)
+  console.log(buildDMKey(keys.id))
+  
+  function decryptBox2(ciphertext, author, previous) {
+    const envelope = Buffer.from(ciphertext.replace('.box2', ''), 'base64')
+    const feed_id = new FeedId(author).toTFK()
+    const prev_msg_id = new MsgId(previous).toTFK()
+
+    const trial_group_keys = keystore.author.groupKeys(author)
+
+    const trial_dm_keys = [
+      sharedDMKey(author),
+      ownKey,
+    ]
+
+    read_key = unboxKey(envelope, feed_id, prev_msg_id, trial_dm_keys, {
+      maxAttempts: 16,
+    })
+
+    if (read_key)
+      return decryptBox2Msg(envelope, feed_id, prev_msg_id, read_key)
+    else return ''
+  }
+
+  function decryptBox1(ciphertext, keys) {
+    return ssbKeys.unbox(ciphertext, keys)
+  }
+
+  function tryDecryptContent(ciphertext, recBuffer, pValue) {
+    let content = ''
+    if (ciphertext.endsWith('.box')) content = decryptBox1(ciphertext, keys)
+    else if (ciphertext.endsWith('.box2')) {
+      const pAuthor = bipf.seekKey(recBuffer, pValue, B_AUTHOR)
+      if (pAuthor >= 0) {
+        const author = bipf.decode(recBuffer, pAuthor)
+        const pPrevious = bipf.seekKey(recBuffer, pValue, B_PREVIOUS)
+        if (pPrevious >= 0) {
+          const previousMsg = bipf.decode(recBuffer, pPrevious)
+          content = decryptBox2(ciphertext, author, previousMsg)
+        }
+      }
+    }
+    return content
+  }
 
   function decrypt(record, streaming) {
     const recOffset = record.offset
     const recBuffer = record.value
     let p = 0 // note you pass in p!
     if (bsb.eq(canDecrypt, recOffset) !== -1) {
-      p = bipf.seekKey(recBuffer, p, B_VALUE)
-      if (p < 0) return record
-      p = bipf.seekKey(recBuffer, p, B_CONTENT)
-      if (p < 0) return record
+      const pValue = bipf.seekKey(recBuffer, p, B_VALUE)
+      if (pValue < 0) return record
+      const pContent = bipf.seekKey(recBuffer, pValue, B_CONTENT)
+      if (pContent < 0) return record
 
-      const unboxedContent = ssbKeys.unbox(bipf.decode(recBuffer, p), keys)
-      if (!unboxedContent) return record
+      const ciphertext = bipf.decode(recBuffer, pContent)
+      const content = tryDecryptContent(ciphertext, recBuffer, pValue)
+      if (!content) return record
 
-      return reconstructMessage(record, unboxedContent)
-    } else if (recOffset > latestOffset.value) {
+      const originalMsg = reconstructMessage(record, content)
+      return originalMsg
+    } else if (recOffset > latestOffset.value || !streaming) {
       if (streaming) latestOffset.set(recOffset)
 
-      p = bipf.seekKey(recBuffer, p, B_VALUE)
-      if (p < 0) return record
-      p = bipf.seekKey(recBuffer, p, B_CONTENT)
-      if (p < 0) return record
+      const pValue = bipf.seekKey(recBuffer, p, B_VALUE)
+      if (pValue < 0) return record
+      const pContent = bipf.seekKey(recBuffer, pValue, B_CONTENT)
+      if (pContent < 0) return record
 
-      const type = bipf.getEncodedType(recBuffer, p)
+      const type = bipf.getEncodedType(recBuffer, pContent)
       if (type !== bipf.types.string) return record
 
-      encrypted.push(recOffset)
-      const unboxedContent = ssbKeys.unbox(bipf.decode(recBuffer, p), keys)
-      if (!unboxedContent) return record
+      if (streaming)
+        encrypted.push(recOffset)
+
+      const ciphertext = bipf.decode(recBuffer, pContent)
+      const content = tryDecryptContent(ciphertext, recBuffer, pValue)
+      if (!content) return record
 
       canDecrypt.push(recOffset)
-      return reconstructMessage(record, unboxedContent)
+      if (!streaming) saveIndexes(() => {})
+      return reconstructMessage(record, content)
     } else {
       return record
     }
