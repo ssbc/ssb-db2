@@ -159,7 +159,10 @@ exports.init = function (sbot, config) {
           state = validate.append(state, hmac_key, msg)
           if (state.error) return cb(state.error)
           const kv = state.queue[state.queue.length - 1]
-          log.add(kv.key, kv.value, cb)
+          log.add(kv.key, kv.value, (err, data) => {
+            post.set(data)
+            cb(err, data)
+          })
         } catch (ex) {
           return cb(ex)
         }
@@ -180,7 +183,11 @@ exports.init = function (sbot, config) {
       const kv = oooState.queue[oooState.queue.length - 1]
       get(kv.key, (err, data) => {
         if (data) cb(null, data)
-        else log.add(kv.key, kv.value, cb)
+        else
+          log.add(kv.key, kv.value, (err, data) => {
+            post.set(data)
+            cb(err, data)
+          })
       })
     } catch (ex) {
       return cb(ex)
@@ -201,7 +208,10 @@ exports.init = function (sbot, config) {
       if (strictOrderState.error) return cb(strictOrderState.error)
 
       const kv = strictOrderState.queue[strictOrderState.queue.length - 1]
-      log.add(kv.key, kv.value, cb)
+      log.add(kv.key, kv.value, (err, data) => {
+        post.set(data)
+        cb(err, data)
+      })
     } catch (ex) {
       return cb(ex)
     }
@@ -412,9 +422,9 @@ exports.init = function (sbot, config) {
     addOOOStrictOrder,
     getStatus: () => status.obv,
     operators,
+    post,
 
     // needed primarily internally by other plugins in this project:
-    post,
     getLatest: indexes.base.getLatest.bind(indexes.base),
     getAllLatest: indexes.base.getAllLatest.bind(indexes.base),
     getLog: () => log,
