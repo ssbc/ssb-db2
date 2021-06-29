@@ -127,15 +127,8 @@ module.exports = function (dir, keys) {
 
   const dmCache = {}
 
-  keys = {
-    curve: 'ed25519',
-    public: 'YmlfB1mzp2hRFIOCKRUlSm3JYY4+GQbtVg7XHdTSe8Q=.ed25519',
-    private: '8ZHH11uPnZRFAw2/XS7jDL3vQw+pGSnLF8jSOq0xK+RiaV8HWbOnaFEUg4IpFSVKbclhjj4ZBu1WDtcd1NJ7xA==.ed25519',
-    id: '@YmlfB1mzp2hRFIOCKRUlSm3JYY4+GQbtVg7XHdTSe8Q=.ed25519'
-  }
-  
   const buildDMKey = directMessageKey.easy(keys)
-  
+
   function sharedDMKey(author) {
     if (!dmCache[author])
       dmCache[author] = buildDMKey(authorId)
@@ -143,12 +136,9 @@ module.exports = function (dir, keys) {
     return dmCache[author]
   }
 
-  // can we derive this from seed?
+  // how do we derive this from seed?
   const ownKey = new SecretKey().toBuffer()
-  console.log(keys.id)
-  console.log(ownKey)
-  console.log(buildDMKey(keys.id))
-  
+
   function decryptBox2(ciphertext, author, previous) {
     const envelope = Buffer.from(ciphertext.replace('.box2', ''), 'base64')
     const feed_id = new FeedId(author).toTFK()
