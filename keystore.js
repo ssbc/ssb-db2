@@ -17,16 +17,6 @@ module.exports = function (config) {
     }
   }
 
-  // FIXME: fetch seed and derive?
-  const FIXMEKEY = Buffer.from(
-    '30720d8f9cbf37f6d7062826f6decac93e308060a8aaaa77e6a4747f40ee1a76',
-    'hex'
-  )
-  const ownKey = {
-    key: FIXMEKEY, //new SecretKey().toBuffer(),
-    scheme: keySchemes.feed_id_self,
-  }
-
   // FIXME: maybe if a feed has a meta feed, then we can assume it
   // does box2 as well
   function supportsBox2(feedId) {
@@ -34,10 +24,23 @@ module.exports = function (config) {
     else return feedId.endsWith('.bbfeed-v1') || feedId.endsWith('.fusion-v1')
   }
 
+  let ownKeys = []
+
+  function addBox2DMKey(key) {
+    ownKeys.push(key)
+  }
+
+  function ownDMKeys() {
+    return ownKeys.map((key) => {
+      return { key, scheme: keySchemes.feed_id_self }
+    })
+  }
+
   return {
-    ownKey,
+    ownDMKeys,
     TFKId: new FeedId(config.keys.id).toTFK(),
     sharedDMKey,
     supportsBox2,
+    addBox2DMKey,
   }
 }

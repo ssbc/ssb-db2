@@ -55,7 +55,8 @@ exports.init = function (sbot, config) {
   config.db2 = config.db2 || {}
   const indexes = {}
   const dir = config.path
-  const privateIndex = PrivateIndex(dir, config)
+  const keystore = KeyStore(config)
+  const privateIndex = PrivateIndex(dir, config, keystore)
   const log = Log(dir, config, privateIndex)
   const jitdb = JITDb(log, indexesPath(dir))
   const status = Status(log, jitdb)
@@ -64,7 +65,6 @@ exports.init = function (sbot, config) {
   const hmac_key = null
   const stateFeedsReady = Obv().set(false)
   let state = validate.initial()
-  const keystore = KeyStore(config)
 
   sbot.close.hook(function (fn, args) {
     close(() => {
@@ -234,7 +234,7 @@ exports.init = function (sbot, config) {
       throw new Error('private-group spec only allows feedId in the first slot')
 
     const recipientKeys = content.recps.reduce((acc, recp) => {
-      if (recp === config.keys.id) return [...acc, keystore.ownKey]
+      if (recp === config.keys.id) return [...acc, ...keystore.ownDMKeys()]
       else return [...acc, keystore.sharedDMKey(recp)]
     }, [])
 
@@ -503,6 +503,7 @@ exports.init = function (sbot, config) {
     getStatus: () => status.obv,
     operators,
     post,
+    addBox2DMKey: keystore.addBox2DMKey,
 
     // needed primarily internally by other plugins in this project:
     getLatest: indexes.base.getLatest.bind(indexes.base),
