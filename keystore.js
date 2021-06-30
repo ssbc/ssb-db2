@@ -13,12 +13,19 @@ module.exports = function (keys) {
     return dmCache[author]
   }
 
-  // fetch seed and derive?
+  // FIXME: fetch seed and derive?
   const ownKey = new SecretKey().toBuffer()
+
+  // FIXME: maybe if a feed has a meta feed, then we can assume it
+  // does box2 as well
+  function supportsBox2(feedId) {
+    return feedId.endsWith('.bbfeed-v1') || feedId.endsWith('.fusion-v1')
+  }
 
   return {
     ownKey,
     TFKId: new FeedId(keys.id).toTFK(),
     sharedDMKey,
+    supportsBox2,
   }
 }
