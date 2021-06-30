@@ -15,13 +15,13 @@ const KeyStore = require('../keystore')
 
 const { indexesPath } = require('../defaults')
 
-module.exports = function (dir, keys) {
+module.exports = function (dir, config) {
   const latestOffset = Obv()
   const stateLoaded = DeferredPromise()
   let encrypted = []
   let canDecrypt = []
 
-  let keystore = KeyStore(keys)
+  let keystore = KeyStore(config)
 
   const debug = Debug('ssb:db2:private')
 
@@ -134,8 +134,8 @@ module.exports = function (dir, keys) {
     const prev_msg_id = new MsgId(previous).toTFK()
 
     const trial_dm_keys = [
-      sharedDMKey(author),
-      ownKey,
+      keystore.sharedDMKey(author),
+      keystore.ownKey,
     ]
 
     read_key = unboxKey(envelope, feed_id, prev_msg_id, trial_dm_keys, {
@@ -153,7 +153,7 @@ module.exports = function (dir, keys) {
 
   function tryDecryptContent(ciphertext, recBuffer, pValue) {
     let content = ''
-    if (ciphertext.endsWith('.box')) content = decryptBox1(ciphertext, keys)
+    if (ciphertext.endsWith('.box')) content = decryptBox1(ciphertext, config.keys)
     else if (ciphertext.endsWith('.box2')) {
       const pAuthor = bipf.seekKey(recBuffer, pValue, bAuthor)
       if (pAuthor >= 0) {
