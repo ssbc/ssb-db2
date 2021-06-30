@@ -9,8 +9,9 @@ const DeferredPromise = require('p-defer')
 const path = require('path')
 const Debug = require('debug')
 
+const { FeedId, MsgId } = require('ssb-tribes/lib/cipherlinks')
 const { unboxKey, unboxBody } = require('envelope-js')
-const { ownKey, sharedDMKey } = require('../keystore')
+const KeyStore = require('../keystore')
 
 const { indexesPath } = require('../defaults')
 
@@ -19,6 +20,8 @@ module.exports = function (dir, keys) {
   const stateLoaded = DeferredPromise()
   let encrypted = []
   let canDecrypt = []
+
+  let keystore = KeyStore(keys)
 
   const debug = Debug('ssb:db2:private')
 
