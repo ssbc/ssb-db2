@@ -260,10 +260,12 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        // FIXME: some kind of check if we can use box2 or not
-        // probably related to if the recipient non-classic (a meta
-        // feed or fusion identity for now)
-        if (msg.recps) msg = ssbKeys.box(msg, msg.recps)
+        if (msg.recps) {
+          if (msg.recps.every(keystore.supportsBox2)) {
+            const feedState = state.feeds[config.keys.id]
+            msg = box2(msg, feedState ? feedState.id : null)
+          } else msg = ssbKeys.box(msg, msg.recps)
+        }
 
         state.queue = []
         state = validate.appendNew(state, null, config.keys, msg, Date.now())
