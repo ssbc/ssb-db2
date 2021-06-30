@@ -11,17 +11,14 @@ const Debug = require('debug')
 
 const { FeedId, MsgId } = require('ssb-tribes/lib/cipherlinks')
 const { unboxKey, unboxBody } = require('envelope-js')
-const KeyStore = require('../keystore')
 
 const { indexesPath } = require('../defaults')
 
-module.exports = function (dir, config) {
+module.exports = function (dir, config, keystore) {
   const latestOffset = Obv()
   const stateLoaded = DeferredPromise()
   let encrypted = []
   let canDecrypt = []
-
-  let keystore = KeyStore(config)
 
   const debug = Debug('ssb:db2:private')
 
@@ -135,7 +132,7 @@ module.exports = function (dir, config) {
 
     const trial_dm_keys = [
       keystore.sharedDMKey(author),
-      keystore.ownKey,
+      ...keystore.ownDMKeys()
     ]
 
     read_key = unboxKey(envelope, feed_id, prev_msg_id, trial_dm_keys, {

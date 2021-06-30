@@ -52,7 +52,10 @@ test('publish: auto encrypt message with recps', (t) => {
 })
 
 test('box2', (t) => {
-  let content = { type: 'post', text: 'super secret', recps: [keys.id] }
+  const testkey = Buffer.from(
+    '30720d8f9cbf37f6d7062826f6decac93e308060a8aaaa77e6a4747f40ee1a76',
+    'hex'
+  )
 
   const dirBox2 = '/tmp/ssb-db2-private-box2'
   rimraf.sync(dirBox2)
@@ -66,6 +69,10 @@ test('box2', (t) => {
     }
   })
 
+  sbotBox2.db.addBox2DMKey(testkey)
+
+  let content = { type: 'post', text: 'super secret', recps: [keys.id] }
+
   sbotBox2.db.publish(content, (err, privateMsg) => {
     t.error(err, 'no err')
 
@@ -76,10 +83,11 @@ test('box2', (t) => {
 
       // encrypt to another key
 
-      const keys2 = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
       const dirKeys2 = '/tmp/ssb-db2-private-box2-2'
       rimraf.sync(dirKeys2)
       mkdirp.sync(dirKeys2)
+
+      const keys2 = ssbKeys.loadOrCreateSync(path.join(dirKeys2, 'secret'))
 
       const sbotKeys2 = SecretStack({ appKey: caps.shs }).use(require('../')).call(null, {
         keys: keys2,
