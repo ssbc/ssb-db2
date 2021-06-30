@@ -7,6 +7,7 @@ const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
 const operators = require('./operators')
 const JITDb = require('jitdb')
+const { isFeed, isCloakedMsg: isGroup } = require('ssb-ref')
 const Debug = require('debug')
 
 const { indexesPath } = require('./defaults')
@@ -212,6 +213,41 @@ exports.init = function (sbot, config) {
     }
   }
 
+  // FIXME: keystore
+  // FIXME: state
+  function box2(content, previous) {
+    if (content.recps.length > 16)
+      throw new Error(
+        `private-group spec allows maximum 16 slots, but you've tried to use ${content.recps.length}`
+      )
+
+    if (!isGroup(content.recps[0]) && !isFeed(content.recps[0]))
+      throw new Error(
+        'private-group spec only feedId or groupId in the first slot'
+      )
+
+    if (content.recps.length > 1 && !content.recps.slice(1).every(isFeed))
+      throw new Error('private-group spec only allows feedId in the first slot')
+
+    const recipientKeys = content.recps.reduce((acc, recp) => {
+      if (recp === state.keys.id) return [...acc, keystore.ownKeys(recp)[0]]
+      else return [...acc, keystore.author.sharedDMKey(recp)]
+    }, [])
+
+    const plaintext = Buffer.from(JSON.stringify(content), 'utf8')
+    const msgKey = new SecretKey().toBuffer()
+    const previousMessageId = new MsgId(previous).toTFK()
+
+    const envelope = box(
+      plaintext,
+      state.feedId,
+      previousMessageId,
+      msgKey,
+      recipientKeys
+    )
+    return envelope.toString('base64') + '.box2'
+  }
+
   function publish(msg, cb) {
     const guard = guardAgainstDuplicateLogs('publish()')
     if (guard) return cb(guard)
@@ -220,6 +256,9 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
+        // FIXME: some kind of check if we can use box2 or not
+        // probably related to if the recipient non-classic (a meta
+        // feed or fusion identity for now)
         if (msg.recps) msg = ssbKeys.box(msg, msg.recps)
 
         state.queue = []
