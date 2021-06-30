@@ -10,8 +10,7 @@ const path = require('path')
 const Debug = require('debug')
 
 const { unboxKey, unboxBody } = require('envelope-js')
-const directMessageKey = require('ssb-tribes/lib/direct-message-key')
-const SecretKey = require('ssb-tribes/lib/secret-key')
+const { ownKey, sharedDMKey } = require('../keystore')
 
 const { indexesPath } = require('../defaults')
 
@@ -121,30 +120,15 @@ module.exports = function (dir, keys) {
 
   function decryptBox2Msg(envelope, feed_id, prev_msg_id, read_key) {
     const plaintext = unboxBody(envelope, feed_id, prev_msg_id, read_key)
+    // FIXME: this assumes that what is boxed is json
     if (plaintext) return JSON.parse(plaintext.toString('utf8'))
     else return ''
   }
-
-  const dmCache = {}
-
-  const buildDMKey = directMessageKey.easy(keys)
-
-  function sharedDMKey(author) {
-    if (!dmCache[author])
-      dmCache[author] = buildDMKey(authorId)
-
-    return dmCache[author]
-  }
-
-  // how do we derive this from seed?
-  const ownKey = new SecretKey().toBuffer()
 
   function decryptBox2(ciphertext, author, previous) {
     const envelope = Buffer.from(ciphertext.replace('.box2', ''), 'base64')
     const feed_id = new FeedId(author).toTFK()
     const prev_msg_id = new MsgId(previous).toTFK()
-
-    const trial_group_keys = keystore.author.groupKeys(author)
 
     const trial_dm_keys = [
       sharedDMKey(author),

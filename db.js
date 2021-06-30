@@ -10,6 +10,7 @@ const JITDb = require('jitdb')
 const { isFeed, isCloakedMsg: isGroup } = require('ssb-ref')
 const Debug = require('debug')
 
+const keystore = require('./keystore')
 const { indexesPath } = require('./defaults')
 const { onceWhen } = require('./utils')
 const Log = require('./log')
@@ -213,7 +214,6 @@ exports.init = function (sbot, config) {
     }
   }
 
-  // FIXME: keystore
   // FIXME: state
   function box2(content, previous) {
     if (content.recps.length > 16)
@@ -230,8 +230,8 @@ exports.init = function (sbot, config) {
       throw new Error('private-group spec only allows feedId in the first slot')
 
     const recipientKeys = content.recps.reduce((acc, recp) => {
-      if (recp === state.keys.id) return [...acc, keystore.ownKeys(recp)[0]]
-      else return [...acc, keystore.author.sharedDMKey(recp)]
+      if (recp === state.keys.id) return [...acc, keystore.ownKey]
+      else return [...acc, keystore.sharedDMKey(recp)]
     }, [])
 
     const plaintext = Buffer.from(JSON.stringify(content), 'utf8')
@@ -245,6 +245,7 @@ exports.init = function (sbot, config) {
       msgKey,
       recipientKeys
     )
+
     return envelope.toString('base64') + '.box2'
   }
 
