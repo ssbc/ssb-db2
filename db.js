@@ -225,13 +225,8 @@ exports.init = function (sbot, config) {
         `private-group spec allows maximum 16 slots, but you've tried to use ${content.recps.length}`
       )
 
-    if (!isGroup(content.recps[0]) && !isFeed(content.recps[0]))
-      throw new Error(
-        'private-group spec only feedId or groupId in the first slot'
-      )
-
-    if (content.recps.length > 1 && !content.recps.slice(1).every(isFeed))
-      throw new Error('private-group spec only allows feedId in the first slot')
+    if (!content.recps.every(isFeed))
+      throw new Error('only feeds are supported as recipients') // for now
 
     const recipientKeys = content.recps.reduce((acc, recp) => {
       if (recp === config.keys.id) return [...acc, ...keystore.ownDMKeys()]
