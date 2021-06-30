@@ -10,6 +10,7 @@ const JITDb = require('jitdb')
 const { isFeed, isCloakedMsg: isGroup } = require('ssb-ref')
 const Debug = require('debug')
 
+const { box } = require('envelope-js')
 const SecretKey = require('ssb-tribes/lib/secret-key')
 const { MsgId } = require('ssb-tribes/lib/cipherlinks')
 const KeyStore = require('./keystore')
@@ -54,7 +55,7 @@ exports.init = function (sbot, config) {
   config.db2 = config.db2 || {}
   const indexes = {}
   const dir = config.path
-  const privateIndex = PrivateIndex(dir, config.keys)
+  const privateIndex = PrivateIndex(dir, config)
   const log = Log(dir, config, privateIndex)
   const jitdb = JITDb(log, indexesPath(dir))
   const status = Status(log, jitdb)
@@ -63,7 +64,7 @@ exports.init = function (sbot, config) {
   const hmac_key = null
   const stateFeedsReady = Obv().set(false)
   let state = validate.initial()
-  const keystore = KeyStore(config.keys)
+  const keystore = KeyStore(config)
 
   sbot.close.hook(function (fn, args) {
     close(() => {

@@ -25,6 +25,7 @@
     "mkdirp": "^1.0.4",
     "obz": "^1.0.3",
     "p-defer": "^3.0.0",
+    "private-group-spec": "^1.0.0",
     "promisify-4loc": "1.0.0",
     "pull-cat": "^1.1.11",
     "pull-cont": "^0.1.1",
