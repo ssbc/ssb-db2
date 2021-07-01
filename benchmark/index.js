@@ -89,9 +89,10 @@ function reportMem() {
   return `${rss} MB = ${heap} MB + etc`
 }
 
-let keys
+let keys, keys2
 test('setup', (t) => {
   keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  keys2 = ssbKeys.loadOrCreateSync(path.join(dirPrivate, 'secret'))
   t.end()
 })
 
@@ -154,7 +155,7 @@ test('private', async (t) => {
 
       if (err) t.fail(err)
 
-      t.pass(`duration: ${duration}ms`)
+      t.pass(`box duration: ${duration}ms`)
       fs.appendFileSync(reportPath, `| add 1000 private box1 elements | ${duration}ms |\n`)
 
       sbot.db.onDrain('base', () => {
@@ -192,7 +193,7 @@ test('private box2', async (t) => {
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .call(null, {
-      keys,
+      keys: keys2,
       path: dirPrivate,
       db2: {
         alwaysbox2: true
