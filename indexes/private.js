@@ -19,6 +19,7 @@ module.exports = function (dir, config, keystore) {
   const stateLoaded = DeferredPromise()
   let encrypted = []
   let canDecrypt = []
+  const sbotId = config.keys.id
 
   const debug = Debug('ssb:db2:private')
 
@@ -130,10 +131,9 @@ module.exports = function (dir, config, keystore) {
     const feed_id = new FeedId(author).toTFK()
     const prev_msg_id = new MsgId(previous).toTFK()
 
-    const trial_dm_keys = [
-      keystore.sharedDMKey(author),
-      ...keystore.ownDMKeys()
-    ]
+    const trial_dm_keys = author !== sbotId ?
+          [keystore.sharedDMKey(author), ...keystore.ownDMKeys()] :
+          keystore.ownDMKeys()
 
     read_key = unboxKey(envelope, feed_id, prev_msg_id, trial_dm_keys, {
       maxAttempts: 16,
