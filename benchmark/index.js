@@ -135,14 +135,32 @@ test('add a bunch of messages', async (t) => {
   await ended.promise
 })
 
+const randos = [
+  ssbKeys.generate().id,
+  ssbKeys.generate().id,
+  ssbKeys.generate().id,
+  ssbKeys.generate().id,
+  ssbKeys.generate().id
+]
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 test('private', async (t) => {
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .call(null, { keys, path: dirPrivate })
 
+  const recps = [...randos, keys.id]
+
   let contents = []
   for (var i = 0; i < 1000; ++i)
-    contents.push({ type: 'tick', count: i, recps: [sbot.id] })
+    contents.push({ type: 'tick', count: i, recps: shuffle(recps) })
 
   const ended = DeferredPromise()
   const start = Date.now()
@@ -200,6 +218,8 @@ test('private box2', async (t) => {
       }
     })
 
+  const recps = [...randos, keys2.id]
+
   const testkey = Buffer.from(
     '30720d8f9cbf37f6d7062826f6decac93e308060a8aaaa77e6a4747f40ee1a76',
     'hex'
@@ -208,7 +228,7 @@ test('private box2', async (t) => {
 
   let contents = []
   for (var i = 0; i < 1000; ++i)
-    contents.push({ type: 'tick', count: i, recps: [sbot.id] })
+    contents.push({ type: 'tick', count: i, recps: shuffle(recps) })
 
   const ended = DeferredPromise()
   const start = Date.now()
@@ -233,7 +253,7 @@ test('private box2', async (t) => {
             const durationQuery = Date.now() - startQuery
             t.pass(`unbox duration first run: ${durationQuery}ms`)
             fs.appendFileSync(reportPath, `| unbox 1000 private box2 elements first run | ${duration}ms |\n`)
-            
+
             startQuery = Date.now()
 
             sbot.db.query(
