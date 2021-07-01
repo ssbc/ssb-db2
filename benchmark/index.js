@@ -184,7 +184,7 @@ test('private', async (t) => {
           toCallback((err, results) => {
             const durationQuery = Date.now() - startQuery
             t.pass(`unbox first run duration: ${durationQuery}ms`)
-            fs.appendFileSync(reportPath, `| unbox 1000 private box1 elements first run | ${duration}ms |\n`)
+            fs.appendFileSync(reportPath, `| unbox 1000 private box1 elements first run | ${durationQuery}ms |\n`)
 
             startQuery = Date.now()
 
@@ -193,7 +193,7 @@ test('private', async (t) => {
               toCallback((err, results) => {
                 const durationQuery2 = Date.now() - startQuery
                 t.pass(`unbox second run duration: ${durationQuery2}ms`)
-                fs.appendFileSync(reportPath, `| unbox 1000 private box1 elements second run | ${duration}ms |\n`)
+                fs.appendFileSync(reportPath, `| unbox 1000 private box1 elements second run | ${durationQuery2}ms |\n`)
 
                 sbot.close(() => ended.resolve())
               })
@@ -252,7 +252,7 @@ test('private box2', async (t) => {
           toCallback((err, results) => {
             const durationQuery = Date.now() - startQuery
             t.pass(`unbox duration first run: ${durationQuery}ms`)
-            fs.appendFileSync(reportPath, `| unbox 1000 private box2 elements first run | ${duration}ms |\n`)
+            fs.appendFileSync(reportPath, `| unbox 1000 private box2 elements first run | ${durationQuery}ms |\n`)
 
             startQuery = Date.now()
 
@@ -261,7 +261,7 @@ test('private box2', async (t) => {
               toCallback((err, results) => {
                 const durationQuery2 = Date.now() - startQuery
                 t.pass(`unbox duration second run: ${durationQuery2}ms`)
-                fs.appendFileSync(reportPath, `| unbox 1000 private box2 elements first run | ${duration}ms |\n`)
+                fs.appendFileSync(reportPath, `| unbox 1000 private box2 elements first run | ${durationQuery2}ms |\n`)
 
                 sbot.close(() => ended.resolve())
               })
