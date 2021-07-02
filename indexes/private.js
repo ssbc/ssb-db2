@@ -24,6 +24,10 @@ module.exports = function (dir, config, keystore) {
   const debug = Debug('ssb:db2:private')
 
   const encryptedFile = path.join(indexesPath(dir), 'encrypted.index')
+  // an option is to cache the read keys instead of only where the
+  // messages are, this has an overhead around storage.  The
+  // performance of that is a decrease in unbox time to 50% of
+  // original for box1 and around 75% box2
   const canDecryptFile = path.join(indexesPath(dir), 'canDecrypt.index')
 
   function save(filename, arr) {
