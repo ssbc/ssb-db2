@@ -16,12 +16,12 @@ exports.init = function (sbot, config) {
       (isSynced) => isSynced,
       () => {
         sbot.db.onDrain('base', () => {
-          sbot.db.getAllLatest((err, last) => {
+          sbot.db.getAllLatest((err, latest) => {
             if (err) return cb(err)
 
             const clock = {}
-            for (const k in last) {
-              clock[k] = last[k].sequence
+            for (const [authorId, { sequence }] of latest) {
+              clock[authorId] = sequence
             }
 
             cb(null, clock)
