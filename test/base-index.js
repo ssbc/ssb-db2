@@ -65,9 +65,9 @@ test('get latest', (t) => {
 
     db.onDrain('base', () => {
       db.getLatest(keys.id, (err, status) => {
-        t.equal(postMsg.key, status.id)
-        t.equal(postMsg.value.sequence, status.sequence)
-        t.equal(postMsg.value.timestamp, status.timestamp)
+        t.error(err, 'no err')
+        t.equal(status.sequence, postMsg.value.sequence)
+        t.true(status.offset > 100)
 
         t.end()
       })
@@ -83,11 +83,11 @@ test('get all latest', (t) => {
 
     db.onDrain('base', () => {
       db.getAllLatest((err, all) => {
-        t.equal(Object.keys(all).length, 1, 'authors')
-        const status = all[keys.id]
-        t.equal(postMsg.key, status.id)
-        t.equal(postMsg.value.sequence, status.sequence)
-        t.equal(postMsg.value.timestamp, status.timestamp)
+        t.error(err, 'no err')
+        t.equals(all.size, 1, 'authors map has size 1')
+        const status = all.get(keys.id)
+        t.equal(status.sequence, postMsg.value.sequence)
+        t.true(status.offset > 100)
 
         sbot.close(t.end)
       })
