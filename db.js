@@ -1,6 +1,10 @@
 const push = require('push-stream')
 const ssbKeys = require('ssb-keys')
 const validate = require('ssb-validate')
+const validate2 = require('ssb-validate2-rsjs')
+const bipf = require('bipf')
+const pull = require('pull-stream')
+const paramap = require('pull-paramap')
 const Obv = require('obz')
 const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
@@ -62,7 +66,7 @@ exports.init = function (sbot, config) {
   const post = Obv()
   const hmac_key = null
   const stateFeedsReady = Obv().set(false)
-  let state = validate.initial()
+  const state = {}
 
   sbot.close.hook(function (fn, args) {
     close(() => {
@@ -82,22 +86,29 @@ exports.init = function (sbot, config) {
   function loadStateFeeds(cb) {
     // restore current state
     onDrain('base', () => {
-      indexes.base.getAllLatest((err, last) => {
-        // copy to so we avoid weirdness, because this object
-        // tracks the state coming in to the database.
-        for (const k in last) {
-          state.feeds[k] = {
-            id: last[k].id,
-            timestamp: last[k].timestamp,
-            sequence: last[k].sequence,
-            queue: [],
+      pull(
+        indexes.base.getAllLatestStream(),
+        paramap((latest, cb) => {
+          getMsgByOffset(latest.value.offset, (err, msg) => {
+            if (err) cb(err)
+            else cb(null, msg)
+          })
+        }, 8),
+        pull.collect((err, kvts) => {
+          if (err) return console.error('loadStateFeeds failed: ' + err)
+          for (const kvt of kvts) {
+            updateState(kvt)
           }
-        }
-        debug('getAllLatest is done setting up initial validate state')
-        if (!stateFeedsReady.value) stateFeedsReady.set(true)
-        if (cb) cb()
-      })
+          debug('getAllLatest is done setting up initial validate state')
+          if (!stateFeedsReady.value) stateFeedsReady.set(true)
+          if (cb) cb()
+        })
+      )
     })
+  }
+
+  function updateState(kvt) {
+    state[kvt.value.author] = kvt
   }
 
   // Crunch stats numbers to produce one number for the "indexing" progress
@@ -147,7 +158,14 @@ exports.init = function (sbot, config) {
     getHelper(id, false, cb)
   }
 
-  function add(msg, cb) {
+  function getMsgByOffset(offset, cb) {
+    log.get(offset, (err, buf) => {
+      if (err) return cb(err)
+      cb(null, bipf.decode(buf, 0))
+    })
+  }
+
+  function add(msgValue, cb) {
     const guard = guardAgainstDuplicateLogs('add()')
     if (guard) return cb(guard)
 
@@ -155,45 +173,42 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        try {
-          state = validate.append(state, hmac_key, msg)
-          if (state.error) return cb(state.error)
-          const kv = state.queue[state.queue.length - 1]
-          log.add(kv.key, kv.value, (err, data) => {
+        const latestMsgValue = state[msgValue.author]
+          ? state[msgValue.author].value
+          : null
+        validate2.validateSingle(null, msgValue, latestMsgValue, (err) => {
+          if (err) return cb(err)
+          const kvt = validate.toKeyValueTimestamp(msgValue) // TODO validate2
+          updateState(kvt)
+          log.add(kvt.key, kvt.value, (err, data) => {
+            if (err) return cb(err)
             post.set(data)
-            cb(err, data)
+            cb(null, data)
           })
-        } catch (ex) {
-          return cb(ex)
-        }
+        })
       }
     )
   }
 
-  function addOOO(msg, cb) {
+  function addOOO(msgValue, cb) {
     const guard = guardAgainstDuplicateLogs('addOOO()')
     if (guard) return cb(guard)
 
-    try {
-      let oooState = validate.initial()
-      validate.appendOOO(oooState, hmac_key, msg)
-
-      if (oooState.error) return cb(oooState.error)
-
-      const kv = oooState.queue[oooState.queue.length - 1]
-      get(kv.key, (err, data) => {
-        if (data) cb(null, data)
-        else
-          log.add(kv.key, kv.value, (err, data) => {
-            post.set(data)
-            cb(err, data)
-          })
+    validate2.validateOOOBatch(null, [msgValue], (err) => {
+      if (err) return cb(err)
+      const kvt = validate.toKeyValueTimestamp(msgValue)
+      get(kvt.key, (err, data) => {
+        if (data) return cb(null, data)
+        log.add(kvt.key, kvt.value, (err, data) => {
+          if (err) return cb(err)
+          post.set(data)
+          cb(null, data)
+        })
       })
-    } catch (ex) {
-      return cb(ex)
-    }
+    })
   }
 
+  // FIXME:
   function addOOOStrictOrder(msg, strictOrderState, cb) {
     const guard = guardAgainstDuplicateLogs('addOOOStrictOrder()')
     if (guard) return cb(guard)
@@ -217,7 +232,7 @@ exports.init = function (sbot, config) {
     }
   }
 
-  function publish(msg, cb) {
+  function publish(content, cb) {
     const guard = guardAgainstDuplicateLogs('publish()')
     if (guard) return cb(guard)
 
@@ -225,13 +240,18 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        if (msg.recps) msg = ssbKeys.box(msg, msg.recps)
-
-        state.queue = []
-        state = validate.appendNew(state, null, config.keys, msg, Date.now())
-
-        const kv = state.queue[state.queue.length - 1]
-        log.add(kv.key, kv.value, (err, data) => {
+        if (content.recps) content = ssbKeys.box(content, content.recps)
+        const latestMsg = state[config.keys.id]
+        const msgValue = validate.create(
+          latestMsg ? { queue: [latestMsg] } : null,
+          config.keys,
+          null,
+          content,
+          Date.now()
+        )
+        const kvt = validate.toKeyValueTimestamp(msgValue)
+        updateState(kvt)
+        log.add(kvt.key, kvt.value, (err, data) => {
           post.set(data)
           cb(err, data)
         })
@@ -272,7 +292,7 @@ exports.init = function (sbot, config) {
         push.collect((err) => {
           if (err) cb(err)
           else {
-            delete state.feeds[feedId]
+            delete state[feedId]
             indexes.base.removeFeedFromLatest(feedId, cb)
           }
         })
