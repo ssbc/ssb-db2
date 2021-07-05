@@ -11,6 +11,7 @@ const jitdbOperators = require('jitdb/operators')
 const operators = require('./operators')
 const JITDb = require('jitdb')
 const Debug = require('debug')
+const multicb = require('multicb')
 
 const { indexesPath } = require('./defaults')
 const { onceWhen } = require('./utils')
@@ -41,7 +42,8 @@ exports.manifest = {
   del: 'async',
   deleteFeed: 'async',
   addOOO: 'async',
-  addOOOStrictOrder: 'async',
+  addBatch: 'async',
+  addOOOBatch: 'async',
   getStatus: 'sync',
 
   // `query` should be `sync`, but secret-stack is automagically converting it
@@ -165,6 +167,49 @@ exports.init = function (sbot, config) {
     })
   }
 
+  function addOOOBatch(msgs, cb) {
+    const guard = guardAgainstDuplicateLogs('addOOOBatch()')
+    if (guard) return cb(guard)
+
+    onceWhen(
+      stateFeedsReady,
+      (ready) => ready === true,
+      () => {
+        validate2.validateOOOBatch(null, msgs, (err, keys) => {
+          if (err) return cb(err)
+
+          const done = multicb({ pluck: 1 })
+          for (var i = 0; i < msgs.length; ++i)
+            log.add(keys[i], msgs[i], done())
+
+          done(cb)
+        })
+      }
+    )
+  }
+
+  function addBatch(msgs, cb) {
+    const guard = guardAgainstDuplicateLogs('addBatch()')
+    if (guard) return cb(guard)
+
+    onceWhen(
+      stateFeedsReady,
+      (ready) => ready === true,
+      () => {
+        validate2.validateBatch(null, msgs, null, (err, keys) => {
+          if (err) return cb(err)
+
+          const done = multicb({ pluck: 1 })
+          for (var i = 0; i < msgs.length; ++i)
+            log.add(keys[i], msgs[i], done())
+          updateState(kvts[kvts.length - 1])
+
+          done(cb)
+        })
+      }
+    )
+  }
+
   function add(msgValue, cb) {
     const guard = guardAgainstDuplicateLogs('add()')
     if (guard) return cb(guard)
@@ -206,30 +251,6 @@ exports.init = function (sbot, config) {
         })
       })
     })
-  }
-
-  // FIXME:
-  function addOOOStrictOrder(msg, strictOrderState, cb) {
-    const guard = guardAgainstDuplicateLogs('addOOOStrictOrder()')
-    if (guard) return cb(guard)
-
-    const knownAuthor = msg.author in strictOrderState.feeds
-
-    try {
-      if (!knownAuthor)
-        strictOrderState = validate.appendOOO(strictOrderState, hmac_key, msg)
-      else strictOrderState = validate.append(strictOrderState, hmac_key, msg)
-
-      if (strictOrderState.error) return cb(strictOrderState.error)
-
-      const kv = strictOrderState.queue[strictOrderState.queue.length - 1]
-      log.add(kv.key, kv.value, (err, data) => {
-        post.set(data)
-        cb(err, data)
-      })
-    } catch (ex) {
-      return cb(ex)
-    }
   }
 
   function publish(content, cb) {
@@ -439,7 +460,8 @@ exports.init = function (sbot, config) {
     add,
     publish,
     addOOO,
-    addOOOStrictOrder,
+    addBatch,
+    addOOOBatch,
     getStatus: () => status.obv,
     operators,
     post,
