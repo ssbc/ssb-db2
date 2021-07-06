@@ -89,7 +89,7 @@ exports.init = function (sbot, config) {
     // restore current state
     onDrain('base', () => {
       pull(
-        indexes.base.getAllLatestStream(),
+        indexes.base.getAllLatest(),
         paramap((latest, cb) => {
           getMsgByOffset(latest.value.offset, (err, kvt) => {
             if (err) cb(err)

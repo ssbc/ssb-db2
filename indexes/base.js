@@ -19,10 +19,17 @@ module.exports = function makeBaseIndex(privateIndex) {
     }
 
     onLoaded(cb) {
-      this.getAllLatest((err, latest) => {
-        this.authorLatest = latest
-        cb()
-      })
+      pull(
+        this.getAllLatest(),
+        pull.drain(
+          ({ key, value }) => {
+            this.authorLatest.set(key, value)
+          },
+          (err) => {
+            cb()
+          }
+        )
+      )
     }
 
     processRecord(record, seq) {
@@ -49,21 +56,9 @@ module.exports = function makeBaseIndex(privateIndex) {
       this.privateIndex.saveIndexes(cb)
     }
 
-    getAllLatest(cb) {
-      pull(
-        this.getAllLatestStream(),
-        pull.collect((err, KVs) => {
-          if (err) return cb(err)
-          const result = new Map()
-          for (const { key, value } of KVs) {
-            result.set(key, value)
-          }
-          cb(null, result)
-        })
-      )
-    }
-
-    getAllLatestStream() {
+    // pull-stream where each item is { key, value }
+    // where key is the authorId and value is { offset, sequence }
+    getAllLatest() {
       const META = '\x00'
       return pl.read(this.level, {
         gt: META,
