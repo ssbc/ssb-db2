@@ -358,29 +358,34 @@ this method unless you know exactly what you are doing.
 Delete all messages of a specific feedId. Compared to `del` this
 method is safe to use.
 
-### publish(msg, cb)
+### publish(msgContent, cb)
 
 Convenience method for validating and adding a message to the database
-written by the feed running the secret-stack. If message contains
+written by the feed running the secret-stack. If the content contains
 recps, the message will automatically be encrypted.
 
-### add(msg, cb)
+### add(msgValue, cb)
 
 Validate and add a message value (without id and timestamp) to the
 database. In the callback will be the stored message (id, timestamp,
 value = original message) or err.
 
-### addOOOStrictOrder(msg, cb)
+### addBatch(msgValues, cb)
 
-Works quite similar to `add`. If the author is not yet known, the
-message is validated without checking if the previous link is correct,
-otherwise normal validation. This makes it possible to use for partial
-replication to add say latest 25 messages from a feed.
+Similar to `add`, but you can pass an array of many message values, and they
+will be validated in parallel and then added to the database.
 
-### addOOO(msg, cb)
+### addOOO(msgValue, cb)
 
 Validate without checking the previous link and add to db. Useful for
 partial replication.
+
+### addOOOBatch(msgValues, cb)
+
+Similar to `addOOO`, but you can pass an array of many message values. If the
+author is not yet known, the message is validated without checking if the
+previous link is correct, otherwise normal validation. This makes it possible to
+use for partial replication to add say latest 25 messages from a feed.
 
 ### getStatus
 
