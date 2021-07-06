@@ -62,6 +62,15 @@ test('author sequence', (t) => {
   })
 })
 
+test('vector clock', (t) => {
+  sbot.getVectorClock((err, clock) => {
+    t.error(err, 'no err')
+    t.deepEquals(clock, { [keys.id]: 3 })
+
+    t.end()
+  })
+})
+
 test('Encrypted', (t) => {
   let content = { type: 'post', text: 'super secret', recps: [keys.id] }
   content = ssbKeys.box(
