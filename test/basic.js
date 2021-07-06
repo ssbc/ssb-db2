@@ -165,7 +165,7 @@ test('delete all', (t) => {
   })
 })
 
-test('add 3 messages', (t) => {
+test('add three messages', (t) => {
   const rando = ssbKeys.generate()
   const post1 = { type: 'post', text: 'a' }
   const post2 = { type: 'post', text: 'b' }
@@ -196,6 +196,27 @@ test('add 3 messages', (t) => {
       })
     })
   )
+})
+
+test('add three messages in batch', (t) => {
+  const rando = ssbKeys.generate()
+  const post4 = { type: 'post', text: 'd' }
+  const post5 = { type: 'post', text: 'e' }
+  const post6 = { type: 'post', text: 'f' }
+
+  let s = validate.initial()
+
+  s = validate.appendNew(s, null, rando, post4, Date.now() - 3)
+  s = validate.appendNew(s, null, rando, post5, Date.now() - 2)
+  s = validate.appendNew(s, null, rando, post6, Date.now() - 1)
+
+  const msgVals = s.queue.map((kvt) => kvt.value)
+  db.addBatch(msgVals, (err, keys) => {
+    t.error(err, 'no err')
+    t.equals(keys.length, 3)
+    t.deepEquals(keys, [undefined, undefined, undefined])
+    t.end()
+  })
 })
 
 test('validate needs to load', (t) => {
