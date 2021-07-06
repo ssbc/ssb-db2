@@ -199,10 +199,18 @@ exports.init = function (sbot, config) {
         validate2.validateBatch(hmacKey, msgVals, null, (err, keys) => {
           if (err) return cb(err)
 
-          const done = multicb({ pluck: 1 })
-          for (var i = 0; i < msgs.length; ++i)
-            log.add(keys[i], msgs[i], done())
-          updateState(kvts[kvts.length - 1])
+          const done = multicb({ pluck: 2 }) // 2 so that we dont pluck anything
+          for (var i = 0; i < msgVals.length; ++i) {
+            if (i === msgVals.length - 1) {
+              // last KVT, let's update the latest state
+              log.add(keys[i], msgVals[i], (err, kvt) => {
+                if (!err && kvt) updateState(kvt)
+                done()(err, kvt)
+              })
+            } else {
+              log.add(keys[i], msgVals[i], done())
+            }
+          }
 
           done(cb)
         })
