@@ -167,7 +167,7 @@ exports.init = function (sbot, config) {
     })
   }
 
-  function addOOOBatch(msgs, cb) {
+  function addOOOBatch(msgVals, cb) {
     const guard = guardAgainstDuplicateLogs('addOOOBatch()')
     if (guard) return cb(guard)
 
@@ -175,12 +175,12 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        validate2.validateOOOBatch(null, msgs, (err, keys) => {
+        validate2.validateOOOBatch(null, msgVals, (err, keys) => {
           if (err) return cb(err)
 
           const done = multicb({ pluck: 1 })
-          for (var i = 0; i < msgs.length; ++i)
-            log.add(keys[i], msgs[i], done())
+          for (var i = 0; i < msgVals.length; ++i)
+            log.add(keys[i], msgVals[i], done())
 
           done(cb)
         })
