@@ -66,7 +66,7 @@ exports.init = function (sbot, config) {
   const status = Status(log, jitdb)
   const debug = Debug('ssb:db2')
   const post = Obv()
-  const hmac_key = null
+  const hmacKey = null
   const stateFeedsReady = Obv().set(false)
   const state = {}
 
@@ -91,9 +91,9 @@ exports.init = function (sbot, config) {
       pull(
         indexes.base.getAllLatestStream(),
         paramap((latest, cb) => {
-          getMsgByOffset(latest.value.offset, (err, msg) => {
+          getMsgByOffset(latest.value.offset, (err, kvt) => {
             if (err) cb(err)
-            else cb(null, msg)
+            else cb(null, kvt)
           })
         }, 8),
         pull.collect((err, kvts) => {
@@ -175,7 +175,7 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        validate2.validateOOOBatch(null, msgVals, (err, keys) => {
+        validate2.validateOOOBatch(hmacKey, msgVals, (err, keys) => {
           if (err) return cb(err)
 
           const done = multicb({ pluck: 1 })
@@ -188,7 +188,7 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function addBatch(msgs, cb) {
+  function addBatch(msgVals, cb) {
     const guard = guardAgainstDuplicateLogs('addBatch()')
     if (guard) return cb(guard)
 
@@ -196,7 +196,7 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        validate2.validateBatch(null, msgs, null, (err, keys) => {
+        validate2.validateBatch(hmacKey, msgVals, null, (err, keys) => {
           if (err) return cb(err)
 
           const done = multicb({ pluck: 1 })
@@ -210,7 +210,7 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function add(msgValue, cb) {
+  function add(msgVal, cb) {
     const guard = guardAgainstDuplicateLogs('add()')
     if (guard) return cb(guard)
 
@@ -218,10 +218,10 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        const latestMsgValue = state[msgValue.author]
-          ? state[msgValue.author].value
+        const latestMsgVal = state[msgVal.author]
+          ? state[msgVal.author].value
           : null
-        validate2.validateSingle(null, msgValue, latestMsgValue, (err) => {
+        validate2.validateSingle(hmacKey, msgVal, latestMsgVal, (err, key) => {
           if (err) return cb(err)
           const kvt = validate.toKeyValueTimestamp(msgValue) // TODO validate2
           updateState(kvt)
@@ -235,11 +235,11 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function addOOO(msgValue, cb) {
+  function addOOO(msgVal, cb) {
     const guard = guardAgainstDuplicateLogs('addOOO()')
     if (guard) return cb(guard)
 
-    validate2.validateOOOBatch(null, [msgValue], (err) => {
+    validate2.validateOOOBatch(hmacKey, [msgVal], (err, keys) => {
       if (err) return cb(err)
       const kvt = validate.toKeyValueTimestamp(msgValue)
       get(kvt.key, (err, data) => {
@@ -262,15 +262,15 @@ exports.init = function (sbot, config) {
       (ready) => ready === true,
       () => {
         if (content.recps) content = ssbKeys.box(content, content.recps)
-        const latestMsg = state[config.keys.id]
-        const msgValue = validate.create(
-          latestMsg ? { queue: [latestMsg] } : null,
+        const latestKVT = state[config.keys.id]
+        const msgVal = validate.create(
+          latestKVT ? { queue: [latestKVT] } : null,
           config.keys,
           null,
           content,
           Date.now()
         )
-        const kvt = validate.toKeyValueTimestamp(msgValue)
+        const kvt = validate.toKeyValueTimestamp(msgVal)
         updateState(kvt)
         log.add(kvt.key, kvt.value, (err, data) => {
           post.set(data)

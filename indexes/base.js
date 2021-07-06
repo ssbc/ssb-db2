@@ -52,10 +52,10 @@ module.exports = function makeBaseIndex(privateIndex) {
     getAllLatest(cb) {
       pull(
         this.getAllLatestStream(),
-        pull.collect((err, data) => {
+        pull.collect((err, KVs) => {
           if (err) return cb(err)
           const result = new Map()
-          for (const { key, value } of data) {
+          for (const { key, value } of KVs) {
             result.set(key, value)
           }
           cb(null, result)
@@ -71,7 +71,8 @@ module.exports = function makeBaseIndex(privateIndex) {
       })
     }
 
-    // returns { offset, sequence }
+    // returns { key, value }
+    // where key is the authorId and value is { offset, sequence }
     getLatest(feedId, cb) {
       this.level.get(feedId, { valueEncoding: this.valueEncoding }, cb)
     }
