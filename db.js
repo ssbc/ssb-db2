@@ -223,9 +223,8 @@ exports.init = function (sbot, config) {
           : null
         validate2.validateSingle(hmacKey, msgVal, latestMsgVal, (err, key) => {
           if (err) return cb(err)
-          const kvt = validate.toKeyValueTimestamp(msgValue) // TODO validate2
-          updateState(kvt)
-          log.add(kvt.key, kvt.value, (err, data) => {
+          updateState(validate.toKeyValueTimestamp(msgVal))
+          log.add(key, msgVal, (err, data) => {
             if (err) return cb(err)
             post.set(data)
             cb(null, data)
@@ -241,10 +240,10 @@ exports.init = function (sbot, config) {
 
     validate2.validateOOOBatch(hmacKey, [msgVal], (err, keys) => {
       if (err) return cb(err)
-      const kvt = validate.toKeyValueTimestamp(msgValue)
-      get(kvt.key, (err, data) => {
+      const key = keys[0]
+      get(key, (err, data) => {
         if (data) return cb(null, data)
-        log.add(kvt.key, kvt.value, (err, data) => {
+        log.add(key, msgVal, (err, data) => {
           if (err) return cb(err)
           post.set(data)
           cb(null, data)
