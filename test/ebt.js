@@ -72,8 +72,7 @@ test('Encrypted', (t) => {
   let i = 0
 
   var remove = sbot.db.post((msg) => {
-    if (i++ === 0)
-      t.equal(msg.value.sequence, 3, 'we get existing')
+    if (i++ === 0) t.equal(msg.value.sequence, 3, 'we get existing')
     else {
       t.equal(msg.value.sequence, 4, 'post is called on publish')
       remove()
@@ -106,8 +105,7 @@ test('add', (t) => {
   let i = 0
 
   var remove = sbot.db.post((msg) => {
-    if (i++ === 0)
-      t.equal(msg.value.author, keys.id, 'we get existing')
+    if (i++ === 0) t.equal(msg.value.author, keys.id, 'we get existing')
     else {
       t.equal(msg.value.author, keys2.id, 'post is called on add')
       remove()
