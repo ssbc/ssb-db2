@@ -1,3 +1,4 @@
+const pull = require('pull-stream')
 const EBTIndex = require('../indexes/ebt')
 const { onceWhen } = require('../utils')
 
@@ -16,16 +17,19 @@ exports.init = function (sbot, config) {
       (isSynced) => isSynced,
       () => {
         sbot.db.onDrain('base', () => {
-          sbot.db.getAllLatest((err, latest) => {
-            if (err) return cb(err)
-
-            const clock = {}
-            for (const [authorId, { sequence }] of latest) {
+          const clock = {}
+          pull(
+            sbot.db.getAllLatest(),
+            pull.through(({ key, value }) => {
+              const authorId = key
+              const { sequence } = value
               clock[authorId] = sequence
-            }
-
-            cb(null, clock)
-          })
+            }),
+            pull.collect((err) => {
+              if (err) return cb(err)
+              cb(null, clock)
+            })
+          )
         })
       }
     )

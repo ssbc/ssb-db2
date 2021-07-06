@@ -9,6 +9,7 @@ const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
+const pull = require('pull-stream')
 
 const dir = '/tmp/ssb-db2-base-index'
 
@@ -82,15 +83,19 @@ test('get all latest', (t) => {
     t.error(err, 'no err')
 
     db.onDrain('base', () => {
-      db.getAllLatest((err, all) => {
-        t.error(err, 'no err')
-        t.equals(all.size, 1, 'authors map has size 1')
-        const status = all.get(keys.id)
-        t.equal(status.sequence, postMsg.value.sequence)
-        t.true(status.offset > 100)
+      pull(
+        db.getAllLatest(),
+        pull.collect((err, all) => {
+          t.error(err, 'no err')
+          t.equals(all.length, 1)
+          const { key, value } = all[0]
+          t.equal(key, keys.id)
+          t.equal(value.sequence, postMsg.value.sequence)
+          t.true(value.offset > 100)
 
-        sbot.close(t.end)
-      })
+          sbot.close(t.end)
+        })
+      )
     })
   })
 })
