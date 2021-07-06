@@ -71,8 +71,7 @@ module.exports = function makeBaseIndex(privateIndex) {
       })
     }
 
-    // returns { key, value }
-    // where key is the authorId and value is { offset, sequence }
+    // returns { offset, sequence }
     getLatest(feedId, cb) {
       this.level.get(feedId, { valueEncoding: this.valueEncoding }, cb)
     }
