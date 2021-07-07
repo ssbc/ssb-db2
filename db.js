@@ -83,25 +83,27 @@ exports.init = function (sbot, config) {
 
   function loadStateFeeds(cb) {
     // restore current state
-    onDrain('base', () => {
-      pull(
-        indexes.base.getAllLatest(),
-        paramap((latest, cb) => {
-          getMsgByOffset(latest.value.offset, (err, kvt) => {
-            if (err) cb(err)
-            else cb(null, kvt)
+    validate2.ready(() => {
+      onDrain('base', () => {
+        pull(
+          indexes.base.getAllLatest(),
+          paramap((latest, cb) => {
+            getMsgByOffset(latest.value.offset, (err, kvt) => {
+              if (err) cb(err)
+              else cb(null, kvt)
+            })
+          }, 8),
+          pull.collect((err, kvts) => {
+            if (err) return console.error('loadStateFeeds failed: ' + err)
+            for (const kvt of kvts) {
+              updateState(kvt)
+            }
+            debug('getAllLatest is done setting up initial validate state')
+            if (!stateFeedsReady.value) stateFeedsReady.set(true)
+            if (cb) cb()
           })
-        }, 8),
-        pull.collect((err, kvts) => {
-          if (err) return console.error('loadStateFeeds failed: ' + err)
-          for (const kvt of kvts) {
-            updateState(kvt)
-          }
-          debug('getAllLatest is done setting up initial validate state')
-          if (!stateFeedsReady.value) stateFeedsReady.set(true)
-          if (cb) cb()
-        })
-      )
+        )
+      })
     })
   }
 
