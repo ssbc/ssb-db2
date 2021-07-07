@@ -1,7 +1,10 @@
 const push = require('push-stream')
 const ssbKeys = require('ssb-keys')
 const validate = require('ssb-validate') // TODO: remove this eventually
-const validate2 = require('ssb-validate2-rsjs')
+const validate2 =
+  typeof localStorage === 'undefined' || localStorage === null
+    ? require('ssb-validate2')
+    : require('ssb-validate2-rsjs')
 const bipf = require('bipf')
 const pull = require('pull-stream')
 const paramap = require('pull-paramap')
