@@ -80,10 +80,8 @@ exports.init = function (sbot, config) {
       sbot.db.getIndex('ebt').getMessageFromAuthorSequence(key, cb)
     })
   }
-  const debouncer = new DebouncingBatchAdd(
-    sbot.db.addBatch,
-    (config.db2 || {}).addBatchDebounce || 250
-  )
+  const debouncePeriod = (config.db2 || {}).addBatchDebounce || 250
+  const debouncer = new DebouncingBatchAdd(sbot.db.addBatch, debouncePeriod)
   sbot.add = debouncer.add
   sbot.getVectorClock = function (cb) {
     onceWhen(
