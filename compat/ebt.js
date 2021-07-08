@@ -82,7 +82,7 @@ exports.init = function (sbot, config) {
   }
   const debouncer = new DebouncingBatchAdd(
     sbot.db.addBatch,
-    (config || {}).addBatchDebounce || 250
+    (config.db2 || {}).addBatchDebounce || 250
   )
   sbot.add = debouncer.add
   sbot.getVectorClock = function (cb) {
