@@ -204,7 +204,7 @@ exports.init = function (sbot, config) {
         validate2.validateBatch(hmacKey, msgVals, null, (err, keys) => {
           if (err) return cb(err)
 
-          const done = multicb({ pluck: 2 }) // 2 so that we dont pluck anything
+          const done = multicb({ pluck: 1 })
           for (var i = 0; i < msgVals.length; ++i) {
             if (i === msgVals.length - 1) {
               // last KVT, let's update the latest state
@@ -236,7 +236,7 @@ exports.init = function (sbot, config) {
           : null
         validate2.validateSingle(hmacKey, msgVal, latestMsgVal, (err, key) => {
           if (err) return cb(err)
-          updateState(validate.toKeyValueTimestamp(msgVal))
+          updateState({ key, value: msgVal })
           log.add(key, msgVal, (err, data) => {
             if (err) return cb(err)
             post.set(data)
