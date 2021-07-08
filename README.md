@@ -421,6 +421,13 @@ const config = {
     dangerouslyKillFlumeWhenMigrated: false,
 
     /**
+     * A debouncing interval (measured in milliseconds) to control how often
+     * should messages given to `sbot.add` be flushed in batches.
+     * Default: 250
+     */
+    addBatchDebounce: 250,
+
+    /**
      * An upper limit on the CPU load that ssb-db2 can use while indexing
      * and scanning. `85` means "ssb-db2 will only index when CPU load is at
      * 85% or lower".
