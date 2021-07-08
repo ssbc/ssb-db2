@@ -201,7 +201,11 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        validate2.validateBatch(hmacKey, msgVals, null, (err, keys) => {
+        const latestMsgVal =
+          msgVals.length > 0 && state[msgVals[0].author]
+            ? state[msgVals[0].author].value
+            : null
+        validate2.validateBatch(hmacKey, msgVals, latestMsgVal, (err, keys) => {
           if (err) return cb(err)
 
           const done = multicb({ pluck: 1 })
