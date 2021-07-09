@@ -18,6 +18,7 @@ const multicb = require('multicb')
 
 const { indexesPath } = require('./defaults')
 const { onceWhen } = require('./utils')
+const DebouncingBatchAdd = require('./debounce-batch')
 const Log = require('./log')
 const Status = require('./status')
 const makeBaseIndex = require('./indexes/base')
@@ -220,7 +221,7 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function add(msgVal, cb) {
+  function addImmediately(msgVal, cb) {
     const guard = guardAgainstDuplicateLogs('add()')
     if (guard) return cb(guard)
 
@@ -243,6 +244,9 @@ exports.init = function (sbot, config) {
       }
     )
   }
+
+  const debouncePeriod = config.db2.addDebounce || 400
+  const debouncer = new DebouncingBatchAdd(addBatch, debouncePeriod)
 
   function addOOO(msgVal, cb) {
     const guard = guardAgainstDuplicateLogs('addOOO()')
@@ -463,22 +467,23 @@ exports.init = function (sbot, config) {
   }
 
   return (self = {
-    // API:
+    // Public API:
     get,
     getMsg,
     query,
     del,
     deleteFeed,
-    add,
+    add: debouncer.add,
     publish,
     addOOO,
-    addBatch,
     addOOOBatch,
     getStatus: () => status.obv,
     operators,
     post,
 
     // needed primarily internally by other plugins in this project:
+    addBatch,
+    addImmediately,
     getLatest: indexes.base.getLatest.bind(indexes.base),
     getAllLatest: indexes.base.getAllLatest.bind(indexes.base),
     getLog: () => log,
