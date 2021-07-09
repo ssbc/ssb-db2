@@ -370,11 +370,6 @@ Validate and add a message value (without id and timestamp) to the
 database. In the callback will be the stored message (id, timestamp,
 value = original message) or err.
 
-### addBatch(msgValues, cb)
-
-Similar to `add`, but you can pass an array of many message values, and they
-will be validated in parallel and then added to the database.
-
 ### addOOO(msgValue, cb)
 
 Validate without checking the previous link and add to db. Useful for
