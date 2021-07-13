@@ -235,7 +235,7 @@ exports.init = function (sbot, config) {
 
     const plaintext = Buffer.from(JSON.stringify(content), 'utf8')
     const msgKey = new SecretKey().toBuffer()
-    const previousMessageId = bfe.encode(previous)
+    const previousMessageId = bfe.encodeClassic(previous)
 
     const envelope = box(
       plaintext,
