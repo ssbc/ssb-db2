@@ -150,7 +150,7 @@ test('migrate keeps new log synced with ssb-db being updated', (t) => {
   )
 })
 
-test('migrate does not read decrypted from old log', (t) => {
+test('test migrate with encrypted messages', (t) => {
   const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('ssb-db'))
@@ -175,8 +175,8 @@ test('migrate does not read decrypted from old log', (t) => {
       where(and(type('post'), isPrivate())),
       toCallback((err, msgs) => {
         t.error(err, 'no err')
-        t.equal(msgs.length, 1)
-        t.equal(msgs[0].value.content.text, 'super secret')
+        t.equal(msgs.length, 2)
+        t.equal(msgs[1].value.content.text, 'super secret')
         sbot.close(t.end)
       })
     )

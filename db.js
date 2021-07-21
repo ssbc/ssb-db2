@@ -16,15 +16,8 @@ const makeBaseIndex = require('./indexes/base')
 const KeysIndex = require('./indexes/keys')
 const PrivateIndex = require('./indexes/private')
 
-const {
-  where,
-  fromDB,
-  key,
-  author,
-  deferred,
-  toCallback,
-  asOffsets,
-} = operators
+const { where, fromDB, key, author, deferred, toCallback, asOffsets } =
+  operators
 
 exports.name = 'db'
 
@@ -299,7 +292,10 @@ exports.init = function (sbot, config) {
 
     const indexesArr = Object.values(indexes)
 
-    const lowestOffset = Math.min(...indexesArr.map((idx) => idx.offset.value))
+    const lowestOffset = Math.min(
+      ...indexesArr.map((idx) => idx.offset.value),
+      privateIndex.latestOffset.value
+    )
     debug(`lowest offset for all indexes is ${lowestOffset}`)
 
     log.stream({ gt: lowestOffset }).pipe({
