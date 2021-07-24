@@ -245,7 +245,7 @@ exports.init = function (sbot, config) {
     )
   }
 
-  const debouncePeriod = config.db2.addDebounce || 400
+  const debouncePeriod = config.db2.addDebounce || 250
   const debouncer = new DebouncingBatchAdd(addBatch, debouncePeriod)
 
   function addOOO(msgVal, cb) {
