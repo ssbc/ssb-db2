@@ -377,10 +377,11 @@ partial replication.
 
 ### addOOOBatch(msgValues, cb)
 
-Similar to `addOOO`, but you can pass an array of many message values. If the
-author is not yet known, the message is validated without checking if the
-previous link is correct, otherwise normal validation. This makes it possible to
-use for partial replication to add say latest 25 messages from a feed.
+Similar to `addOOO`, but you can pass an array of many message
+values. If the author is not yet known, the message is validated
+without checking if the previous link is correct, otherwise normal
+validation. This makes it possible to use for partial replication to
+add all contact messages from a feed.
 
 ### getStatus
 
