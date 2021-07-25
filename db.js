@@ -214,13 +214,12 @@ exports.init = function (sbot, config) {
             if (i === msgVals.length - 1) {
               // last KVT, let's update the latest state
               updateState({ key: keys[i], value: msgVals[i] })
-              log.add(keys[i], msgVals[i], (err, kvt) => {
-                post.set(kvt)
-                done()(err, kvt)
-              })
-            } else {
-              log.add(keys[i], msgVals[i], done())
             }
+
+            log.add(keys[i], msgVals[i], (err, kvt) => {
+              post.set(kvt)
+              done()(err, kvt)
+            })
           }
 
           done(cb)
@@ -481,6 +480,7 @@ exports.init = function (sbot, config) {
     publish,
     addOOO,
     addOOOBatch,
+    setPost: post.set,
     getStatus: () => status.obv,
     operators,
     post,
