@@ -3,7 +3,7 @@ const ssbKeys = require('ssb-keys')
 const validate = require('ssb-validate') // TODO: remove this eventually
 const validate2 =
   typeof localStorage === 'undefined' || localStorage === null
-    ? require('ssb-validate2-rsjs')
+    ? require('ssb-validate2-rsjs-node')
     : require('ssb-validate2')
 const bipf = require('bipf')
 const pull = require('pull-stream')
