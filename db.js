@@ -213,8 +213,9 @@ exports.init = function (sbot, config) {
           for (var i = 0; i < msgVals.length; ++i) {
             if (i === msgVals.length - 1) {
               // last KVT, let's update the latest state
+              updateState({ key: keys[i], value: msgVals[i] })
               log.add(keys[i], msgVals[i], (err, kvt) => {
-                if (!err && kvt) updateState(kvt)
+                post.set(kvt)
                 done()(err, kvt)
               })
             } else {
@@ -242,10 +243,10 @@ exports.init = function (sbot, config) {
         validate2.validateSingle(hmacKey, msgVal, latestMsgVal, (err, key) => {
           if (err) return cb(err)
           updateState({ key, value: msgVal })
-          log.add(key, msgVal, (err, data) => {
+          log.add(key, msgVal, (err, kvt) => {
             if (err) return cb(err)
-            post.set(data)
-            cb(null, data)
+            post.set(kvt)
+            cb(null, kvt)
           })
         })
       }
@@ -266,7 +267,6 @@ exports.init = function (sbot, config) {
         if (data) return cb(null, data)
         log.add(key, msgVal, (err, data) => {
           if (err) return cb(err)
-          post.set(data)
           cb(null, data)
         })
       })
