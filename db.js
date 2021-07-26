@@ -352,7 +352,7 @@ exports.init = function (sbot, config) {
       // bendy butt
       const feedState = state.feeds[feedKeys.id]
       const previous = feedState ? feedState.id : null
-      const sequence = feedState ? feedState.sequence : 1
+      const sequence = feedState ? feedState.sequence : 0
       const msg = bendy.encodeNew(
         content,
         subfeedKeys,
@@ -360,6 +360,7 @@ exports.init = function (sbot, config) {
         sequence + 1,
         previous,
         Date.now(),
+        hmac_key,
         encryptBendyButt
       )
 

@@ -283,6 +283,7 @@ test('publishAs bendy butt', (t) => {
     t.error(err, 'no err')
 
     db.get(msg.key, (err, msg) => {
+      t.equal(msg.sequence, 1, 'sequence ok')
       t.equal(msg.content.type, 'metafeed/add')
       sbot.close(t.end)
     })
