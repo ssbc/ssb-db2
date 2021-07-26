@@ -243,7 +243,7 @@ exports.init = function (sbot, config) {
 
     const envelope = box(
       plaintext,
-      keystore.TFKId,
+      keystore.TFDId,
       previousMessageId,
       msgKey,
       recipientKeys

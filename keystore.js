@@ -1,4 +1,4 @@
-const { directMessageKey, SecretKey } = require('ssb-box2')
+const { directMessageKey } = require('ssb-box2')
 const bfe = require('ssb-bfe')
 const { keySchemes } = require('private-group-spec')
 
@@ -37,7 +37,7 @@ module.exports = function (config) {
 
   return {
     ownDMKeys,
-    TFKId: bfe.encode(config.keys.id),
+    TFDId: bfe.encode(config.keys.id),
     sharedDMKey,
     supportsBox2,
     addBox2DMKey,
