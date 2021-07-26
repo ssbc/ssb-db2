@@ -209,10 +209,7 @@ exports.init = function (sbot, config) {
             log.add(keys[i], msgVals[i], (err, kvt) => {
               if (err) return done()(err)
 
-              if (isLast) {
-                // last KVT, let's update the latest state
-                updateState({ key: keys[i], value: msgVals[i] })
-              }
+              if (isLast) updateState(kvt)
               post.set(kvt)
               done()(null, kvt)
             })
