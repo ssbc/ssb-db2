@@ -102,7 +102,7 @@ test('Raw feed with unused type + ooo in batch', (t) => {
     db.addOOO(state.queue[0].value, (err, oooMsg) => {
       t.error(err, 'no err')
       t.equal(oooMsg.value.content.text, 'test1', 'text correct')
-      t.equal(db.post.value, latestPost, 'ooo methods does update post') // as that would break EBT
+      t.equal(db.post.value, latestPost, 'ooo methods does not update post') // as that would break EBT
 
       t.end()
     })

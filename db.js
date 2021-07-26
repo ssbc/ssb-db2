@@ -204,14 +204,17 @@ exports.init = function (sbot, config) {
 
           const done = multicb({ pluck: 1 })
           for (var i = 0; i < msgVals.length; ++i) {
-            if (i === msgVals.length - 1) {
-              // last KVT, let's update the latest state
-              updateState({ key: keys[i], value: msgVals[i] })
-            }
+            const isLast = i === msgVals.length - 1
 
             log.add(keys[i], msgVals[i], (err, kvt) => {
+              if (err) return done()(err)
+
+              if (isLast) {
+                // last KVT, let's update the latest state
+                updateState({ key: keys[i], value: msgVals[i] })
+              }
               post.set(kvt)
-              done()(err, kvt)
+              done()(null, kvt)
             })
           }
 
@@ -234,9 +237,10 @@ exports.init = function (sbot, config) {
           : null
         validate2.validateSingle(hmacKey, msgVal, latestMsgVal, (err, key) => {
           if (err) return cb(err)
-          updateState({ key, value: msgVal })
           log.add(key, msgVal, (err, kvt) => {
             if (err) return cb(err)
+
+            updateState({ key, value: msgVal })
             post.set(kvt)
             cb(null, kvt)
           })
@@ -283,10 +287,12 @@ exports.init = function (sbot, config) {
           Date.now()
         )
         const kvt = validate.toKeyValueTimestamp(msgVal)
-        updateState(kvt)
         log.add(kvt.key, kvt.value, (err, data) => {
+          if (err) return cb(err)
+
+          updateState(kvt)
           post.set(data)
-          cb(err, data)
+          cb(null, data)
         })
       }
     )
@@ -476,10 +482,12 @@ exports.init = function (sbot, config) {
     publish,
     addOOO,
     addOOOBatch,
-    setPost: post.set,
     getStatus: () => status.obv,
     operators,
     post,
+
+    // used for partial replication in browser, will be removed soon!
+    setPost: post.set,
 
     // needed primarily internally by other plugins in this project:
     addBatch,
