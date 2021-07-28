@@ -237,10 +237,6 @@ exports.init = function (sbot, config) {
     const msgKey = new SecretKey().toBuffer()
     let previousMessageId = bfe.encode(previous)
 
-    // FIXME: fix in envelope-js
-    if (previous === null)
-      previousMessageId = Buffer.concat([Buffer.from([1, 0]), Buffer.alloc(32)])
-
     const envelope = box(
       plaintext,
       keystore.TFKId,
@@ -281,10 +277,6 @@ exports.init = function (sbot, config) {
     const msgKey = new SecretKey().toBuffer()
 
     // FIXME: consider error if no recipientKeys
-
-    // FIXME: fix in envelope-js
-    if (encodedPrevious.equals(Buffer.from([6, 2])))
-      encodedPrevious = Buffer.concat([Buffer.from([1, 4]), Buffer.alloc(32)])
 
     const envelope = box(
       encodedContent,
