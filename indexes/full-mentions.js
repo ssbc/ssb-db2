@@ -4,10 +4,10 @@ const pull = require('pull-stream')
 const Plugin = require('./plugin')
 const { or, seqs, liveSeqs } = require('../operators')
 
-const bKey = Buffer.from('key')
-const bValue = Buffer.from('value')
-const bContent = Buffer.from('content')
-const bMentions = Buffer.from('mentions')
+const B_KEY = Buffer.from('key')
+const B_VALUE = Buffer.from('value')
+const B_CONTENT = Buffer.from('content')
+const B_MENTIONS = Buffer.from('mentions')
 
 function parseInt10(x) {
   return parseInt(x, 10)
@@ -21,13 +21,13 @@ module.exports = class FullMentions extends Plugin {
 
   processRecord(record, seq) {
     const buf = record.value
-    const pKey = bipf.seekKey(buf, 0, bKey)
+    const pKey = bipf.seekKey(buf, 0, B_KEY)
     let p = 0 // note you pass in p!
-    p = bipf.seekKey(buf, p, bValue)
+    p = bipf.seekKey(buf, p, B_VALUE)
     if (p < 0) return
-    p = bipf.seekKey(buf, p, bContent)
+    p = bipf.seekKey(buf, p, B_CONTENT)
     if (p < 0) return
-    p = bipf.seekKey(buf, p, bMentions)
+    p = bipf.seekKey(buf, p, B_MENTIONS)
     if (p < 0) return
     const mentionsData = bipf.decode(buf, p)
     if (!Array.isArray(mentionsData)) return

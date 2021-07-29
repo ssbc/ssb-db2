@@ -3,11 +3,11 @@ const pull = require('pull-stream')
 const pl = require('pull-level')
 const Plugin = require('./plugin')
 
-const bValue = Buffer.from('value')
-const bAuthor = Buffer.from('author')
-const bContent = Buffer.from('content')
-const bType = Buffer.from('type')
-const bAbout = Buffer.from('about')
+const B_VALUE = Buffer.from('value')
+const B_AUTHOR = Buffer.from('author')
+const B_CONTENT = Buffer.from('content')
+const B_TYPE = Buffer.from('type')
+const B_ABOUT = Buffer.from('about')
 
 // feedId => hydratedAboutObj
 module.exports = class AboutSelf extends Plugin {
@@ -33,15 +33,15 @@ module.exports = class AboutSelf extends Plugin {
     const buf = record.value
 
     let p = 0 // note you pass in p!
-    p = bipf.seekKey(buf, p, bValue)
+    p = bipf.seekKey(buf, p, B_VALUE)
     if (p < 0) return
-    const pAuthor = bipf.seekKey(buf, p, bAuthor)
-    const pContent = bipf.seekKey(buf, p, bContent)
+    const pAuthor = bipf.seekKey(buf, p, B_AUTHOR)
+    const pContent = bipf.seekKey(buf, p, B_CONTENT)
     if (pContent < 0) return
-    const pType = bipf.seekKey(buf, pContent, bType)
+    const pType = bipf.seekKey(buf, pContent, B_TYPE)
     if (pType < 0) return
 
-    if (bipf.compareString(buf, pType, bAbout) === 0) {
+    if (bipf.compareString(buf, pType, B_ABOUT) === 0) {
       const author = bipf.decode(buf, pAuthor)
       const content = bipf.decode(buf, pContent)
       if (content.about !== author) return

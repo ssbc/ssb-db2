@@ -3,11 +3,11 @@ const pl = require('pull-level')
 const pull = require('pull-stream')
 const Plugin = require('./plugin')
 
-const bKey = Buffer.from('key')
-const bValue = Buffer.from('value')
-const bAuthor = Buffer.from('author')
-const bSequence = Buffer.from('sequence')
-const bTimestamp = Buffer.from('timestamp')
+const B_KEY = Buffer.from('key')
+const B_VALUE = Buffer.from('value')
+const B_AUTHOR = Buffer.from('author')
+const B_SEQUENCE = Buffer.from('sequence')
+const B_TIMESTAMP = Buffer.from('timestamp')
 
 // author => latest { msg key, sequence timestamp } (validate state & EBT)
 module.exports = function makeBaseIndex(privateIndex) {
@@ -27,16 +27,16 @@ module.exports = function makeBaseIndex(privateIndex) {
 
     processRecord(record, seq) {
       const buf = record.value
-      const pValue = bipf.seekKey(buf, 0, bValue)
+      const pValue = bipf.seekKey(buf, 0, B_VALUE)
       if (pValue < 0) return
-      const author = bipf.decode(buf, bipf.seekKey(buf, pValue, bAuthor))
-      const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, bSequence))
-      const timestamp = bipf.decode(buf, bipf.seekKey(buf, pValue, bTimestamp))
+      const author = bipf.decode(buf, bipf.seekKey(buf, pValue, B_AUTHOR))
+      const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, B_SEQUENCE))
+      const timestamp = bipf.decode(buf, bipf.seekKey(buf, pValue, B_TIMESTAMP))
       let latestSequence = 0
       if (this.authorLatest[author])
         latestSequence = this.authorLatest[author].sequence
       if (sequence > latestSequence) {
-        const key = bipf.decode(buf, bipf.seekKey(buf, 0, bKey))
+        const key = bipf.decode(buf, bipf.seekKey(buf, 0, B_KEY))
         this.authorLatest[author] = { id: key, sequence, timestamp }
         this.batch.push({
           type: 'put',

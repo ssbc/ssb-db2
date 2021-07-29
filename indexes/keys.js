@@ -2,7 +2,7 @@ const bipf = require('bipf')
 const Plugin = require('./plugin')
 const { seqs } = require('../operators')
 
-const bKey = Buffer.from('key')
+const B_KEY = Buffer.from('key')
 
 // msgId => seq
 module.exports = class Keys extends Plugin {
@@ -12,7 +12,7 @@ module.exports = class Keys extends Plugin {
 
   processRecord(record, seq) {
     const buf = record.value
-    const pKey = bipf.seekKey(buf, 0, bKey)
+    const pKey = bipf.seekKey(buf, 0, B_KEY)
     if (pKey < 0) return
     const key = bipf.decode(buf, pKey)
     this.batch.push({

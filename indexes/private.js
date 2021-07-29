@@ -110,17 +110,17 @@ module.exports = function (dir, keys) {
     return { offset: record.offset, value: buf }
   }
 
-  const bValue = Buffer.from('value')
-  const bContent = Buffer.from('content')
+  const B_VALUE = Buffer.from('value')
+  const B_CONTENT = Buffer.from('content')
 
   function decrypt(record, streaming) {
     const recOffset = record.offset
     const recBuffer = record.value
     let p = 0 // note you pass in p!
     if (bsb.eq(canDecrypt, recOffset) !== -1) {
-      p = bipf.seekKey(recBuffer, p, bValue)
+      p = bipf.seekKey(recBuffer, p, B_VALUE)
       if (p < 0) return record
-      p = bipf.seekKey(recBuffer, p, bContent)
+      p = bipf.seekKey(recBuffer, p, B_CONTENT)
       if (p < 0) return record
 
       const unboxedContent = ssbKeys.unbox(bipf.decode(recBuffer, p), keys)
@@ -130,9 +130,9 @@ module.exports = function (dir, keys) {
     } else if (recOffset > latestOffset.value) {
       if (streaming) latestOffset.set(recOffset)
 
-      p = bipf.seekKey(recBuffer, p, bValue)
+      p = bipf.seekKey(recBuffer, p, B_VALUE)
       if (p < 0) return record
-      p = bipf.seekKey(recBuffer, p, bContent)
+      p = bipf.seekKey(recBuffer, p, B_CONTENT)
       if (p < 0) return record
 
       const type = bipf.getEncodedType(recBuffer, p)
