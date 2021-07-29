@@ -2,9 +2,9 @@ const bipf = require('bipf')
 const Plugin = require('./plugin')
 const { reEncrypt } = require('./private')
 
-const bValue = Buffer.from('value')
-const bAuthor = Buffer.from('author')
-const bSequence = Buffer.from('sequence')
+const B_VALUE = Buffer.from('value')
+const B_AUTHOR = Buffer.from('author')
+const B_SEQUENCE = Buffer.from('sequence')
 
 // [author, sequence] => offset
 module.exports = class EBT extends Plugin {
@@ -14,10 +14,10 @@ module.exports = class EBT extends Plugin {
 
   processRecord(record, seq) {
     const buf = record.value
-    const pValue = bipf.seekKey(buf, 0, bValue)
+    const pValue = bipf.seekKey(buf, 0, B_VALUE)
     if (pValue < 0) return
-    const author = bipf.decode(buf, bipf.seekKey(buf, pValue, bAuthor))
-    const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, bSequence))
+    const author = bipf.decode(buf, bipf.seekKey(buf, pValue, B_AUTHOR))
+    const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, B_SEQUENCE))
     this.batch.push({
       type: 'put',
       key: [author, sequence],

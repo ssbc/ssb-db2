@@ -126,9 +126,9 @@ function isRoot() {
   })
 }
 
-const bTrue = Buffer.alloc(1, 1)
+const B_TRUE = Buffer.alloc(1, 1)
 function isPrivate() {
-  return equal(seekPrivate, bTrue, { indexType: 'meta_private' })
+  return equal(seekPrivate, B_TRUE, { indexType: 'meta_private' })
 }
 
 function isPublic() {
