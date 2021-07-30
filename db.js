@@ -7,7 +7,7 @@ const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
 const operators = require('./operators')
 const JITDb = require('jitdb')
-const { isFeed, isCloakedMsg: isGroup } = require('ssb-ref')
+const { isFeed } = require('ssb-ref')
 const Debug = require('debug')
 
 const bfe = require('ssb-bfe')

@@ -129,16 +129,13 @@ module.exports = function (dir, config, keystore) {
   const B_AUTHOR = Buffer.from('author')
   const B_PREVIOUS = Buffer.from('previous')
 
-  // FIXME: use from bfe
-  const CLASSICFEEDTYPE = Buffer.concat([
-    Buffer.from([0]),
-    Buffer.from([0])
-  ])
+  const FEED = bfe.bfeNamedTypes['feed']
+  const CLASSIC_FEED_TF = Buffer.from([FEED.code, FEED.formats['ssb/classic'].code])
 
   function decryptBox2Msg(envelope, feed_id, prev_msg_id, read_key) {
     const plaintext = unboxBody(envelope, feed_id, prev_msg_id, read_key)
     if (plaintext) {
-      if (feed_id.slice(0, 2).equals(CLASSICFEEDTYPE))
+      if (feed_id.slice(0, 2).equals(CLASSIC_FEED_TF))
         return JSON.parse(plaintext.toString('utf8'))
       else
         return bendy.decodeBox2(plaintext)
@@ -150,16 +147,6 @@ module.exports = function (dir, config, keystore) {
     const envelope = Buffer.from(ciphertext.replace('.box2', ''), 'base64')
     let authorBFE = bfe.encode(author)
     let previousBFE = bfe.encode(previous)
-
-    // FIXME: this needs to be in envelope-js
-    if (previousBFE.equals(Buffer.from([6, 2]))) {
-      if (author.endsWith('.bbfeed-v1'))
-        previousBFE = Buffer.concat([Buffer.from([1, 4]), Buffer.alloc(32)])
-      else if (author.endsWith('.ed25519')) {
-        previousBFE = Buffer.concat([Buffer.from([1, 0]), Buffer.alloc(32)])
-      } else
-        console.error("Unknown feed format for box2 unbox message", author)
-    }
 
     const trial_dm_keys = author !== sbotId ?
           [keystore.sharedDMKey(author), ...keystore.ownDMKeys()] :
