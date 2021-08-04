@@ -1,4 +1,4 @@
-const { directMessageKey } = require('ssb-box2')
+const { directMessageKey } = require('ssb-private-group-keys')
 const bfe = require('ssb-bfe')
 const { keySchemes } = require('private-group-spec')
 
@@ -8,6 +8,7 @@ module.exports = function (config) {
   const buildDMKey = directMessageKey.easy(config.keys)
 
   function sharedDMKey(author) {
+    console.log('author', author)
     if (!dmCache[author]) dmCache[author] = buildDMKey(author)
 
     return {

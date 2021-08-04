@@ -12,7 +12,7 @@ const Debug = require('debug')
 
 const bfe = require('ssb-bfe')
 const { box } = require('envelope-js')
-const { SecretKey } = require('ssb-box2')
+const { SecretKey } = require('ssb-private-group-keys')
 const KeyStore = require('./keystore')
 
 const { indexesPath } = require('./defaults')
