@@ -1,6 +1,7 @@
 const push = require('push-stream')
 const ssbKeys = require('ssb-keys')
 const validate = require('ssb-validate')
+const bendy = require('ssb-bendy-butt')
 const Obv = require('obz')
 const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
@@ -16,6 +17,8 @@ const makeBaseIndex = require('./indexes/base')
 const KeysIndex = require('./indexes/keys')
 const PrivateIndex = require('./indexes/private')
 
+const bipf = require('bipf')
+
 const { where, fromDB, key, author, deferred, toCallback, asOffsets } =
   operators
 
@@ -27,6 +30,7 @@ exports.manifest = {
   get: 'async',
   add: 'async',
   publish: 'async',
+  publishAs: 'async',
   del: 'async',
   deleteFeed: 'async',
   addOOO: 'async',
@@ -47,7 +51,7 @@ exports.init = function (sbot, config) {
   config.db2 = config.db2 || {}
   const indexes = {}
   const dir = config.path
-  const privateIndex = PrivateIndex(dir, config.keys)
+  const privateIndex = PrivateIndex(dir, sbot, config)
   const log = Log(dir, config, privateIndex)
   const jitdb = JITDb(log, indexesPath(dir))
   const status = Status(log, jitdb)
@@ -210,7 +214,14 @@ exports.init = function (sbot, config) {
     }
   }
 
-  function publish(msg, cb) {
+  function encryptContent(content) {
+    if (sbot.box2 && content.recps.every(sbot.box2.supportsBox2)) {
+      const feedState = state.feeds[config.keys.id]
+      return sbot.box2.encryptClassic(content, feedState ? feedState.id : null)
+    } else return ssbKeys.box(content, content.recps)
+  }
+
+  function publish(content, cb) {
     const guard = guardAgainstDuplicateLogs('publish()')
     if (guard) return cb(guard)
 
@@ -218,10 +229,16 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        if (msg.recps) msg = ssbKeys.box(msg, msg.recps)
+        if (content.recps) content = encryptContent(content)
 
         state.queue = []
-        state = validate.appendNew(state, null, config.keys, msg, Date.now())
+        state = validate.appendNew(
+          state,
+          null,
+          config.keys,
+          content,
+          Date.now()
+        )
 
         const kv = state.queue[state.queue.length - 1]
         log.add(kv.key, kv.value, (err, data) => {
@@ -230,6 +247,66 @@ exports.init = function (sbot, config) {
         })
       }
     )
+  }
+
+  function publishAs(feedKeys, subfeedKeys, content, cb) {
+    const guard = guardAgainstDuplicateLogs('publishAs()')
+    if (guard) return cb(guard)
+
+    if (feedKeys.id.endsWith('.ed25519')) {
+      // classic
+      onceWhen(
+        stateFeedsReady,
+        (ready) => ready === true,
+        () => {
+          if (content.recps) content = encryptContent(content)
+
+          state.queue = []
+          state = validate.appendNew(state, null, feedKeys, content, Date.now())
+
+          const kv = state.queue[state.queue.length - 1]
+          log.add(kv.key, kv.value, (err, data) => {
+            post.set(data)
+            cb(err, data)
+          })
+        }
+      )
+    } else if (feedKeys.id.endsWith('.bbfeed-v1')) {
+      // bendy butt
+      const feedState = state.feeds[feedKeys.id]
+      const previous = feedState ? feedState.id : null
+      const sequence = feedState ? feedState.sequence : 0
+
+      if (content.recps && !sbot.box2)
+        throw new Error(
+          'Unable to encrypt bendy butt, ssb-db2-box2 module not loaded'
+        )
+
+      const msg = bendy.encodeNew(
+        content,
+        subfeedKeys,
+        feedKeys,
+        sequence + 1,
+        previous,
+        Date.now(),
+        hmac_key,
+        sbot.box2 ? sbot.box2.encryptBendyButt : null
+      )
+
+      // FIXME: validate
+
+      const key = bendy.hash(msg)
+
+      state.feeds[feedKeys.id] = {
+        id: key,
+        sequence: sequence + 1,
+      }
+
+      log.add(key, bendy.decode(msg), (err, data) => {
+        post.set(data)
+        cb(err, data)
+      })
+    } else throw ('Unknown feed format', feedKeys)
   }
 
   function del(msgId, cb) {
@@ -405,6 +482,60 @@ exports.init = function (sbot, config) {
     }
   }
 
+  function reindexOffset(data, cb) {
+    jitdb.reindex(data.seq, data.offset, (err) => {
+      if (err) return cb(err)
+
+      for (const indexName in indexes) {
+        const idx = indexes[indexName]
+        if (idx.indexesContent()) idx.processRecord(data.record, data.seq)
+      }
+
+      cb(null)
+    })
+  }
+
+  // FIXME: handle that this can be called multiple times concurrently
+  function reindexEncrypted(cb) {
+    const offsets = privateIndex.missingDecrypt()
+    const keysIndex = indexes['keys']
+    const B_KEY = Buffer.from('key')
+    const B_META = Buffer.from('meta')
+    const B_PRIVATE = Buffer.from('private')
+
+    push(
+      push.values(offsets),
+      push.asyncMap((offset, cb) => {
+        log.get(offset, (err, buf) => {
+          if (err) return cb(err)
+
+          const pMeta = bipf.seekKey(buf, 0, B_META)
+          if (pMeta < 0) return cb()
+          const pPrivate = bipf.seekKey(buf, pMeta, B_PRIVATE)
+          if (pPrivate < 0) return cb()
+
+          // check if we can decrypt the record
+          if (!bipf.decode(buf, pPrivate)) return cb()
+
+          const pKey = bipf.seekKey(buf, 0, B_KEY)
+          if (pKey < 0) return cb()
+          const key = bipf.decode(buf, pKey)
+
+          onDrain('keys', () => {
+            keysIndex.getSeq(key, (err, seqNum) => {
+              if (err) return cb(err)
+
+              const seq = parseInt(seqNum, 10)
+
+              reindexOffset({ offset, seq }, cb)
+            })
+          })
+        })
+      }),
+      push.collect(cb)
+    )
+  }
+
   return (self = {
     // API:
     get,
@@ -414,11 +545,14 @@ exports.init = function (sbot, config) {
     deleteFeed,
     add,
     publish,
+    publishAs,
     addOOO,
     addOOOStrictOrder,
     getStatus: () => status.obv,
     operators,
     post,
+
+    reindexEncrypted,
 
     // needed primarily internally by other plugins in this project:
     getLatest: indexes.base.getLatest.bind(indexes.base),

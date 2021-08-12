@@ -35,7 +35,7 @@ module.exports = function (dir, config, privateIndex) {
 
   // monkey-patch log.get to decrypt the msg
   const originalGet = log.get
-  log.get = function (offset, cb) {
+  log.get = function get(offset, cb) {
     originalGet(offset, (err, buffer) => {
       if (err) return cb(err)
       else {
