@@ -144,4 +144,9 @@ module.exports = class Plugin {
   processRecord() {
     throw new Error('processRecord() is missing an implementation')
   }
+
+  // used for reindexing encrypted content
+  indexesContent() {
+    throw new Error('indexesContent() is missing an implementation')
+  }
 }

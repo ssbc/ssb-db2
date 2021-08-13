@@ -60,6 +60,10 @@ module.exports = class AboutSelf extends Plugin {
     }
   }
 
+  indexesContent() {
+    return true
+  }
+
   updateProfileData(author, content) {
     let profile = this.profiles[author] || {}
 

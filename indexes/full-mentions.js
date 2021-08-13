@@ -51,6 +51,10 @@ module.exports = class FullMentions extends Plugin {
     })
   }
 
+  indexesContent() {
+    return true
+  }
+
   getMessagesByMention(key, live, cb) {
     const opts = {
       gte: [key, ''],
