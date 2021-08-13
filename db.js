@@ -262,8 +262,9 @@ exports.init = function (sbot, config) {
     // Bendy butt
     else if (keys.id.endsWith('.bbfeed-v1')) {
       const msgVal = x
+
       // FIXME: validate
-      // FIXME: encryption
+
       onceWhen(
         stateFeedsReady,
         (ready) => ready === true,
