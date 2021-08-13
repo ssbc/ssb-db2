@@ -22,11 +22,19 @@ module.exports = class Keys extends Plugin {
     })
   }
 
+  indexesContent() {
+    return false
+  }
+
   getMsgByKey(msgId, cb) {
     this.level.get(msgId, (err, seqNum) => {
       if (err) cb(null, seqs([]))
       else cb(null, seqs([parseInt(seqNum, 10)]))
     })
+  }
+
+  getSeq(msgId, cb) {
+    this.level.get(msgId, cb)
   }
 
   delMsg(msgId) {

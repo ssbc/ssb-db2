@@ -46,6 +46,10 @@ module.exports = function makeBaseIndex(privateIndex) {
       }
     }
 
+    indexesContent() {
+      return false
+    }
+
     onFlush(cb) {
       this.privateIndex.saveIndexes(cb)
     }
