@@ -327,46 +327,6 @@ test('publishAs classic', (t) => {
   })
 })
 
-test('publishAs bendy butt', (t) => {
-  // fake some keys
-  const mfKeys = ssbKeys.generate()
-  mfKeys.id = mfKeys.id.replace('.ed25519', '.bbfeed-v1')
-  const mainKeys = ssbKeys.generate()
-
-  const content = {
-    type: 'metafeed/add/existing',
-    feedpurpose: 'main',
-    subfeed: mainKeys.id,
-    metafeed: mfKeys.id,
-    tangles: {
-      metafeed: {
-        root: null,
-        previous: null,
-      },
-    },
-  }
-
-  const sequence = 1
-  const previous = null
-  const timestamp = Date.now()
-
-  const bbmsg = bendyButt.encodeNew(
-    content,
-    mainKeys,
-    mfKeys,
-    sequence,
-    previous,
-    timestamp
-  )
-  const msgVal = bendyButt.decode(bbmsg)
-
-  db.publishAs(mfKeys, msgVal, (err, msg) => {
-    t.error(err, 'no err')
-
-    db.get(msg.key, (err, msg) => {
-      t.equal(msg.sequence, 1, 'sequence ok')
-      t.equal(msg.content.type, 'metafeed/add/existing')
-      sbot.close(t.end)
-    })
-  })
+test('teardown', (t) => {
+  sbot.close(t.end)
 })
