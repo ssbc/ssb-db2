@@ -1,5 +1,6 @@
 const push = require('push-stream')
 const ssbKeys = require('ssb-keys')
+const Ref = require('ssb-ref')
 const validate = require('ssb-validate')
 const Obv = require('obz')
 const promisify = require('promisify-4loc')
@@ -245,8 +246,7 @@ exports.init = function (sbot, config) {
     if (guard) return cb(guard)
 
     // Classic SSB Feed
-    if (keys.id.endsWith('.ed25519')) {
-      // FIXME: this endsWith check should be a ssb-ref concern
+    if (Ref.isFeedId(keys.id)) {
       const content = x
       onceWhen(
         stateFeedsReady,
