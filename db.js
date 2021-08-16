@@ -234,28 +234,7 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('publish()')
     if (guard) return cb(guard)
 
-    onceWhen(
-      stateFeedsReady,
-      (ready) => ready === true,
-      () => {
-        if (content.recps) content = ssbKeys.box(content, content.recps)
-
-        state.queue = []
-        state = validate.appendNew(
-          state,
-          hmac_key,
-          config.keys,
-          content,
-          Date.now()
-        )
-
-        const kv = state.queue[state.queue.length - 1]
-        log.add(kv.key, kv.value, (err, data) => {
-          post.set(data)
-          cb(err, data)
-        })
-      }
-    )
+    publishAs(config.keys, content, cb)
   }
 
   function publishAs(keys, content, cb) {
