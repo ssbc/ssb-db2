@@ -209,14 +209,11 @@ exports.init = function (sbot, config) {
           if (err) return cb(err)
 
           const msgKey = bendyButt.hash(msgVal)
-          state[msgVal.author] = {
-            id: msgKey,
-            value: msgVal,
-          }
+          updateState({key: msgKey, value: msgVal})
 
-          log.add(msgKey, msgVal, (err, data) => {
-            post.set(data)
-            cb(err, data)
+          log.add(msgKey, msgVal, (err, kvt) => {
+            post.set(kvt)
+            cb(err, kvt)
           })
         } else throw new Error('Unknown feed format: ' + msgVal.author)
       }
@@ -230,16 +227,17 @@ exports.init = function (sbot, config) {
     if (msgVals.length === 0) {
       return cb(null, [])
     }
-    if (!Ref.isFeedId(msgVals[0].author)) {
-      return cb(new Error('addBatch() does not support ' + msgVals[0].author))
+    const author = msgVals[0].author
+    if (!Ref.isFeedId(author)) {
+      return cb(new Error('addBatch() does not support feed ID ' + author))
     }
 
     onceWhen(
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        const latestMsgVal = state[msgVals[0].author]
-          ? state[msgVals[0].author].value
+        const latestMsgVal = state[author]
+          ? state[author].value
           : null
         validate2.validateBatch(hmacKey, msgVals, latestMsgVal, (err, keys) => {
           if (err) return cb(err)
@@ -276,10 +274,10 @@ exports.init = function (sbot, config) {
           : null
         validate2.validateSingle(hmacKey, msgVal, latestMsgVal, (err, key) => {
           if (err) return cb(err)
+          updateState({key, value: msgVal})
           log.add(key, msgVal, (err, kvt) => {
             if (err) return cb(err)
 
-            updateState({ key, value: msgVal })
             post.set(kvt)
             cb(null, kvt)
           })
@@ -327,7 +325,7 @@ exports.init = function (sbot, config) {
       (ready) => ready === true,
       () => {
         if (content.recps) content = ssbKeys.box(content, content.recps)
-        const latestKVT = state[config.keys.id]
+        const latestKVT = state[keys.id]
         const msgVal = validate.create(
           latestKVT ? { queue: [latestKVT] } : null,
           keys,
@@ -335,14 +333,7 @@ exports.init = function (sbot, config) {
           content,
           Date.now()
         )
-        const kvt = validate.toKeyValueTimestamp(msgVal)
-        log.add(kvt.key, kvt.value, (err, data) => {
-          if (err) return cb(err)
-
-          updateState(kvt)
-          post.set(data)
-          cb(null, data)
-        })
+        addImmediately(msgVal, cb)
       }
     )
   }
