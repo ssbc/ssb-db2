@@ -269,18 +269,18 @@ exports.init = function (sbot, config) {
     else if (keys.id.endsWith('.bbfeed-v1')) {
       const msgVal = x
 
-      // FIXME: validate
-
       onceWhen(
         stateFeedsReady,
         (ready) => ready === true,
         () => {
+          const previous = (state.feeds[keys.id] || { value: null }).value
+          const err = bendyButt.validateSingle(msgVal, previous, hmac_key)
+          if (err) return cb(err)
+
           const msgKey = bendyButt.hash(msgVal)
           state.feeds[keys.id] = {
             id: msgKey,
-            timestamp: msgVal.timestamp,
-            sequence: msgVal.sequence,
-            queue: [],
+            value: msgVal,
           }
 
           log.add(msgKey, msgVal, (err, data) => {
