@@ -169,6 +169,9 @@ exports.init = function (sbot, config) {
     })
   }
 
+  const debouncePeriod = config.db2.addDebounce || 250
+  const debouncer = new DebouncingBatchAdd(addBatch, debouncePeriod)
+
   function addOOOBatch(msgVals, cb) {
     const guard = guardAgainstDuplicateLogs('addOOOBatch()')
     if (guard) return cb(guard)
@@ -190,18 +193,54 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function addBatch(msgVals, cb) {
-    const guard = guardAgainstDuplicateLogs('addBatch()')
+  function add(msgVal, cb) {
+    const guard = guardAgainstDuplicateLogs('add()')
     if (guard) return cb(guard)
 
     onceWhen(
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        const latestMsgVal =
-          msgVals.length > 0 && state[msgVals[0].author]
-            ? state[msgVals[0].author].value
-            : null
+        if (Ref.isFeedId(msgVal.author)) {
+          debouncer.add(msgVal, cb)
+        } else if (msgVal.author.endsWith('.bbfeed-v1')) {
+          const previous = (state[msgVal.author] || { value: null }).value
+          const err = bendyButt.validateSingle(msgVal, previous, hmacKey)
+          if (err) return cb(err)
+
+          const msgKey = bendyButt.hash(msgVal)
+          state[msgVal.author] = {
+            id: msgKey,
+            value: msgVal,
+          }
+
+          log.add(msgKey, msgVal, (err, data) => {
+            post.set(data)
+            cb(err, data)
+          })
+        } else throw new Error('Unknown feed format: ' + msgVal.author)
+      }
+    )
+  }
+
+  function addBatch(msgVals, cb) {
+    const guard = guardAgainstDuplicateLogs('addBatch()')
+    if (guard) return cb(guard)
+
+    if (msgVals.length === 0) {
+      return cb(null, [])
+    }
+    if (!Ref.isFeedId(msgVals[0].author)) {
+      return cb(new Error('addBatch() does not support ' + msgVals[0].author))
+    }
+
+    onceWhen(
+      stateFeedsReady,
+      (ready) => ready === true,
+      () => {
+        const latestMsgVal = state[msgVals[0].author]
+          ? state[msgVals[0].author].value
+          : null
         validate2.validateBatch(hmacKey, msgVals, latestMsgVal, (err, keys) => {
           if (err) return cb(err)
 
@@ -248,9 +287,6 @@ exports.init = function (sbot, config) {
       }
     )
   }
-
-  const debouncePeriod = config.db2.addDebounce || 250
-  const debouncer = new DebouncingBatchAdd(addBatch, debouncePeriod)
 
   function addOOO(msgVal, cb) {
     const guard = guardAgainstDuplicateLogs('addOOO()')
@@ -337,12 +373,12 @@ exports.init = function (sbot, config) {
         stateFeedsReady,
         (ready) => ready === true,
         () => {
-          const previous = (state.feeds[keys.id] || { value: null }).value
-          const err = bendyButt.validateSingle(msgVal, previous, hmac_key)
+          const previous = (state[keys.id] || { value: null }).value
+          const err = bendyButt.validateSingle(msgVal, previous, hmacKey)
           if (err) return cb(err)
 
           const msgKey = bendyButt.hash(msgVal)
-          state.feeds[keys.id] = {
+          state[keys.id] = {
             id: msgKey,
             value: msgVal,
           }
@@ -536,7 +572,7 @@ exports.init = function (sbot, config) {
     query,
     del,
     deleteFeed,
-    add: debouncer.add,
+    add,
     publish,
     publishAs,
     addOOO,
