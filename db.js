@@ -334,13 +334,14 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function publishAs(keys, x, cb) {
+  function publishAs(keys, content, cb) {
     const guard = guardAgainstDuplicateLogs('publishAs()')
     if (guard) return cb(guard)
 
-    // Classic SSB Feed
-    if (Ref.isFeedId(keys.id)) {
-      const content = x
+    if (!Ref.isFeedId(keys.id)) {
+      return cb(new Error('publishAs() does not support feed format: ' + keys.id))
+    }
+
       onceWhen(
         stateFeedsReady,
         (ready) => ready === true,
@@ -364,32 +365,6 @@ exports.init = function (sbot, config) {
           })
         }
       )
-    }
-    // Bendy butt
-    else if (keys.id.endsWith('.bbfeed-v1')) {
-      const msgVal = x
-
-      onceWhen(
-        stateFeedsReady,
-        (ready) => ready === true,
-        () => {
-          const previous = (state[keys.id] || { value: null }).value
-          const err = bendyButt.validateSingle(msgVal, previous, hmacKey)
-          if (err) return cb(err)
-
-          const msgKey = bendyButt.hash(msgVal)
-          state[keys.id] = {
-            id: msgKey,
-            value: msgVal,
-          }
-
-          log.add(msgKey, msgVal, (err, data) => {
-            post.set(data)
-            cb(err, data)
-          })
-        }
-      )
-    } else throw new Error('Unknown feed format: ' + keys.id)
   }
 
   function del(msgId, cb) {
