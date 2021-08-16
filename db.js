@@ -309,6 +309,19 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('publish()')
     if (guard) return cb(guard)
 
+    publishAs(config.keys, content, cb)
+  }
+
+  function publishAs(keys, content, cb) {
+    const guard = guardAgainstDuplicateLogs('publishAs()')
+    if (guard) return cb(guard)
+
+    if (!Ref.isFeedId(keys.id)) {
+      return cb(
+        new Error('publishAs() does not support feed format: ' + keys.id)
+      )
+    }
+
     onceWhen(
       stateFeedsReady,
       (ready) => ready === true,
@@ -317,7 +330,7 @@ exports.init = function (sbot, config) {
         const latestKVT = state[config.keys.id]
         const msgVal = validate.create(
           latestKVT ? { queue: [latestKVT] } : null,
-          config.keys,
+          keys,
           hmacKey,
           content,
           Date.now()
@@ -332,39 +345,6 @@ exports.init = function (sbot, config) {
         })
       }
     )
-  }
-
-  function publishAs(keys, content, cb) {
-    const guard = guardAgainstDuplicateLogs('publishAs()')
-    if (guard) return cb(guard)
-
-    if (!Ref.isFeedId(keys.id)) {
-      return cb(new Error('publishAs() does not support feed format: ' + keys.id))
-    }
-
-      onceWhen(
-        stateFeedsReady,
-        (ready) => ready === true,
-        () => {
-          if (content.recps) content = ssbKeys.box(content, content.recps)
-          const latestKVT = state[config.keys.id]
-          const msgVal = validate.create(
-            latestKVT ? { queue: [latestKVT] } : null,
-            keys,
-            hmacKey,
-            content,
-            Date.now()
-          )
-          const kvt = validate.toKeyValueTimestamp(msgVal)
-          log.add(kvt.key, kvt.value, (err, data) => {
-            if (err) return cb(err)
-
-            updateState(kvt)
-            post.set(data)
-            cb(null, data)
-          })
-        }
-      )
   }
 
   function del(msgId, cb) {
