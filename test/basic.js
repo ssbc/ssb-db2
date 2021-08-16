@@ -199,6 +199,73 @@ test('add 3 messages', (t) => {
   )
 })
 
+test('add some bendybutt-v1 messages', (t) => {
+  const mfKeys = ssbKeys.generate()
+  mfKeys.id = mfKeys.id.replace('.ed25519', '.bbfeed-v1')
+  const mainKeys = ssbKeys.generate()
+
+  const bbmsg1 = bendyButt.encodeNew(
+    {
+      type: 'metafeed/add/existing',
+      feedpurpose: 'main',
+      subfeed: mainKeys.id,
+      metafeed: mfKeys.id,
+      tangles: {
+        metafeed: {
+          root: null,
+          previous: null,
+        },
+      },
+    },
+    mainKeys,
+    mfKeys,
+    1, // sequence
+    null, // previous
+    Date.now() // timestamp
+  )
+  const msgVal1 = bendyButt.decode(bbmsg1)
+  const msgKey1 = bendyButt.hash(msgVal1)
+
+  const bbmsg2 = bendyButt.encodeNew(
+    {
+      type: 'metafeed/tombstone',
+      subfeed: mainKeys.id,
+      metafeed: mfKeys.id,
+      tangles: {
+        metafeed: {
+          root: msgKey1,
+          previous: msgKey1,
+        },
+      },
+    },
+    mainKeys,
+    mfKeys,
+    2, // sequence
+    msgKey1, // previous
+    Date.now() // timestamp
+  )
+  const msgVal2 = bendyButt.decode(bbmsg2)
+
+  pull(
+    pull.values([msgVal1, msgVal2]),
+    pull.asyncMap((msgVal, cb) => db.add(msgVal, cb)),
+    pull.collect((err) => {
+      t.error(err)
+      db.onDrain(() => {
+        pull(
+          db.query(where(author(mfKeys.id)), toPullStream()),
+          pull.collect((err2, results) => {
+            t.equals(results.length, 2)
+            t.equal(results[0].value.content.type, 'metafeed/add/existing')
+            t.equal(results[1].value.content.type, 'metafeed/tombstone')
+            t.end()
+          })
+        )
+      })
+    })
+  )
+})
+
 test('validate needs to load', (t) => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }

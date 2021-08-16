@@ -143,7 +143,7 @@ exports.init = function (sbot, config) {
     getHelper(id, false, cb)
   }
 
-  function add(msg, cb) {
+  function add(msgVal, cb) {
     const guard = guardAgainstDuplicateLogs('add()')
     if (guard) return cb(guard)
 
@@ -151,17 +151,34 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        try {
-          state = validate.append(state, hmac_key, msg)
-          if (state.error) return cb(state.error)
-          const kv = state.queue[state.queue.length - 1]
-          log.add(kv.key, kv.value, (err, data) => {
+        if (msgVal.author.endsWith('.ed25519')) {
+          try {
+            state = validate.append(state, hmac_key, msgVal)
+            if (state.error) return cb(state.error)
+            const kv = state.queue[state.queue.length - 1]
+            log.add(kv.key, kv.value, (err, data) => {
+              post.set(data)
+              cb(err, data)
+            })
+          } catch (ex) {
+            return cb(ex)
+          }
+        } else if (msgVal.author.endsWith('.bbfeed-v1')) {
+          const previous = (state.feeds[msgVal.author] || { value: null }).value
+          const err = bendyButt.validateSingle(msgVal, previous, hmac_key)
+          if (err) return cb(err)
+
+          const msgKey = bendyButt.hash(msgVal)
+          state.feeds[msgVal.author] = {
+            id: msgKey,
+            value: msgVal,
+          }
+
+          log.add(msgKey, msgVal, (err, data) => {
             post.set(data)
             cb(err, data)
           })
-        } catch (ex) {
-          return cb(ex)
-        }
+        } else throw new Error('Unknown feed format: ' + msgVal.author)
       }
     )
   }
