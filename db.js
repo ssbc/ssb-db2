@@ -8,6 +8,7 @@ const validate2 =
 const bipf = require('bipf')
 const pull = require('pull-stream')
 const paramap = require('pull-paramap')
+const Ref = require('ssb-ref')
 const Obv = require('obz')
 const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
@@ -302,8 +303,7 @@ exports.init = function (sbot, config) {
     if (guard) return cb(guard)
 
     // Classic SSB Feed
-    if (keys.id.endsWith('.ed25519')) {
-      // FIXME: this endsWith check should be a ssb-ref concern
+    if (Ref.isFeedId(keys.id)) {
       const content = x
       onceWhen(
         stateFeedsReady,
