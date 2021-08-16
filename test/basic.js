@@ -267,7 +267,7 @@ test('publishAs bendy butt', (t) => {
   const mainKeys = ssbKeys.generate()
 
   const content = {
-    type: "metafeed/add",
+    type: "metafeed/add/existing",
     feedpurpose: "main",
     subfeed: mainKeys.id,
     metafeed: mfKeys.id,
@@ -298,7 +298,7 @@ test('publishAs bendy butt', (t) => {
 
     db.get(msg.key, (err, msg) => {
       t.equal(msg.sequence, 1, 'sequence ok')
-      t.equal(msg.content.type, 'metafeed/add')
+      t.equal(msg.content.type, 'metafeed/add/existing')
       sbot.close(t.end)
     })
   })
