@@ -283,7 +283,7 @@ exports.init = function (sbot, config) {
           })
         }
       )
-    } else throw ('Unknown feed format', keys)
+    } else throw new Error('Unknown feed format: ' + keys.id)
   }
 
   function del(msgId, cb) {
