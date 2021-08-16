@@ -230,7 +230,7 @@ exports.init = function (sbot, config) {
     }
   }
 
-  function publish(msg, cb) {
+  function publish(content, cb) {
     const guard = guardAgainstDuplicateLogs('publish()')
     if (guard) return cb(guard)
 
@@ -238,14 +238,14 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        if (msg.recps) msg = ssbKeys.box(msg, msg.recps)
+        if (content.recps) content = ssbKeys.box(content, content.recps)
 
         state.queue = []
         state = validate.appendNew(
           state,
           hmac_key,
           config.keys,
-          msg,
+          content,
           Date.now()
         )
 
@@ -258,13 +258,12 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function publishAs(keys, x, cb) {
+  function publishAs(keys, content, cb) {
     const guard = guardAgainstDuplicateLogs('publishAs()')
     if (guard) return cb(guard)
 
     // Classic SSB Feed
     if (Ref.isFeedId(keys.id)) {
-      const content = x
       onceWhen(
         stateFeedsReady,
         (ready) => ready === true,
@@ -281,32 +280,9 @@ exports.init = function (sbot, config) {
           })
         }
       )
+    } else {
+      throw new Error('publishAs() does not support feed format: ' + keys.id)
     }
-    // Bendy butt
-    else if (keys.id.endsWith('.bbfeed-v1')) {
-      const msgVal = x
-
-      onceWhen(
-        stateFeedsReady,
-        (ready) => ready === true,
-        () => {
-          const previous = (state.feeds[keys.id] || { value: null }).value
-          const err = bendyButt.validateSingle(msgVal, previous, hmac_key)
-          if (err) return cb(err)
-
-          const msgKey = bendyButt.hash(msgVal)
-          state.feeds[keys.id] = {
-            id: msgKey,
-            value: msgVal,
-          }
-
-          log.add(msgKey, msgVal, (err, data) => {
-            post.set(data)
-            cb(err, data)
-          })
-        }
-      )
-    } else throw new Error('Unknown feed format: ' + keys.id)
   }
 
   function del(msgId, cb) {
