@@ -281,7 +281,7 @@ exports.init = function (sbot, config) {
         const msgVal = validate.create(
           latestKVT ? { queue: [latestKVT] } : null,
           config.keys,
-          null,
+          hmacKey,
           content,
           Date.now()
         )
@@ -310,14 +310,21 @@ exports.init = function (sbot, config) {
         (ready) => ready === true,
         () => {
           if (content.recps) content = ssbKeys.box(content, content.recps)
+          const latestKVT = state[config.keys.id]
+          const msgVal = validate.create(
+            latestKVT ? { queue: [latestKVT] } : null,
+            keys,
+            hmacKey,
+            content,
+            Date.now()
+          )
+          const kvt = validate.toKeyValueTimestamp(msgVal)
+          log.add(kvt.key, kvt.value, (err, data) => {
+            if (err) return cb(err)
 
-          state.queue = []
-          state = validate.appendNew(state, null, keys, content, Date.now())
-
-          const kv = state.queue[state.queue.length - 1]
-          log.add(kv.key, kv.value, (err, data) => {
+            updateState(kvt)
             post.set(data)
-            cb(err, data)
+            cb(null, data)
           })
         }
       )
