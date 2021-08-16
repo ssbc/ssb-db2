@@ -248,7 +248,7 @@ test('validate needs to load', (t) => {
 test('publishAs classic', (t) => {
   const keys = ssbKeys.generate()
 
-  const content = { type: "post", text: "hello world!" }
+  const content = { type: 'post', text: 'hello world!' }
 
   db.publishAs(keys, content, (err, msg) => {
     t.error(err, 'no err')
@@ -263,20 +263,20 @@ test('publishAs classic', (t) => {
 test('publishAs bendy butt', (t) => {
   // fake some keys
   const mfKeys = ssbKeys.generate()
-  mfKeys.id = mfKeys.id.replace(".ed25519", ".bbfeed-v1")
+  mfKeys.id = mfKeys.id.replace('.ed25519', '.bbfeed-v1')
   const mainKeys = ssbKeys.generate()
 
   const content = {
-    type: "metafeed/add/existing",
-    feedpurpose: "main",
+    type: 'metafeed/add/existing',
+    feedpurpose: 'main',
     subfeed: mainKeys.id,
     metafeed: mfKeys.id,
     tangles: {
       metafeed: {
         root: null,
-        previous: null
-      }
-    }
+        previous: null,
+      },
+    },
   }
 
   const sequence = 1

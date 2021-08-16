@@ -223,7 +223,13 @@ exports.init = function (sbot, config) {
         if (msg.recps) msg = ssbKeys.box(msg, msg.recps)
 
         state.queue = []
-        state = validate.appendNew(state, hmac_key, config.keys, msg, Date.now())
+        state = validate.appendNew(
+          state,
+          hmac_key,
+          config.keys,
+          msg,
+          Date.now()
+        )
 
         const kv = state.queue[state.queue.length - 1]
         log.add(kv.key, kv.value, (err, data) => {
