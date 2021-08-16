@@ -358,23 +358,25 @@ this method unless you know exactly what you are doing.
 Delete all messages of a specific feedId. Compared to `del` this
 method is safe to use.
 
-### publish(msg, cb)
+### publish(content, cb)
 
-Convenience method for validating and adding a message to the database
-written by the feed running the secret-stack. If message contains
-recps, the message will automatically be encrypted.
+Convenience method for validating and adding a classic SSB message to
+the database written by the feed running the secret-stack. If message
+`content` contains recps, the message will automatically be encrypted.
 
-### publishAs(feedKey, msg, cb)
+### publishAs(feedKeys, content, cb)
 
-Convenience method for validating and adding a message to the database
-written by a different feed than running the secret-stack. If message
-contains recps, the message will automatically be encrypted.
+Convenience method for validating and adding a classic SSB message to
+the database written by a different feed than running the secret-stack.
+If message `content` contains recps, the message will automatically be
+encrypted.
 
-### add(msg, cb)
+### add(msgVal, cb)
 
 Validate and add a message value (without id and timestamp) to the
 database. In the callback will be the stored message (id, timestamp,
-value = original message) or err.
+value = `msgVal`) or err. Supports `msgVal` in SSB classic feeds as
+well as [Bendy Butt] messages
 
 ### addOOOStrictOrder(msg, cb)
 
@@ -447,4 +449,5 @@ const config = {
 [ssb-db]: https://github.com/ssbc/ssb-db/
 [bipf]: https://github.com/ssbc/bipf/
 [jitdb]: https://github.com/ssb-ngi-pointer/jitdb/
+[Bendy Butt]: https://github.com/ssb-ngi-pointer/ssb-bendy-butt
 [ssb-social-index]: https://github.com/ssbc/ssb-social-index
