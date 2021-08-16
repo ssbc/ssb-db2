@@ -248,15 +248,14 @@ exports.init = function (sbot, config) {
         (ready) => ready === true,
         () => {
           if (content.recps) content = ssbKeys.box(content, content.recps)
-
-          state.queue = []
-          state = validate.appendNew(state, hmac_key, keys, content, Date.now())
-
-          const kv = state.queue[state.queue.length - 1]
-          log.add(kv.key, kv.value, (err, data) => {
-            post.set(data)
-            cb(err, data)
-          })
+          const msgVal = validate.create(
+            state.feeds[keys.id],
+            keys,
+            hmac_key,
+            content,
+            Date.now()
+          )
+          add(msgVal, cb)
         }
       )
     } else {
