@@ -7,6 +7,12 @@
     "type": "git",
     "url": "git@github.com:ssb-ngi-pointer/ssb-db2.git"
   },
+  "files": [
+    "*.js",
+    "compat/*.js",
+    "indexes/*.js",
+    "operators/*.js"
+  ],
   "dependencies": {
     "async-append-only-log": "^3.0.8",
     "atomic-file-rw": "^0.2.1",
