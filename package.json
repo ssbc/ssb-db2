@@ -43,7 +43,7 @@
     "ssb-ref": "^2.14.3",
     "ssb-validate": "^4.1.3",
     "ssb-validate2": "~0.1.1",
-    "ssb-validate2-rsjs-node": "~0.6.0",
+    "ssb-validate2-rsjs-node": "^1.0.0",
     "too-hot": "^1.0.0",
     "typedarray-to-buffer": "^4.0.0"
   },
