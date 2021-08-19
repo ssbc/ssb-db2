@@ -358,25 +358,25 @@ this method unless you know exactly what you are doing.
 Delete all messages of a specific feedId. Compared to `del` this
 method is safe to use.
 
-### publish(content, cb)
+### publish(msgContent, cb)
 
 Convenience method for validating and adding a classic SSB message to
 the database written by the feed running the secret-stack. If message
-`content` contains recps, the message will automatically be encrypted.
+`msgContent` contains recps, the message will automatically be encrypted.
 
-### publishAs(feedKeys, content, cb)
+### publishAs(feedKeys, msgContent, cb)
 
 Convenience method for validating and adding a classic SSB message to
 the database written by a different feed than running the secret-stack.
-If message `content` contains recps, the message will automatically be
+If message `msgContent` contains recps, the message will automatically be
 encrypted.
 
-### add(msgVal, cb)
+### add(msgValue, cb)
 
 Validate and add a message value (without id and timestamp) to the
 database. In the callback will be the stored message (id, timestamp,
-value = `msgVal`) or err. Supports `msgVal` in SSB classic feeds as
-well as [Bendy Butt] messages
+value = `msgValue`) or err. Supports `msgValue` in SSB classic feeds
+as well as [Bendy Butt] messages
 
 ### addOOO(msgValue, cb)
 
