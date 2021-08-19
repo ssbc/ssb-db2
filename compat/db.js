@@ -9,6 +9,15 @@ exports.manifest = {
 }
 
 exports.init = function (sbot, config) {
+  sbot.add = sbot.db.add
+  sbot.get = function get(idOrObject, cb) {
+    if (typeof idOrObject === 'object' && idOrObject.meta)
+      sbot.db.getMsg(idOrObject.id, cb)
+    else if (typeof idOrObject === 'object')
+      sbot.db.get(idOrObject.id, cb)
+    else
+      sbot.db.get(idOrObject, cb)
+  }
   sbot.publish = sbot.db.publish
   sbot.whoami = () => ({ id: sbot.id })
   sbot.ready = () => true
