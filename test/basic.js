@@ -349,7 +349,20 @@ test('publishAs classic', (t) => {
 
     db.get(msg.key, (err, msg) => {
       t.equal(msg.content.type, 'post')
-      t.end()
+      t.equal(msg.sequence, 1)
+
+      const content2 = { type: 'post', text: 'hello world 2!' }
+
+      db.publishAs(keys, content2, (err, msg) => {
+        t.error(err, 'no err')
+
+        db.get(msg.key, (err, msg) => {
+          t.equal(msg.content.text, 'hello world 2!')
+          t.equal(msg.sequence, 2)
+      
+          t.end()
+        })
+      })
     })
   })
 })
