@@ -5,6 +5,7 @@ const validate2 =
   typeof localStorage === 'undefined' || localStorage === null
     ? require('ssb-validate2-rsjs-node')
     : require('ssb-validate2')
+const SSBURI = require('ssb-uri2')
 const bipf = require('bipf')
 const pull = require('pull-stream')
 const paramap = require('pull-paramap')
@@ -203,7 +204,7 @@ exports.init = function (sbot, config) {
       () => {
         if (Ref.isFeedId(msgVal.author)) {
           debouncer.add(msgVal, cb)
-        } else if (msgVal.author.endsWith('.bbfeed-v1')) {
+        } else if (SSBURI.isBendyButtV1FeedSSBURI(msgVal.author)) {
           const previous = (state[msgVal.author] || { value: null }).value
           const err = bendyButt.validateSingle(msgVal, previous, hmacKey)
           if (err) return cb(err)
