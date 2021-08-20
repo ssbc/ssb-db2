@@ -5,6 +5,7 @@ const validate2 =
   typeof localStorage === 'undefined' || localStorage === null
     ? require('ssb-validate2-rsjs-node')
     : require('ssb-validate2')
+const SSBURI = require('ssb-uri2')
 const bipf = require('bipf')
 const pull = require('pull-stream')
 const paramap = require('pull-paramap')
@@ -203,13 +204,13 @@ exports.init = function (sbot, config) {
       () => {
         if (Ref.isFeedId(msgVal.author)) {
           debouncer.add(msgVal, cb)
-        } else if (msgVal.author.endsWith('.bbfeed-v1')) {
+        } else if (SSBURI.isBendyButtV1FeedSSBURI(msgVal.author)) {
           const previous = (state[msgVal.author] || { value: null }).value
           const err = bendyButt.validateSingle(msgVal, previous, hmacKey)
           if (err) return cb(err)
 
           const msgKey = bendyButt.hash(msgVal)
-          updateState({key: msgKey, value: msgVal})
+          updateState({ key: msgKey, value: msgVal })
 
           log.add(msgKey, msgVal, (err, kvt) => {
             post.set(kvt)
@@ -236,9 +237,7 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        const latestMsgVal = state[author]
-          ? state[author].value
-          : null
+        const latestMsgVal = state[author] ? state[author].value : null
         validate2.validateBatch(hmacKey, msgVals, latestMsgVal, (err, keys) => {
           if (err) return cb(err)
 
@@ -274,7 +273,7 @@ exports.init = function (sbot, config) {
           : null
         validate2.validateSingle(hmacKey, msgVal, latestMsgVal, (err, key) => {
           if (err) return cb(err)
-          updateState({key, value: msgVal})
+          updateState({ key, value: msgVal })
           log.add(key, msgVal, (err, kvt) => {
             if (err) return cb(err)
 

@@ -8,6 +8,7 @@ const pull = require('pull-stream')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const bendyButt = require('ssb-bendy-butt')
+const SSBURI = require('ssb-uri2')
 
 const { where, author, toPullStream } = require('../operators')
 
@@ -228,7 +229,10 @@ test('add three messages in batch', (t) => {
 
 test('add some bendybutt-v1 messages', (t) => {
   const mfKeys = ssbKeys.generate()
-  mfKeys.id = mfKeys.id.replace('.ed25519', '.bbfeed-v1')
+  const classicUri = SSBURI.fromFeedSigil(mfKeys.id)
+  const { type, /* format, */ data } = SSBURI.decompose(classicUri)
+  const bendybuttUri = SSBURI.compose({ type, format: 'bendybutt-v1', data })
+  mfKeys.id = bendybuttUri
   const mainKeys = ssbKeys.generate()
 
   const bbmsg1 = bendyButt.encodeNew(
@@ -359,7 +363,7 @@ test('publishAs classic', (t) => {
         db.get(msg.key, (err, msg) => {
           t.equal(msg.content.text, 'hello world 2!')
           t.equal(msg.sequence, 2)
-      
+
           t.end()
         })
       })
