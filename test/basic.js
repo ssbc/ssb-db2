@@ -226,6 +226,45 @@ test('add three messages in batch', (t) => {
   })
 })
 
+test('multi batch', (t) => {
+  const rando = ssbKeys.generate()
+  const post7 = { type: 'post', text: 'g' }
+  const post8 = { type: 'post', text: 'h' }
+  const post9 = { type: 'post', text: 'i' }
+  const post10 = { type: 'post', text: 'j' }
+
+  let s = validate.initial()
+
+  s = validate.appendNew(s, null, rando, post7, Date.now() - 4)
+  s = validate.appendNew(s, null, rando, post8, Date.now() - 3)
+  s = validate.appendNew(s, null, rando, post9, Date.now() - 2)
+  s = validate.appendNew(s, null, rando, post10, Date.now() - 1)
+
+  let done = 0
+
+  const pickValue = (kvt) => kvt.value
+
+  const msgVals = s.queue.map(pickValue)
+
+  const batch1 = msgVals.slice(0,2)
+  db.addBatch(batch1, (err, kvts) => {
+    t.error(err, 'no err')
+    t.equals(kvts.length, 2)
+    t.deepEquals(kvts.map(pickValue), batch1)
+    if (++done === 2)
+      t.end()
+  })
+
+  const batch2 = msgVals.slice(2,4)
+  db.addBatch(batch2, (err, kvts) => {
+    t.error(err, 'no err')
+    t.equals(kvts.length, 2)
+    t.deepEquals(kvts.map(pickValue), batch2)
+    if (++done === 2)
+      t.end()
+  })
+})
+
 test('add some bendybutt-v1 messages', (t) => {
   const mfKeys = ssbKeys.generate()
   mfKeys.id = mfKeys.id.replace('.ed25519', '.bbfeed-v1')
