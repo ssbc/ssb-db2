@@ -4,6 +4,8 @@ const path = require('path')
 const fs = require('fs')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
+const bendyButt = require('ssb-bendy-butt')
+const SSBURI = require('ssb-uri2')
 const pull = require('pull-stream')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
@@ -84,6 +86,52 @@ test('execute and(type("post"), author(me))', (t) => {
         t.error(err2, 'no err2')
         t.equal(msgs.length, 1)
         t.equal(msgs[0].value.content.type, 'post')
+        t.end()
+      })
+    )
+  })
+})
+
+test('author() supports bendy butt URIs', (t) => {
+  const mfKeys = ssbKeys.generate()
+  const classicUri = SSBURI.fromFeedSigil(mfKeys.id)
+  const { type, /* format, */ data } = SSBURI.decompose(classicUri)
+  const bendybuttUri = SSBURI.compose({ type, format: 'bendybutt-v1', data })
+  mfKeys.id = bendybuttUri
+  const mainKeys = keys
+
+  const bbmsg1 = bendyButt.encodeNew(
+    {
+      type: 'metafeed/add/existing',
+      feedpurpose: 'main',
+      subfeed: mainKeys.id,
+      metafeed: mfKeys.id,
+      tangles: {
+        metafeed: {
+          root: null,
+          previous: null,
+        },
+      },
+    },
+    mainKeys,
+    mfKeys,
+    1, // sequence
+    null, // previous
+    Date.now() // timestamp
+  )
+  const msgVal = bendyButt.decode(bbmsg1)
+  const msgKey = bendyButt.hash(msgVal)
+
+  db.add(msgVal, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    db.query(
+      where(author(bendybuttUri)),
+      toCallback((err, msgs) => {
+        t.error(err, 'no err')
+        t.equals(msgs.length, 1, 'there is 1 message')
+        t.equals(msgs[0].key, msgKey)
+        t.equals(msgs[0].value.author, bendybuttUri)
         t.end()
       })
     )
