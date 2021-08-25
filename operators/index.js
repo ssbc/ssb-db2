@@ -36,7 +36,7 @@ function type(value) {
 // WARNING: when updating this, be extra careful that the resulting number isn't
 // larger than the smallest ID's length. E.g. classic feed IDs are 53 characters
 // long, and the base64 part ends at character 44, so AUTHOR_PREFIX_OFFSET must
-// be smaller than 44.
+// be smaller than 40 (i.e. 44 - 4).
 const AUTHOR_PREFIX_OFFSET = Math.max(
   '@'.length,
   'ssb:feed/bendybutt-v1/'.length
