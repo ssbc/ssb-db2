@@ -48,6 +48,7 @@ module.exports = function (dir, keys) {
   function loadIndexes(cb) {
     load(encryptedFile, (err, data) => {
       if (err) {
+        debug('failed to load encrypted')
         latestOffset.set(-1)
         stateLoaded.resolve()
         if (err.code === 'ENOENT') cb()
