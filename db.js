@@ -452,10 +452,10 @@ exports.init = function (sbot, config) {
     const waitUntilReady = deferred((meta, cb) => {
       if (sbot.db2migrate) {
         sbot.db2migrate.synchronized((isSynced) => {
-          if (isSynced) log.onDrain(cb)
+          if (isSynced) onDrain(cb)
         })
       } else {
-        log.onDrain(cb)
+        onDrain(cb)
       }
     })
 
