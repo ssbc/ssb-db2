@@ -12,6 +12,7 @@ const ssbKeys = require('ssb-keys')
 const DeferredPromise = require('p-defer')
 const path = require('path')
 const Debug = require('debug')
+const SSBURI = require('ssb-uri2')
 
 const { indexesPath } = require('../defaults')
 
@@ -106,7 +107,7 @@ module.exports = function (dir, sbot, config) {
   function reconstructMessage(record, unboxedContent) {
     const msg = bipf.decode(record.value, 0)
     const originalContent = msg.value.content
-    if (msg.value.author.endsWith('.bbfeed-v1') && Array.isArray(unboxedContent)) {
+    if (SSBURI.isBendyButtV1FeedSSBURI(msg.value.author) && Array.isArray(unboxedContent)) {
       msg.value.content = unboxedContent[0]
       msg.value.contentSignature = unboxedContent[1]
     } else
