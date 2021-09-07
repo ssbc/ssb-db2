@@ -7,20 +7,18 @@ function onceWhen(obv, filter, cb) {
   let answered = false
   let remove
   remove = obv((x) => {
+    if (answered) return
     if (!filter(x)) return
-    if (answered) {
-      if (remove) {
-        remove()
-        remove = null
-      }
-    } else {
-      answered = true
-      if (remove) {
-        remove()
-        remove = null
-      }
-      cb()
-    }
+
+    answered = true
+    cb()
+
+    if (!remove) return
+    setTimeout(() => {
+      if (!remove) return
+      remove()
+      remove = null
+    })
   })
 }
 
