@@ -24,10 +24,17 @@ function key(msgId) {
   })
 }
 
-function type(value) {
-  return equal(seekType, value, {
-    indexType: 'value_content_type',
-  })
+function type(value, opts = { dedicated: true }) {
+  if (opts && opts.dedicated) {
+    return equal(seekType, value, {
+      indexType: 'value_content_type',
+    })
+  } else {
+    return equal(seekType, value, {
+      prefix: 32,
+      indexType: 'value_content_type',
+    })
+  }
 }
 
 // We don't need the author "prefix" to be an actual prefix, it can just be any
@@ -42,7 +49,7 @@ const AUTHOR_PREFIX_OFFSET = Math.max(
   'ssb:feed/bendybutt-v1/'.length
 )
 
-function author(value, opts) {
+function author(value, opts = { dedicated: false }) {
   if (opts && opts.dedicated) {
     return equal(seekAuthor, value, {
       indexType: 'value_author',
