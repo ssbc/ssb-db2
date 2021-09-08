@@ -205,18 +205,10 @@ exports.init = function (sbot, config) {
         if (Ref.isFeedId(msgVal.author)) {
           debouncer.add(msgVal, cb)
         } else if (SSBURI.isBendyButtV1FeedSSBURI(msgVal.author)) {
-          const previous = (state[msgVal.author] || { value: null }).value
-          const err = bendyButt.validateSingle(msgVal, previous, hmacKey)
-          if (err) return cb(err)
-
-          const msgKey = bendyButt.hash(msgVal)
-          updateState({ key: msgKey, value: msgVal })
-
-          log.add(msgKey, msgVal, (err, kvt) => {
-            post.set(kvt)
-            cb(err, kvt)
-          })
-        } else throw new Error('Unknown feed format: ' + msgVal.author)
+          addImmediately(msgVal, cb)
+        } else {
+          cb(new Error('Unknown feed format: ' + msgVal.author))
+        }
       }
     )
   }
@@ -262,18 +254,30 @@ exports.init = function (sbot, config) {
   }
 
   function addImmediately(msgVal, cb) {
-    const guard = guardAgainstDuplicateLogs('add()')
+    const guard = guardAgainstDuplicateLogs('addImmediately()')
     if (guard) return cb(guard)
 
     onceWhen(
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        const latestMsgVal = state[msgVal.author]
-          ? state[msgVal.author].value
-          : null
-        validate2.validateSingle(hmacKey, msgVal, latestMsgVal, (err, key) => {
+        if (Ref.isFeedId(msgVal.author)) {
+          const previous = (state[msgVal.author] || { value: null }).value
+          validate2.validateSingle(hmacKey, msgVal, previous, (err, key) => {
+            if (err) return cb(err)
+            updateState({ key, value: msgVal })
+            log.add(key, msgVal, (err, kvt) => {
+              if (err) return cb(err)
+
+              post.set(kvt)
+              cb(null, kvt)
+            })
+          })
+        } else if (SSBURI.isBendyButtV1FeedSSBURI(msgVal.author)) {
+          const previous = (state[msgVal.author] || { value: null }).value
+          const err = bendyButt.validateSingle(msgVal, previous, hmacKey)
           if (err) return cb(err)
+          const key = bendyButt.hash(msgVal)
           updateState({ key, value: msgVal })
           log.add(key, msgVal, (err, kvt) => {
             if (err) return cb(err)
@@ -281,7 +285,9 @@ exports.init = function (sbot, config) {
             post.set(kvt)
             cb(null, kvt)
           })
-        })
+        } else {
+          cb(new Error('Unknown feed format: ' + msgVal.author))
+        }
       }
     )
   }

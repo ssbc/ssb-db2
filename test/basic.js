@@ -247,22 +247,20 @@ test('multi batch', (t) => {
 
   const msgVals = s.queue.map(pickValue)
 
-  const batch1 = msgVals.slice(0,2)
+  const batch1 = msgVals.slice(0, 2)
   db.addBatch(batch1, (err, kvts) => {
     t.error(err, 'no err')
     t.equals(kvts.length, 2)
     t.deepEquals(kvts.map(pickValue), batch1)
-    if (++done === 2)
-      t.end()
+    if (++done === 2) t.end()
   })
 
-  const batch2 = msgVals.slice(2,4)
+  const batch2 = msgVals.slice(2, 4)
   db.addBatch(batch2, (err, kvts) => {
     t.error(err, 'no err')
     t.equals(kvts.length, 2)
     t.deepEquals(kvts.map(pickValue), batch2)
-    if (++done === 2)
-      t.end()
+    if (++done === 2) t.end()
   })
 })
 
@@ -334,6 +332,22 @@ test('add some bendybutt-v1 messages', (t) => {
       })
     })
   )
+})
+
+test('cannot add() gabbygrove-v1 messages (yet)', (t) => {
+  const ggKeys = ssbKeys.generate()
+  const classicUri = SSBURI.fromFeedSigil(ggKeys.id)
+  const { type, /* format, */ data } = SSBURI.decompose(classicUri)
+  const ggUri = SSBURI.compose({ type, format: 'gabbygrove-v1', data })
+  ggKeys.id = ggUri
+
+  const msgVal = { author: ggUri, the: 1, rest: 2, does: 3, not: 4, matter: 5 }
+
+  db.add(msgVal, (err, x) => {
+    t.match(err.message, /Unknown feed format/, 'expected error')
+    t.notOk(x, 'expected no result')
+    t.end()
+  })
 })
 
 test('validate needs to load', (t) => {
