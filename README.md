@@ -360,15 +360,23 @@ method is safe to use.
 
 ### publish(msgContent, cb)
 
-Convenience method for validating and adding a message to the database
-written by the feed running the secret-stack. If the content contains
-recps, the message will automatically be encrypted.
+Convenience method for validating and adding a classic SSB message to
+the database written by the feed running the secret-stack. If message
+`msgContent` contains recps, the message will automatically be encrypted.
+
+### publishAs(feedKeys, msgContent, cb)
+
+Convenience method for validating and adding a classic SSB message to
+the database written by a different feed than running the secret-stack.
+If message `msgContent` contains recps, the message will automatically be
+encrypted.
 
 ### add(msgValue, cb)
 
 Validate and add a message value (without id and timestamp) to the
 database. In the callback will be the stored message (id, timestamp,
-value = original message) or err.
+value = `msgValue`) or err. Supports `msgValue` in SSB classic feeds
+as well as [Bendy Butt] messages
 
 ### addOOO(msgValue, cb)
 
@@ -449,4 +457,5 @@ const config = {
 [ssb-db]: https://github.com/ssbc/ssb-db/
 [bipf]: https://github.com/ssbc/bipf/
 [jitdb]: https://github.com/ssb-ngi-pointer/jitdb/
+[Bendy Butt]: https://github.com/ssb-ngi-pointer/ssb-bendy-butt
 [ssb-social-index]: https://github.com/ssbc/ssb-social-index

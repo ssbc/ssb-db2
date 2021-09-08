@@ -24,13 +24,32 @@ function key(msgId) {
   })
 }
 
-function type(value) {
-  return equal(seekType, value, {
-    indexType: 'value_content_type',
-  })
+function type(value, opts = { dedicated: true }) {
+  if (opts && opts.dedicated) {
+    return equal(seekType, value, {
+      indexType: 'value_content_type',
+    })
+  } else {
+    return equal(seekType, value, {
+      prefix: 32,
+      indexType: 'value_content_type',
+    })
+  }
 }
 
-function author(value, opts) {
+// We don't need the author "prefix" to be an actual prefix, it can just be any
+// predefined positions in the "information" part of the author ID.
+//
+// WARNING: when updating this, be extra careful that the resulting number isn't
+// larger than the smallest ID's length. E.g. classic feed IDs are 53 characters
+// long, and the base64 part ends at character 44, so AUTHOR_PREFIX_OFFSET must
+// be smaller than 40 (i.e. 44 - 4).
+const AUTHOR_PREFIX_OFFSET = Math.max(
+  '@'.length,
+  'ssb:feed/bendybutt-v1/'.length
+)
+
+function author(value, opts = { dedicated: false }) {
   if (opts && opts.dedicated) {
     return equal(seekAuthor, value, {
       indexType: 'value_author',
@@ -38,8 +57,9 @@ function author(value, opts) {
   } else {
     return equal(seekAuthor, value, {
       prefix: 32,
-      prefixOffset: 1,
+      prefixOffset: AUTHOR_PREFIX_OFFSET,
       indexType: 'value_author',
+      version: 2,
     })
   }
 }

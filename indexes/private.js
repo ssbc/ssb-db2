@@ -29,7 +29,7 @@ module.exports = function (dir, keys) {
     buf.copy(b, 4)
 
     writeFile(filename, b, (err) => {
-      if (err) debug("failed to save file %o, got error %o", filename, err)
+      if (err) debug('failed to save file %o, got error %o', filename, err)
     })
   }
 

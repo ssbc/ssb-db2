@@ -4,6 +4,8 @@ const path = require('path')
 const fs = require('fs')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
+const bendyButt = require('ssb-bendy-butt')
+const SSBURI = require('ssb-uri2')
 const pull = require('pull-stream')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
@@ -42,6 +44,70 @@ const sbot = SecretStack({ appKey: caps.shs })
     path: dir,
   })
 const db = sbot.db
+
+test('dedicated author (opt-in) and dedicated type (default)', (t) => {
+  const post = { type: 'dogs', text: 'Testing!' }
+
+  db.publish(post, (err, postMsg) => {
+    t.error(err, 'no err')
+
+    db.query(
+      where(and(type('dogs'), author(keys.id, { dedicated: true }))),
+      toCallback((err2, msgs) => {
+        t.error(err2, 'no err2')
+        t.equal(msgs.length, 1)
+        t.equal(msgs[0].value.content.type, 'dogs')
+        setTimeout(() => {
+          const dedicatedAuthorIndex = fs
+            .readdirSync(path.join(dir, 'db2', 'indexes'))
+            .find((f) => f.startsWith('value_author_@') && f.endsWith('.index'))
+          t.ok(dedicatedAuthorIndex, 'dedicated author index exists')
+
+          const dedicatedTypeIndex = fs
+            .readdirSync(path.join(dir, 'db2', 'indexes'))
+            .find((f) => f === 'value_content_type_dogs.index')
+          t.ok(dedicatedTypeIndex, 'dedicated type index exists')
+
+          const sharedTypeIndex = fs
+            .readdirSync(path.join(dir, 'db2', 'indexes'))
+            .find((f) => f === 'value_content_type.32prefix')
+          t.notOk(sharedTypeIndex, 'shared type index does NOT exist')
+
+          const sharedAuthorIndex = fs
+            .readdirSync(path.join(dir, 'db2', 'indexes'))
+            .find((f) => f === 'value_author.32prefix')
+          t.notOk(sharedAuthorIndex, 'shared author index does NOT exist')
+
+          t.end()
+        }, 1000)
+      })
+    )
+  })
+})
+
+test('non-dedicated author (default) and non-dedicated type (opt-in)', (t) => {
+  db.query(
+    where(and(type('dogs', { dedicated: false }), author(keys.id))),
+    toCallback((err2, msgs) => {
+      t.error(err2, 'no err2')
+      t.equal(msgs.length, 1)
+      t.equal(msgs[0].value.content.type, 'dogs')
+      setTimeout(() => {
+        const sharedTypeIndex = fs
+          .readdirSync(path.join(dir, 'db2', 'indexes'))
+          .find((f) => f === 'value_content_type.32prefix')
+        t.ok(sharedTypeIndex, 'shared type index exists')
+
+        const sharedAuthorIndex = fs
+          .readdirSync(path.join(dir, 'db2', 'indexes'))
+          .find((f) => f === 'value_author.32prefix')
+        t.ok(sharedAuthorIndex, 'shared author index exists')
+
+        t.end()
+      }, 1000)
+    })
+  )
+})
 
 test('can create a reusable query portion', (t) => {
   const about = { type: 'about', text: 'Testing!' }
@@ -90,25 +156,47 @@ test('execute and(type("post"), author(me))', (t) => {
   })
 })
 
-test('dedicated author index', (t) => {
-  const post = { type: 'dogs', text: 'Testing!' }
+test('author() supports bendy butt URIs', (t) => {
+  const mfKeys = ssbKeys.generate()
+  const classicUri = SSBURI.fromFeedSigil(mfKeys.id)
+  const { type, /* format, */ data } = SSBURI.decompose(classicUri)
+  const bendybuttUri = SSBURI.compose({ type, format: 'bendybutt-v1', data })
+  mfKeys.id = bendybuttUri
+  const mainKeys = keys
 
-  db.publish(post, (err, postMsg) => {
+  const bbmsg1 = bendyButt.encodeNew(
+    {
+      type: 'metafeed/add/existing',
+      feedpurpose: 'main',
+      subfeed: mainKeys.id,
+      metafeed: mfKeys.id,
+      tangles: {
+        metafeed: {
+          root: null,
+          previous: null,
+        },
+      },
+    },
+    mainKeys,
+    mfKeys,
+    1, // sequence
+    null, // previous
+    Date.now() // timestamp
+  )
+  const msgVal = bendyButt.decode(bbmsg1)
+  const msgKey = bendyButt.hash(msgVal)
+
+  db.add(msgVal, (err, postMsg) => {
     t.error(err, 'no err')
 
     db.query(
-      where(and(type('dogs'), author(keys.id, { dedicated: true }))),
-      toCallback((err2, msgs) => {
-        t.error(err2, 'no err2')
-        t.equal(msgs.length, 1)
-        t.equal(msgs[0].value.content.type, 'dogs')
-        setTimeout(() => {
-          const dedicatedIndex = fs
-            .readdirSync(path.join(dir, 'db2', 'indexes'))
-            .find((f) => f.startsWith('value_author_@') && f.endsWith('.index'))
-          t.ok(dedicatedIndex, 'dedicated index exists')
-          t.end()
-        }, 1000)
+      where(author(bendybuttUri)),
+      toCallback((err, msgs) => {
+        t.error(err, 'no err')
+        t.equals(msgs.length, 1, 'there is 1 message')
+        t.equals(msgs[0].key, msgKey)
+        t.equals(msgs[0].value.author, bendybuttUri)
+        t.end()
       })
     )
   })

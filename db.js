@@ -5,17 +5,20 @@ const validate2 =
   typeof localStorage === 'undefined' || localStorage === null
     ? require('ssb-validate2-rsjs-node')
     : require('ssb-validate2')
+const SSBURI = require('ssb-uri2')
 const bipf = require('bipf')
 const pull = require('pull-stream')
 const paramap = require('pull-paramap')
+const Ref = require('ssb-ref')
 const Obv = require('obz')
 const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
-const operators = require('./operators')
+const bendyButt = require('ssb-bendy-butt')
 const JITDb = require('jitdb')
 const Debug = require('debug')
 const multicb = require('multicb')
 
+const operators = require('./operators')
 const { indexesPath } = require('./defaults')
 const { onceWhen } = require('./utils')
 const DebouncingBatchAdd = require('./debounce-batch')
@@ -36,6 +39,7 @@ exports.manifest = {
   get: 'async',
   add: 'async',
   publish: 'async',
+  publishAs: 'async',
   del: 'async',
   deleteFeed: 'async',
   addOOO: 'async',
@@ -166,6 +170,9 @@ exports.init = function (sbot, config) {
     })
   }
 
+  const debouncePeriod = config.db2.addDebounce || 250
+  const debouncer = new DebouncingBatchAdd(addBatch, debouncePeriod)
+
   function addOOOBatch(msgVals, cb) {
     const guard = guardAgainstDuplicateLogs('addOOOBatch()')
     if (guard) return cb(guard)
@@ -187,18 +194,42 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function addBatch(msgVals, cb) {
-    const guard = guardAgainstDuplicateLogs('addBatch()')
+  function add(msgVal, cb) {
+    const guard = guardAgainstDuplicateLogs('add()')
     if (guard) return cb(guard)
 
     onceWhen(
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        const latestMsgVal =
-          msgVals.length > 0 && state[msgVals[0].author]
-            ? state[msgVals[0].author].value
-            : null
+        if (Ref.isFeedId(msgVal.author)) {
+          debouncer.add(msgVal, cb)
+        } else if (SSBURI.isBendyButtV1FeedSSBURI(msgVal.author)) {
+          addImmediately(msgVal, cb)
+        } else {
+          cb(new Error('Unknown feed format: ' + msgVal.author))
+        }
+      }
+    )
+  }
+
+  function addBatch(msgVals, cb) {
+    const guard = guardAgainstDuplicateLogs('addBatch()')
+    if (guard) return cb(guard)
+
+    if (msgVals.length === 0) {
+      return cb(null, [])
+    }
+    const author = msgVals[0].author
+    if (!Ref.isFeedId(author)) {
+      return cb(new Error('addBatch() does not support feed ID ' + author))
+    }
+
+    onceWhen(
+      stateFeedsReady,
+      (ready) => ready === true,
+      () => {
+        const latestMsgVal = state[author] ? state[author].value : null
         validate2.validateBatch(hmacKey, msgVals, latestMsgVal, (err, keys) => {
           if (err) return cb(err)
 
@@ -206,10 +237,11 @@ exports.init = function (sbot, config) {
           for (var i = 0; i < msgVals.length; ++i) {
             const isLast = i === msgVals.length - 1
 
+            if (isLast) updateState({ key: keys[i], value: msgVals[i] })
+
             log.add(keys[i], msgVals[i], (err, kvt) => {
               if (err) return done()(err)
 
-              if (isLast) updateState(kvt)
               post.set(kvt)
               done()(null, kvt)
             })
@@ -222,32 +254,43 @@ exports.init = function (sbot, config) {
   }
 
   function addImmediately(msgVal, cb) {
-    const guard = guardAgainstDuplicateLogs('add()')
+    const guard = guardAgainstDuplicateLogs('addImmediately()')
     if (guard) return cb(guard)
 
     onceWhen(
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        const latestMsgVal = state[msgVal.author]
-          ? state[msgVal.author].value
-          : null
-        validate2.validateSingle(hmacKey, msgVal, latestMsgVal, (err, key) => {
+        if (Ref.isFeedId(msgVal.author)) {
+          const previous = (state[msgVal.author] || { value: null }).value
+          validate2.validateSingle(hmacKey, msgVal, previous, (err, key) => {
+            if (err) return cb(err)
+            updateState({ key, value: msgVal })
+            log.add(key, msgVal, (err, kvt) => {
+              if (err) return cb(err)
+
+              post.set(kvt)
+              cb(null, kvt)
+            })
+          })
+        } else if (SSBURI.isBendyButtV1FeedSSBURI(msgVal.author)) {
+          const previous = (state[msgVal.author] || { value: null }).value
+          const err = bendyButt.validateSingle(msgVal, previous, hmacKey)
           if (err) return cb(err)
+          const key = bendyButt.hash(msgVal)
+          updateState({ key, value: msgVal })
           log.add(key, msgVal, (err, kvt) => {
             if (err) return cb(err)
 
-            updateState({ key, value: msgVal })
             post.set(kvt)
             cb(null, kvt)
           })
-        })
+        } else {
+          cb(new Error('Unknown feed format: ' + msgVal.author))
+        }
       }
     )
   }
-
-  const debouncePeriod = config.db2.addDebounce || 250
-  const debouncer = new DebouncingBatchAdd(addBatch, debouncePeriod)
 
   function addOOO(msgVal, cb) {
     const guard = guardAgainstDuplicateLogs('addOOO()')
@@ -270,27 +313,33 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('publish()')
     if (guard) return cb(guard)
 
+    publishAs(config.keys, content, cb)
+  }
+
+  function publishAs(keys, content, cb) {
+    const guard = guardAgainstDuplicateLogs('publishAs()')
+    if (guard) return cb(guard)
+
+    if (!Ref.isFeedId(keys.id)) {
+      return cb(
+        new Error('publishAs() does not support feed format: ' + keys.id)
+      )
+    }
+
     onceWhen(
       stateFeedsReady,
       (ready) => ready === true,
       () => {
         if (content.recps) content = ssbKeys.box(content, content.recps)
-        const latestKVT = state[config.keys.id]
+        const latestKVT = state[keys.id]
         const msgVal = validate.create(
           latestKVT ? { queue: [latestKVT] } : null,
-          config.keys,
-          null,
+          keys,
+          hmacKey,
           content,
           Date.now()
         )
-        const kvt = validate.toKeyValueTimestamp(msgVal)
-        log.add(kvt.key, kvt.value, (err, data) => {
-          if (err) return cb(err)
-
-          updateState(kvt)
-          post.set(data)
-          cb(null, data)
-        })
+        addImmediately(msgVal, cb)
       }
     )
   }
@@ -475,8 +524,9 @@ exports.init = function (sbot, config) {
     query,
     del,
     deleteFeed,
-    add: debouncer.add,
+    add,
     publish,
+    publishAs,
     addOOO,
     addOOOBatch,
     getStatus: () => status.obv,

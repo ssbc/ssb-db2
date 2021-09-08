@@ -7,6 +7,8 @@ const validate = require('ssb-validate')
 const pull = require('pull-stream')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
+const bendyButt = require('ssb-bendy-butt')
+const SSBURI = require('ssb-uri2')
 
 const { where, author, toPullStream } = require('../operators')
 
@@ -225,6 +227,129 @@ test('add three messages in batch', (t) => {
   })
 })
 
+test('multi batch', (t) => {
+  const rando = ssbKeys.generate()
+  const post7 = { type: 'post', text: 'g' }
+  const post8 = { type: 'post', text: 'h' }
+  const post9 = { type: 'post', text: 'i' }
+  const post10 = { type: 'post', text: 'j' }
+
+  let s = validate.initial()
+
+  s = validate.appendNew(s, null, rando, post7, Date.now() - 4)
+  s = validate.appendNew(s, null, rando, post8, Date.now() - 3)
+  s = validate.appendNew(s, null, rando, post9, Date.now() - 2)
+  s = validate.appendNew(s, null, rando, post10, Date.now() - 1)
+
+  let done = 0
+
+  const pickValue = (kvt) => kvt.value
+
+  const msgVals = s.queue.map(pickValue)
+
+  const batch1 = msgVals.slice(0, 2)
+  db.addBatch(batch1, (err, kvts) => {
+    t.error(err, 'no err')
+    t.equals(kvts.length, 2)
+    t.deepEquals(kvts.map(pickValue), batch1)
+    if (++done === 2) t.end()
+  })
+
+  const batch2 = msgVals.slice(2, 4)
+  db.addBatch(batch2, (err, kvts) => {
+    t.error(err, 'no err')
+    t.equals(kvts.length, 2)
+    t.deepEquals(kvts.map(pickValue), batch2)
+    if (++done === 2) t.end()
+  })
+})
+
+test('add some bendybutt-v1 messages', (t) => {
+  const mfKeys = ssbKeys.generate()
+  const classicUri = SSBURI.fromFeedSigil(mfKeys.id)
+  const { type, /* format, */ data } = SSBURI.decompose(classicUri)
+  const bendybuttUri = SSBURI.compose({ type, format: 'bendybutt-v1', data })
+  mfKeys.id = bendybuttUri
+  const mainKeys = ssbKeys.generate()
+
+  const bbmsg1 = bendyButt.encodeNew(
+    {
+      type: 'metafeed/add/existing',
+      feedpurpose: 'main',
+      subfeed: mainKeys.id,
+      metafeed: mfKeys.id,
+      tangles: {
+        metafeed: {
+          root: null,
+          previous: null,
+        },
+      },
+    },
+    mainKeys,
+    mfKeys,
+    1, // sequence
+    null, // previous
+    Date.now() // timestamp
+  )
+  const msgVal1 = bendyButt.decode(bbmsg1)
+  const msgKey1 = bendyButt.hash(msgVal1)
+
+  const bbmsg2 = bendyButt.encodeNew(
+    {
+      type: 'metafeed/tombstone',
+      subfeed: mainKeys.id,
+      metafeed: mfKeys.id,
+      tangles: {
+        metafeed: {
+          root: msgKey1,
+          previous: msgKey1,
+        },
+      },
+    },
+    mainKeys,
+    mfKeys,
+    2, // sequence
+    msgKey1, // previous
+    Date.now() // timestamp
+  )
+  const msgVal2 = bendyButt.decode(bbmsg2)
+
+  pull(
+    pull.values([msgVal1, msgVal2]),
+    pull.asyncMap((msgVal, cb) => db.add(msgVal, cb)),
+    pull.collect((err) => {
+      t.error(err)
+      db.onDrain(() => {
+        pull(
+          db.query(where(author(mfKeys.id)), toPullStream()),
+          pull.collect((err2, results) => {
+            t.equals(results.length, 2)
+            t.equal(results[0].value.content.type, 'metafeed/add/existing')
+            t.equal(results[1].value.content.type, 'metafeed/tombstone')
+            t.end()
+          })
+        )
+      })
+    })
+  )
+})
+
+test('cannot add() gabbygrove-v1 messages (yet)', (t) => {
+  const ggKeys = ssbKeys.generate()
+  const classicUri = SSBURI.fromFeedSigil(ggKeys.id)
+  const { type, /* format, */ data } = SSBURI.decompose(classicUri)
+  const ggUri = SSBURI.compose({ type, format: 'gabbygrove-v1', data })
+  ggKeys.id = ggUri
+
+  const msgVal = { author: ggUri, the: 1, rest: 2, does: 3, not: 4, matter: 5 }
+
+  db.add(msgVal, (err, x) => {
+    t.match(err.message, /Unknown feed format/, 'expected error')
+    t.notOk(x, 'expected no result')
+    t.end()
+  })
+})
+
 test('validate needs to load', (t) => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }
@@ -262,11 +387,43 @@ test('validate needs to load', (t) => {
             db.publish(post2, (err, msg2) => {
               t.error(err, 'no err')
               t.equal(msg.key, msg2.value.previous)
-              sbot.close(t.end)
+              t.end()
             })
           })
         })
       })
     })
   })
+})
+
+test('publishAs classic', (t) => {
+  const keys = ssbKeys.generate()
+
+  const content = { type: 'post', text: 'hello world!' }
+
+  db.publishAs(keys, content, (err, msg) => {
+    t.error(err, 'no err')
+
+    db.get(msg.key, (err, msg) => {
+      t.equal(msg.content.type, 'post')
+      t.equal(msg.sequence, 1)
+
+      const content2 = { type: 'post', text: 'hello world 2!' }
+
+      db.publishAs(keys, content2, (err, msg) => {
+        t.error(err, 'no err')
+
+        db.get(msg.key, (err, msg) => {
+          t.equal(msg.content.text, 'hello world 2!')
+          t.equal(msg.sequence, 2)
+
+          t.end()
+        })
+      })
+    })
+  })
+})
+
+test('teardown', (t) => {
+  sbot.close(t.end)
 })
