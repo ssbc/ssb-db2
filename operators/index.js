@@ -1,3 +1,4 @@
+const SSBURI = require('ssb-uri2')
 const jitdbOperators = require('jitdb/operators')
 const {
   seekType,
@@ -14,7 +15,7 @@ const {
   seekBranch,
   seekAbout,
 } = require('../seekers')
-const { and, equal, includes, deferred } = jitdbOperators
+const { and, equal, predicate, includes, deferred } = jitdbOperators
 
 function key(msgId) {
   return deferred((meta, cb) => {
@@ -140,6 +141,13 @@ function hasBranch(msgKey) {
   })
 }
 
+function authorIsBendyButtV1() {
+  return predicate(seekAuthor, SSBURI.isBendyButtV1FeedSSBURI, {
+    indexType: 'value_author',
+    name: 'bendybutt-v1',
+  })
+}
+
 function isRoot() {
   return equal(seekRoot, null, {
     indexType: 'value_content_root',
@@ -167,6 +175,7 @@ module.exports = Object.assign({}, jitdbOperators, {
   hasRoot,
   hasFork,
   hasBranch,
+  authorIsBendyButtV1,
   isRoot,
   isPrivate,
   isPublic,

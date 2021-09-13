@@ -10,7 +10,13 @@ const caps = require('ssb-caps')
 const bendyButt = require('ssb-bendy-butt')
 const SSBURI = require('ssb-uri2')
 
-const { where, author, toPullStream } = require('../operators')
+const {
+  where,
+  author,
+  authorIsBendyButtV1,
+  toPullStream,
+  toPromise,
+} = require('../operators')
 
 const dir = '/tmp/ssb-db2-basic'
 
@@ -317,19 +323,18 @@ test('add some bendybutt-v1 messages', (t) => {
   pull(
     pull.values([msgVal1, msgVal2]),
     pull.asyncMap((msgVal, cb) => db.add(msgVal, cb)),
-    pull.collect((err) => {
+    pull.collect(async (err) => {
       t.error(err)
-      db.onDrain(() => {
-        pull(
-          db.query(where(author(mfKeys.id)), toPullStream()),
-          pull.collect((err2, results) => {
-            t.equals(results.length, 2)
-            t.equal(results[0].value.content.type, 'metafeed/add/existing')
-            t.equal(results[1].value.content.type, 'metafeed/tombstone')
-            t.end()
-          })
-        )
-      })
+
+      const results = await db.query(where(author(mfKeys.id)), toPromise())
+      t.equals(results.length, 2)
+      t.equal(results[0].value.content.type, 'metafeed/add/existing')
+      t.equal(results[1].value.content.type, 'metafeed/tombstone')
+
+      const results2 = await db.query(where(authorIsBendyButtV1()), toPromise())
+      t.deepEquals(results2, results, 'authorIsBendyButtV1 works')
+
+      t.end()
     })
   )
 })
