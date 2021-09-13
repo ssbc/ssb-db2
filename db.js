@@ -72,7 +72,7 @@ exports.init = function (sbot, config) {
   const state = {}
 
   sbot.close.hook(function (fn, args) {
-    close(() => {
+    close((err) => {
       fn.apply(this, args)
     })
   })
@@ -489,9 +489,9 @@ exports.init = function (sbot, config) {
       const index = indexes[indexName]
       tasks.push(promisify(index.close.bind(index))())
     }
-    return Promise.all(tasks)
+    Promise.all(tasks)
       .then(() => promisify(log.close)())
-      .then(cb)
+      .then(cb, cb)
   }
 
   // override query() from jitdb to implicitly call fromDB()
