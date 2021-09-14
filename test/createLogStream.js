@@ -81,7 +81,7 @@ test('createLogStream (live)', function (t) {
     })
   )
 
-  setTimeout(db.publish, 1000, { type: 'msg', text: 'hello there!' }, (err) => {
+  setTimeout(db.publish, 1000, { type: 'msg', text: 'Second' }, (err) => {
     if (err) t.fail(err)
   })
 })
@@ -102,9 +102,34 @@ test('createLogStream (live, !sync)', function (t) {
     })
   )
 
-  setTimeout(db.publish, 1000, { type: 'food', text: 'pizza' }, (err) => {
+  setTimeout(db.publish, 1000, { type: 'food', text: 'Third' }, (err) => {
     if (err) t.fail(err)
   })
+})
+
+test('createLogStream (reverse)', function (t) {
+  pull(
+    sbot.createLogStream({ reverse: false }),
+    pull.collect((err, ary) => {
+      t.error(err)
+      t.equal(ary.length, 3)
+      t.equal(ary[0].value.content.text, 'First')
+      t.equal(ary[1].value.content.text, 'Second')
+      t.equal(ary[2].value.content.text, 'Third')
+
+      pull(
+        sbot.createLogStream({ reverse: true }),
+        pull.collect((err, ary) => {
+          t.error(err)
+          t.equal(ary.length, 3)
+          t.equal(ary[0].value.content.text, 'Third')
+          t.equal(ary[1].value.content.text, 'Second')
+          t.equal(ary[2].value.content.text, 'First')
+          t.end()
+        })
+      )
+    })
+  )
 })
 
 test('createLogStream (limit)', function (t) {
