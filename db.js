@@ -508,7 +508,7 @@ exports.init = function (sbot, config) {
       }
     })
 
-    if (first.meta) {
+    if (first && first.meta) {
       return jitdbOperators.query(first, where(waitUntilReady), ...rest)
     } else {
       const ops = fromDB(jitdb)
