@@ -1,6 +1,6 @@
 const pull = require('pull-stream')
 const cat = require('pull-cat')
-const { live, toPullStream } = require('../operators')
+const { descending, live, toPullStream } = require('../operators')
 
 // exports.name is blank to merge into global namespace
 
@@ -18,6 +18,7 @@ exports.init = function (sbot) {
     const optsLive = opts.live === true ? true : false
     const optsOld = opts.old === true ? true : false
     const optsLimit = typeof opts.limit === 'number' ? opts.limit : -1
+    const optsReverse = opts.reverse === true ? true : false
 
     function format(msg) {
       if (!optsKeys && optsValues) return msg.value
@@ -31,7 +32,10 @@ exports.init = function (sbot) {
       else return pull(source, pull.take(optsLimit))
     }
 
-    const old$ = pull(sbot.db.query(toPullStream()), pull.map(format))
+    const old$ = pull(
+      sbot.db.query(optsReverse ? descending() : null, toPullStream()),
+      pull.map(format)
+    )
     const sync$ = pull.values([{ sync: true }])
     const live$ = pull(sbot.db.query(live(), toPullStream()), pull.map(format))
 
