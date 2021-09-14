@@ -107,6 +107,17 @@ test('createLogStream (live, !sync)', function (t) {
   })
 })
 
+test('createLogStream (limit)', function (t) {
+  pull(
+    sbot.createLogStream({ limit: 1 }),
+    pull.collect((err, ary) => {
+      t.error(err)
+      t.equal(ary.length, 1)
+      t.end()
+    })
+  )
+})
+
 // TODO
 test.skip('createLogStream (gt)', (t) => {
   const start = timestamp()
