@@ -206,7 +206,19 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        function add(msgKeys, oooKeys) {
+        function add(err, keys) {
+          if (err) return cb(err)
+
+          const [msgKeys, oooKeys] = keys
+
+          if (msgKeys.length > 0) {
+            const lastIndex = msgKeys.length - 1
+            updateState({
+              key: msgKeys[lastIndex],
+              value: msgVals[lastIndex],
+            })
+          }
+
           log.addTransaction(
             msgKeys.concat(oooKeys),
             msgVals.concat(oooMsgVals),
@@ -219,34 +231,24 @@ exports.init = function (sbot, config) {
           )
         }
 
-        validate2.validateOOOBatch(hmacKey, oooMsgVals, (err, oooKeys) => {
-          if (msgVals.length === 0) add([], oooKeys)
-          else {
-            const author = msgVals[0].author
-            if (!Ref.isFeedId(author))
-              return cb(
-                new Error('addTransaction() does not support feed ID ' + author)
-              )
+        const done = multicb({ pluck: 1 })
 
-            const latestMsgVal = state[author] ? state[author].value : null
-            validate2.validateBatch(
-              hmacKey,
-              msgVals,
-              latestMsgVal,
-              (err, msgKeys) => {
-                if (err) return cb(err)
-                else {
-                  const lastIndex = msgKeys.length - 1
-                  updateState({
-                    key: msgKeys[lastIndex],
-                    value: msgVals[lastIndex],
-                  })
-                  add(msgKeys, oooKeys)
-                }
-              }
+        if (msgVals.length > 0) {
+          const author = msgVals[0].author
+          if (!Ref.isFeedId(author))
+            return cb(
+              new Error('addTransaction() does not support feed ID ' + author)
             )
-          }
-        })
+
+          const latestMsgVal = state[author] ? state[author].value : null
+          validate2.validateBatch(hmacKey, msgVals, latestMsgVal, done())
+        } else {
+          done()(null, [])
+        }
+
+        validate2.validateOOOBatch(hmacKey, oooMsgVals, done())
+
+        done(add)
       }
     )
   }
