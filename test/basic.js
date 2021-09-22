@@ -270,6 +270,61 @@ test('multi batch', (t) => {
   })
 })
 
+test('add transaction', (t) => {
+  const rando = ssbKeys.generate()
+  const post11 = { type: 'post', text: 'k' }
+  const post12 = { type: 'post', text: 'l' }
+  const post13 = { type: 'post', text: 'm' }
+
+  let s = validate.initial()
+
+  s = validate.appendNew(s, null, rando, post11, Date.now() - 3)
+  s = validate.appendNew(s, null, rando, post12, Date.now() - 2)
+  s = validate.appendNew(s, null, rando, post13, Date.now() - 1)
+
+  const pickValue = (kvt) => kvt.value
+
+  const msgVals = s.queue.map(pickValue)
+  db.addTransaction(msgVals, null, (err, kvts) => {
+    t.error(err, 'no err')
+    t.equals(kvts.length, 3)
+    t.deepEquals(kvts.map(pickValue), msgVals)
+    t.end()
+  })
+})
+
+test('add transaction ooo', (t) => {
+  const rando = ssbKeys.generate()
+  const post14 = { type: 'post', text: 'o' }
+  const post15 = { type: 'post', text: 'p' }
+  const post16 = { type: 'post', text: 'q' }
+
+  let s = validate.initial()
+
+  s = validate.appendNew(s, null, rando, post14, Date.now() - 3)
+  s = validate.appendNew(s, null, rando, post15, Date.now() - 2)
+  s = validate.appendNew(s, null, rando, post16, Date.now() - 1)
+
+  const pickValue = (kvt) => kvt.value
+
+  const msgVals = s.queue.map(pickValue)
+  db.addTransaction(msgVals.slice(0, 1), msgVals.slice(2, 3), (err, kvts) => {
+    t.error(err, 'no err')
+    t.equals(kvts.length, 2)
+    t.equals(kvts[0].value, msgVals[0])
+    t.equals(kvts[1].value, msgVals[2])
+
+    // to test all the cases of the function, a more realistic example
+    // would have the ooo messages from another feed entirely
+    db.addTransaction(null, msgVals.slice(1, 2), (err, kvts) => {
+      t.error(err, 'no err')
+      t.equals(kvts.length, 1)
+      t.equals(kvts[0].value, msgVals[1])
+      t.end()
+    })
+  })
+})
+
 test('add some bendybutt-v1 messages', (t) => {
   const mfKeys = ssbKeys.generate()
   const classicUri = SSBURI.fromFeedSigil(mfKeys.id)

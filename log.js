@@ -33,6 +33,28 @@ module.exports = function (dir, config, privateIndex) {
     })
   }
 
+  log.addTransaction = function (keys, values, cb) {
+    let buffers = []
+    let kvts = []
+
+    for (let i = 0; i < keys.length; ++i) {
+      const kvt = {
+        key: keys[i],
+        value: values[i],
+        timestamp: Date.now(),
+      }
+      const buf = Buffer.alloc(bipf.encodingLength(kvt))
+      bipf.encode(kvt, buf, 0)
+      buffers.push(buf)
+      kvts.push(kvt)
+    }
+
+    log.appendTransaction(buffers, (err) => {
+      if (err) cb(err)
+      else cb(null, kvts)
+    })
+  }
+
   // monkey-patch log.get to decrypt the msg
   const originalGet = log.get
   log.get = function (offset, cb) {
