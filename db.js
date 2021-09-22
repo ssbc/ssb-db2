@@ -42,6 +42,7 @@ exports.manifest = {
   publishAs: 'async',
   del: 'async',
   deleteFeed: 'async',
+  addTransaction: 'async',
   addOOO: 'async',
   addBatch: 'async',
   addOOOBatch: 'async',
@@ -189,6 +190,62 @@ exports.init = function (sbot, config) {
             log.add(keys[i], msgVals[i], done())
 
           done(cb)
+        })
+      }
+    )
+  }
+
+  function addTransaction(msgVals, oooMsgVals, cb) {
+    const guard = guardAgainstDuplicateLogs('addTransaction()')
+    if (guard) return cb(guard)
+
+    oooMsgVals = oooMsgVals || []
+    msgVals = msgVals || []
+
+    onceWhen(
+      stateFeedsReady,
+      (ready) => ready === true,
+      () => {
+        function add(msgKeys, oooKeys) {
+          log.addTransaction(
+            msgKeys.concat(oooKeys),
+            msgVals.concat(oooMsgVals),
+            (err, kvts) => {
+              if (err) return cb(err)
+
+              kvts.forEach((kvt) => post.set(kvt))
+              cb(null, kvts)
+            }
+          )
+        }
+
+        validate2.validateOOOBatch(hmacKey, oooMsgVals, (err, oooKeys) => {
+          if (msgVals.length === 0) add([], oooKeys)
+          else {
+            const author = msgVals[0].author
+            if (!Ref.isFeedId(author))
+              return cb(
+                new Error('addTransaction() does not support feed ID ' + author)
+              )
+
+            const latestMsgVal = state[author] ? state[author].value : null
+            validate2.validateBatch(
+              hmacKey,
+              msgVals,
+              latestMsgVal,
+              (err, msgKeys) => {
+                if (err) return cb(err)
+                else {
+                  const lastIndex = msgKeys.length - 1
+                  updateState({
+                    key: msgKeys[lastIndex],
+                    value: msgVals[lastIndex],
+                  })
+                  add(msgKeys, oooKeys)
+                }
+              }
+            )
+          }
         })
       }
     )
@@ -527,6 +584,7 @@ exports.init = function (sbot, config) {
     add,
     publish,
     publishAs,
+    addTransaction,
     addOOO,
     addOOOBatch,
     getStatus: () => status.obv,

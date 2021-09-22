@@ -391,6 +391,14 @@ without checking if the previous link is correct, otherwise normal
 validation. This makes it possible to use for partial replication to
 add all contact messages from a feed.
 
+### addTransaction(msgValues, oooMsgValues, cb)
+
+Similar to `addOOOBatch`, except you pass in an array of `msgValues`
+that will be validated in order and an array of `oooMsgValues` that
+will be validated similar to `addOOOBatch`. Finally all the messages
+are added to the database in such a way that either all of them are
+written to disc or none of them are.
+
 ### getStatus
 
 Gets the current db status, same functionality as
