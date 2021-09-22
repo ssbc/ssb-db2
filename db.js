@@ -206,7 +206,24 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        function add(err, keys) {
+        const done = multicb({ pluck: 1 })
+
+        if (msgVals.length > 0) {
+          const author = msgVals[0].author
+          if (!Ref.isFeedId(author))
+            return cb(
+              new Error('addTransaction() does not support feed ID ' + author)
+            )
+
+          const latestMsgVal = state[author] ? state[author].value : null
+          validate2.validateBatch(hmacKey, msgVals, latestMsgVal, done())
+        } else {
+          done()(null, [])
+        }
+
+        validate2.validateOOOBatch(hmacKey, oooMsgVals, done())
+
+        done((err, keys) => {
           if (err) return cb(err)
 
           const [msgKeys, oooKeys] = keys
@@ -229,26 +246,7 @@ exports.init = function (sbot, config) {
               cb(null, kvts)
             }
           )
-        }
-
-        const done = multicb({ pluck: 1 })
-
-        if (msgVals.length > 0) {
-          const author = msgVals[0].author
-          if (!Ref.isFeedId(author))
-            return cb(
-              new Error('addTransaction() does not support feed ID ' + author)
-            )
-
-          const latestMsgVal = state[author] ? state[author].value : null
-          validate2.validateBatch(hmacKey, msgVals, latestMsgVal, done())
-        } else {
-          done()(null, [])
-        }
-
-        validate2.validateOOOBatch(hmacKey, oooMsgVals, done())
-
-        done(add)
+        })
       }
     )
   }
