@@ -321,7 +321,12 @@ exports.init = function (sbot, config) {
         if (Ref.isFeedId(msgVal.author)) {
           const previous = (state[msgVal.author] || { value: null }).value
           validate2.validateSingle(hmacKey, msgVal, previous, (err, key) => {
-            if (err) return cb(err)
+            if (err) {
+              debug(
+                `validation failed for classic message in addImmediately(): ${err.message}`
+              )
+              return cb(err)
+            }
             updateState({ key, value: msgVal })
             log.add(key, msgVal, (err, kvt) => {
               if (err) return cb(err)
