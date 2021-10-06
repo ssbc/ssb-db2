@@ -333,7 +333,12 @@ exports.init = function (sbot, config) {
         } else if (SSBURI.isBendyButtV1FeedSSBURI(msgVal.author)) {
           const previous = (state[msgVal.author] || { value: null }).value
           const err = bendyButt.validateSingle(msgVal, previous, hmacKey)
-          if (err) return cb(err)
+          if (err) {
+            debug(
+              `validation failed for bendy butt message in addImmediately(): ${err.message}`
+            )
+            return cb(err)
+          }
           const key = bendyButt.hash(msgVal)
           updateState({ key, value: msgVal })
           log.add(key, msgVal, (err, kvt) => {
