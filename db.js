@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 Anders Rune Jensen
+//
+// SPDX-License-Identifier: LGPL-3.0-only
+
 const push = require('push-stream')
 const ssbKeys = require('ssb-keys')
 const validate = require('ssb-validate') // TODO: remove this eventually

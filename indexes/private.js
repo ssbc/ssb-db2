@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 Anders Rune Jensen
+//
+// SPDX-License-Identifier: LGPL-3.0-only
+
 const Obv = require('obz')
 const bipf = require('bipf')
 const fic = require('fastintcompression')

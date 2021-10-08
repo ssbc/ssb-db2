@@ -1,11 +1,7 @@
 # SPDX-FileCopyrightText: 2021 Anders Rune Jensen
+# SPDX-FileCopyrightText: 2021 Andre 'Staltz' Medeiros
 #
 # SPDX-License-Identifier: Unlicense
 
-.vscode
-node_modules
-pnpm-lock.yaml
-*~
-
-# For misc scripts and experiments:
-/gitignored
+semi: false
+singleQuote: true

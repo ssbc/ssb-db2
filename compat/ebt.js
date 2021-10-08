@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 Anders Rune Jensen
+//
+// SPDX-License-Identifier: LGPL-3.0-only
+
 const pull = require('pull-stream')
 const EBTIndex = require('../indexes/ebt')
 const { onceWhen } = require('../utils')

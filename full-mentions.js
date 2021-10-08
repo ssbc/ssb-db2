@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 Anders Rune Jensen
+//
+// SPDX-License-Identifier: LGPL-3.0-only
+
 const FullMentionsIndex = require('./indexes/full-mentions')
 const fullMentions = require('./operators/full-mentions')
 

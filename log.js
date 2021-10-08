@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 Anders Rune Jensen
+//
+// SPDX-License-Identifier: LGPL-3.0-only
+
 const OffsetLog = require('async-append-only-log')
 const bipf = require('bipf')
 const TooHot = require('too-hot')

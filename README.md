@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2021 Anders Rune Jensen
+
+SPDX-License-Identifier: CC0-1.0
+-->
+
 # SSB-DB2
 
 SSB-DB2 is a new database for secure-scuttlebutt, it is meant as a

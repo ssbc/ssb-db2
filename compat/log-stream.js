@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 Anders Rune Jensen
+//
+// SPDX-License-Identifier: LGPL-3.0-only
+
 const pull = require('pull-stream')
 const cat = require('pull-cat')
 const { descending, live, toPullStream } = require('../operators')

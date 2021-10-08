@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 Anders Rune Jensen
+//
+// SPDX-License-Identifier: Unlicense
+
 // add a bunch of message, add index see that it indexes correctly
 
 // add messages after the index has been created, also test indexSync

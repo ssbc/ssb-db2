@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 Anders Rune Jensen
+//
+// SPDX-License-Identifier: LGPL-3.0-only
+
 const pull = require('pull-stream')
 const pullCont = require('pull-cont')
 const ref = require('ssb-ref')

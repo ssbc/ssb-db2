@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 Anders Rune Jensen
+//
+// SPDX-License-Identifier: LGPL-3.0-only
+
 const SSBURI = require('ssb-uri2')
 const jitdbOperators = require('jitdb/operators')
 const {

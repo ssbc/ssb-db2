@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2021 Anders Rune Jensen
+
+SPDX-License-Identifier: CC0-1.0
+-->
+
 # Example
 
 This page shows some examples of converting from ssb-db (and its various helper modules, ssb-backlinks, ssb-query, etc) to ssb-db2.

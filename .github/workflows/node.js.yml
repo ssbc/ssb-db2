@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2021 Anders Rune Jensen
+#
+# SPDX-License-Identifier: Unlicense
+
 # This workflow will do a clean install of node dependencies, build the source code and run tests across different versions of node
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
 
@@ -10,6 +14,13 @@ on:
     branches: [master]
 
 jobs:
+  licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: REUSE Compliance Check
+        uses: fsfe/reuse-action@v1
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10

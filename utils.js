@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 Anders Rune Jensen
+//
+// SPDX-License-Identifier: LGPL-3.0-only
+
 /**
  * Obv utility to run the `cb` once, as soon as the condition given by
  * `filter` is true.
