@@ -8,7 +8,6 @@ const drainGently = require('pull-drain-gently')
 const FlumeLog = require('flumelog-offset')
 const AsyncLog = require('async-append-only-log')
 const bipf = require('bipf')
-const jsonCodec = require('flumecodec/json')
 const Obv = require('obz')
 const rimraf = require('rimraf')
 const debug = require('debug')('ssb:db2:migrate')
@@ -29,6 +28,30 @@ function makeFileExistsObv(filename) {
   const obv = Obv()
   obv.set(fileExists(filename))
   return obv
+}
+
+// Forked from flumecodec because we have to support
+// bendy butt messages which may contain Buffers
+const jsonCodec = {
+  encode: JSON.stringify,
+  decode(str) {
+    const parsed = JSON.parse(str)
+    const content = parsed.value.content
+    if (
+      typeof content === 'object' &&
+      content.type === 'metafeed/add/derived'
+    ) {
+      for (const key of Object.keys(content)) {
+        const field = content[key]
+        if (field.type === 'Buffer' && Array.isArray(field.data)) {
+          content[key] = Buffer.from(field.data)
+        }
+      }
+    }
+    return parsed
+  },
+  buffer: false,
+  type: 'json',
 }
 
 function getOldLog(sbot, config) {
