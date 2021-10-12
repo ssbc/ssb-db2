@@ -63,7 +63,7 @@ module.exports = class DebouncingBatchAdd {
     }, this.period * 0.5)
   }
 
-  add = (msgVal, cb) => {
+  add(msgVal, cb) {
     const authorId = msgVal.author
     const queue = this.queueByAuthor.get(authorId) || []
     queue.push([msgVal, cb])
