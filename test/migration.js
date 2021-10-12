@@ -23,79 +23,6 @@ mkdirp.sync(dir)
 const M = 10
 const A = 5
 
-test('generate fixture with metafeeds and index feeds', (t) => {
-  rimraf.sync(dir)
-  mkdirp.sync(dir)
-
-  generateFixture({
-    outputDir: dir,
-    seed: 'migrate',
-    messages: M,
-    authors: A,
-    slim: true,
-    indexFeeds: 100,
-    indexFeedTypes: 'post,vote,about,contact',
-  }).then(() => {
-    t.true(
-      fs.existsSync(path.join(dir, 'flume', 'log.offset')),
-      'log.offset was created'
-    )
-    t.end()
-  })
-})
-
-test('migrate fixes buffers in msg.value.content.nonce', (t) => {
-  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
-  const sbot = SecretStack({ appKey: caps.shs })
-    .use(require('../'))
-    .call(null, { keys, path: dir })
-
-  sbot.db2migrate.start()
-
-  pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
-    pull.take(1),
-    pull.collect((err, nums) => {
-      t.error(err)
-      t.equals(nums[nums.length - 1], 1, 'last progress event is one')
-
-      // we need to make sure async-log has written the data
-      sbot.db.getLog().onDrain(() => {
-        t.true(
-          fs.existsSync(path.join(dir, 'db2', 'log.bipf')),
-          'migration done'
-        )
-        sbot.db.query(
-          toCallback((err1, msgs) => {
-            t.error(err1, 'no err')
-            t.equal(msgs.length, M * A + A)
-
-            sbot.db.query(
-              where(type('metafeed/add/derived')),
-              toCallback((err2, msgs) => {
-                t.error(err2, 'no err')
-                t.equal(msgs.length, A * 5, `there are ${A * 5} add/derived`)
-
-                for (const msg of msgs) {
-                  if (msg.value.content.nonce) {
-                    if (!Buffer.isBuffer(msg.value.content.nonce)) {
-                      t.fail('one of the nonces is not a Buffer')
-                      sbot.close(t.end)
-                      return
-                    }
-                  }
-                }
-                t.pass('all Buffers in bendy butt were treated correctly')
-                sbot.close(t.end)
-              })
-            )
-          })
-        )
-      })
-    })
-  )
-})
-
 test('generate fixture with flumelog-offset', (t) => {
   rimraf.sync(dir)
   mkdirp.sync(dir)
@@ -256,8 +183,8 @@ test('test migrate with encrypted messages', (t) => {
       where(and(type('post'), isPrivate())),
       toCallback((err, msgs) => {
         t.error(err, 'no err')
-        t.equal(msgs.length, 1)
-        t.equal(msgs[0].value.content.text, 'super secret')
+        t.equal(msgs.length, 2)
+        t.equal(msgs[1].value.content.text, 'super secret')
         sbot.close(t.end)
       })
     )
@@ -375,6 +302,79 @@ test('migrate does nothing when there is no old log', (t) => {
     fromEvent('ssb:db2:migrate:progress', sbot),
     pull.drain(() => {
       t.fail('we are not supposed to get any migrate progress events')
+    })
+  )
+})
+
+test('generate fixture with metafeeds and index feeds', (t) => {
+  rimraf.sync(dir)
+  mkdirp.sync(dir)
+
+  generateFixture({
+    outputDir: dir,
+    seed: 'migrate',
+    messages: M,
+    authors: A,
+    slim: true,
+    indexFeeds: 100,
+    indexFeedTypes: 'post,vote,about,contact',
+  }).then(() => {
+    t.true(
+      fs.existsSync(path.join(dir, 'flume', 'log.offset')),
+      'log.offset was created'
+    )
+    t.end()
+  })
+})
+
+test('migrate fixes buffers in msg.value.content.nonce', (t) => {
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .call(null, { keys, path: dir })
+
+  sbot.db2migrate.start()
+
+  pull(
+    fromEvent('ssb:db2:migrate:progress', sbot),
+    pull.take(1),
+    pull.collect((err, nums) => {
+      t.error(err)
+      t.equals(nums[nums.length - 1], 1, 'last progress event is one')
+
+      // we need to make sure async-log has written the data
+      sbot.db.getLog().onDrain(() => {
+        t.true(
+          fs.existsSync(path.join(dir, 'db2', 'log.bipf')),
+          'migration done'
+        )
+        sbot.db.query(
+          toCallback((err1, msgs) => {
+            t.error(err1, 'no err')
+            t.equal(msgs.length, M * A + A)
+
+            sbot.db.query(
+              where(type('metafeed/add/derived')),
+              toCallback((err2, msgs) => {
+                t.error(err2, 'no err')
+                t.equal(msgs.length, A * 5, `there are ${A * 5} add/derived`)
+
+                for (const msg of msgs) {
+                  if (msg.value.content.nonce) {
+                    if (!Buffer.isBuffer(msg.value.content.nonce)) {
+                      t.fail('one of the nonces is not a Buffer')
+                      sbot.close(t.end)
+                      return
+                    }
+                  }
+                }
+                t.pass('all Buffers in bendy butt were treated correctly')
+                sbot.close(t.end)
+              })
+            )
+          })
+        )
+      })
     })
   )
 })
