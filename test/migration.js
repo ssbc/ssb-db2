@@ -20,14 +20,91 @@ const dir = '/tmp/ssb-db2-migrate'
 rimraf.sync(dir)
 mkdirp.sync(dir)
 
-const TOTAL = 10
+const M = 10
+const A = 5
 
-test('generate fixture with flumelog-offset', (t) => {
+test('generate fixture with metafeeds and index feeds', (t) => {
+  rimraf.sync(dir)
+  mkdirp.sync(dir)
+
   generateFixture({
     outputDir: dir,
     seed: 'migrate',
-    messages: TOTAL,
-    authors: 5,
+    messages: M,
+    authors: A,
+    slim: true,
+    indexFeeds: 100,
+    indexFeedTypes: 'post,vote,about,contact',
+  }).then(() => {
+    t.true(
+      fs.existsSync(path.join(dir, 'flume', 'log.offset')),
+      'log.offset was created'
+    )
+    t.end()
+  })
+})
+
+test('migrate fixes buffers in msg.value.content.nonce', (t) => {
+  const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .call(null, { keys, path: dir })
+
+  sbot.db2migrate.start()
+
+  pull(
+    fromEvent('ssb:db2:migrate:progress', sbot),
+    pull.take(1),
+    pull.collect((err, nums) => {
+      t.error(err)
+      t.equals(nums[nums.length - 1], 1, 'last progress event is one')
+
+      // we need to make sure async-log has written the data
+      sbot.db.getLog().onDrain(() => {
+        t.true(
+          fs.existsSync(path.join(dir, 'db2', 'log.bipf')),
+          'migration done'
+        )
+        sbot.db.query(
+          toCallback((err1, msgs) => {
+            t.error(err1, 'no err')
+            t.equal(msgs.length, M * A + A)
+
+            sbot.db.query(
+              where(type('metafeed/add/derived')),
+              toCallback((err2, msgs) => {
+                t.error(err2, 'no err')
+                t.equal(msgs.length, A * 5, `there are ${A * 5} add/derived`)
+
+                for (const msg of msgs) {
+                  if (msg.value.content.nonce) {
+                    if (!Buffer.isBuffer(msg.value.content.nonce)) {
+                      t.fail('one of the nonces is not a Buffer')
+                      sbot.close(t.end)
+                      return
+                    }
+                  }
+                }
+                t.pass('all Buffers in bendy butt were treated correctly')
+                sbot.close(t.end)
+              })
+            )
+          })
+        )
+      })
+    })
+  )
+})
+
+test('generate fixture with flumelog-offset', (t) => {
+  rimraf.sync(dir)
+  mkdirp.sync(dir)
+
+  generateFixture({
+    outputDir: dir,
+    seed: 'migrate',
+    messages: M,
+    authors: A,
     slim: true,
   }).then(() => {
     t.true(
@@ -62,7 +139,7 @@ test('migrate moves msgs from old log to new log', (t) => {
         sbot.db.query(
           toCallback((err1, msgs) => {
             t.error(err1, 'no err')
-            t.equal(msgs.length, TOTAL)
+            t.equal(msgs.length, M)
             sbot.close(t.end)
           })
         )
@@ -99,7 +176,7 @@ test('migrate moves msgs from ssb-db to new log', (t) => {
         sbot.db.query(
           toCallback((err1, msgs) => {
             t.error(err1, 'no err')
-            t.equal(msgs.length, TOTAL)
+            t.equal(msgs.length, M)
             sbot.close(t.end)
           })
         )
@@ -130,15 +207,15 @@ test('migrate keeps new log synced with ssb-db being updated', (t) => {
       sbot.db.query(
         toCallback((err1, msgs) => {
           t.error(err1, '1st query suceeded')
-          t.equal(msgs.length, TOTAL, `${TOTAL} msgs`)
+          t.equal(msgs.length, M, `${M} msgs`)
 
           // This should run after the sbot.publish completes
           setTimeout(() => {
             sbot.db.query(
               toCallback((err3, msgs2) => {
                 t.error(err3, '2nd query suceeded')
-                t.equal(msgs2.length, TOTAL + 1, `${TOTAL + 1} msgs`)
-                t.equal(msgs2[TOTAL].value.content.text, 'Extra post')
+                t.equal(msgs2.length, M + 1, `${M + 1} msgs`)
+                t.equal(msgs2[M].value.content.text, 'Extra post')
                 sbot.close(t.end)
               })
             )
@@ -179,8 +256,8 @@ test('test migrate with encrypted messages', (t) => {
       where(and(type('post'), isPrivate())),
       toCallback((err, msgs) => {
         t.error(err, 'no err')
-        t.equal(msgs.length, 2)
-        t.equal(msgs[1].value.content.text, 'super secret')
+        t.equal(msgs.length, 1)
+        t.equal(msgs[0].value.content.text, 'super secret')
         sbot.close(t.end)
       })
     )
@@ -221,7 +298,7 @@ test('regenerate fixture with flumelog-offset', (t) => {
   generateFixture({
     outputDir: dir,
     seed: 'migrate',
-    messages: TOTAL,
+    messages: M,
     authors: 5,
     slim: true,
   }).then(() => {
@@ -269,7 +346,7 @@ test('dangerouslyKillFlumeWhenMigrated and refusing db2.publish()', (t) => {
         sbot.db.query(
           toCallback((err1, msgs) => {
             t.error(err1, 'no err when querying')
-            t.equal(msgs.length, TOTAL, `there are ${TOTAL} msgs`)
+            t.equal(msgs.length, M, `there are ${M} msgs`)
             sbot.close(t.end)
           })
         )
