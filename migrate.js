@@ -37,10 +37,7 @@ const jsonCodec = {
   decode(str) {
     const parsed = JSON.parse(str)
     const content = parsed.value.content
-    if (
-      typeof content === 'object' &&
-      content.type === 'metafeed/add/derived'
-    ) {
+    if (content.type === 'metafeed/add/derived') {
       for (const key of Object.keys(content)) {
         const field = content[key]
         if (field.type === 'Buffer' && Array.isArray(field.data)) {
