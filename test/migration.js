@@ -331,7 +331,7 @@ test('migrate fixes buffers in msg.value.content.nonce', (t) => {
   const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
-    .call(null, { keys, path: dir })
+    .call(null, { keys, path: dir, db2: { _ssbFixtures: true } })
 
   sbot.db2migrate.start()
 

@@ -10,6 +10,7 @@ const AsyncLog = require('async-append-only-log')
 const bipf = require('bipf')
 const Obv = require('obz')
 const rimraf = require('rimraf')
+const jsonCodec = require('flumecodec/json')
 const debug = require('debug')('ssb:db2:migrate')
 const {
   BLOCK_SIZE,
@@ -32,7 +33,7 @@ function makeFileExistsObv(filename) {
 
 // Forked from flumecodec because we have to support
 // bendy butt messages which may contain Buffers
-const jsonCodec = {
+const jsonCodecForSSBFixtures = {
   encode: JSON.stringify,
   decode(str) {
     const parsed = JSON.parse(str)
@@ -54,7 +55,7 @@ const jsonCodec = {
 function getOldLog(sbot, config) {
   const oldLog = FlumeLog(oldLogPath(config.path), {
     blockSize: BLOCK_SIZE,
-    codec: jsonCodec,
+    codec: config.db2._ssbFixtures ? jsonCodecForSSBFixtures : jsonCodec,
   })
   const opts = {
     keys: true,
@@ -62,7 +63,7 @@ function getOldLog(sbot, config) {
     value: true,
     sync: false,
     reverse: false,
-    codec: jsonCodec,
+    codec: config.db2._ssbFixtures ? jsonCodecForSSBFixtures : jsonCodec,
   }
   const getStream = (moreOpts) =>
     oldLog.stream({ old: true, live: false, ...opts, ...moreOpts })
