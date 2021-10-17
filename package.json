@@ -30,6 +30,7 @@
     "level-codec": "^9.0.2",
     "lodash.debounce": "^4.0.8",
     "mkdirp": "^1.0.4",
+    "multicb": "1.2.2",
     "obz": "^1.0.3",
     "p-defer": "^3.0.0",
     "promisify-4loc": "1.0.0",
@@ -54,7 +55,6 @@
   "devDependencies": {
     "husky": "^4.3.0",
     "monotonic-timestamp": "0.0.9",
-    "multicb": "1.2.2",
     "prettier": "^2.1.2",
     "pretty-quick": "^3.1.0",
     "pull-async-filter": "^1.0.0",
