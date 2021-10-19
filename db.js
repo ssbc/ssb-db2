@@ -596,7 +596,7 @@ exports.init = function (sbot, config) {
   }
 
   function reindexOffset(data, cb) {
-    jitdb.reindex(data.seq, data.offset, (err) => {
+    jitdb.reindex(data.offset, (err) => {
       if (err) return cb(err)
 
       for (const indexName in indexes) {
