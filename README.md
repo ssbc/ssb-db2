@@ -410,6 +410,13 @@ written to disc or none of them are.
 Gets the current db status, same functionality as
 [db.status](https://github.com/ssbc/ssb-db#dbstatus) in ssb-db.
 
+### reindexEncrypted(cb)
+
+This function is useful in [ssb-db2-box2] where box2 keys can be added
+at runtime and that changes what messages can be decrypted. Calling
+this function is needed after adding a new key. The function can be
+called multiple times safely.
+
 ## Configuration
 
 You can use ssb-config parameters to configure some aspects of ssb-db2:
@@ -473,3 +480,4 @@ const config = {
 [jitdb]: https://github.com/ssb-ngi-pointer/jitdb/
 [Bendy Butt]: https://github.com/ssb-ngi-pointer/ssb-bendy-butt
 [ssb-social-index]: https://github.com/ssbc/ssb-social-index
+[ssb-db2-box2]: https://github.com/ssb-ngi-pointer/ssb-db2-box2

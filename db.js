@@ -604,7 +604,7 @@ exports.init = function (sbot, config) {
         if (idx.indexesContent()) idx.processRecord(data.record, data.seq)
       }
 
-      cb(null)
+      cb(null, data.offset)
     })
   }
 
