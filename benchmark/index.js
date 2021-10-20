@@ -269,7 +269,7 @@ test('private box2', async (t) => {
               toCallback((err, results) => {
                 const durationQuery2 = Date.now() - startQuery
                 t.pass(`unbox duration second run: ${durationQuery2}ms`)
-                fs.appendFileSync(reportPath, `| unbox 1000 private box2 elements first run | ${durationQuery2}ms |\n`)
+                fs.appendFileSync(reportPath, `| unbox 1000 private box2 elements second run | ${durationQuery2}ms |\n`)
 
                 sbot.close(() => ended.resolve())
               })
