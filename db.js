@@ -608,7 +608,7 @@ exports.init = function (sbot, config) {
     })
   }
 
-  const reindexing = []
+  let reindexing = []
 
   function reindexEncrypted(cb) {
     reindexing.push(cb)
