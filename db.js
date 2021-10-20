@@ -608,8 +608,13 @@ exports.init = function (sbot, config) {
     })
   }
 
-  // FIXME: handle that this can be called multiple times concurrently
+  const reindexing = []
+
   function reindexEncrypted(cb) {
+    reindexing.push(cb)
+    // already indexing
+    if (reindexing.length > 1) return
+
     const offsets = privateIndex.missingDecrypt()
     const keysIndex = indexes['keys']
     const B_KEY = Buffer.from('key')
@@ -645,7 +650,10 @@ exports.init = function (sbot, config) {
           })
         })
       }),
-      push.collect(cb)
+      push.collect((err, result) => {
+        for (let i = 0; i < reindexing.length; ++i) reindexing[i](err, result)
+        reindexing = []
+      })
     )
   }
 
