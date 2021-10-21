@@ -59,7 +59,10 @@ module.exports = function (dir, sbot, config) {
       if (err) {
         debug('failed to load encrypted')
         latestOffset.set(-1)
-        stateLoaded.resolve()
+        if (sbot.box2)
+          sbot.box2.isReady(stateLoaded.resolve)
+        else
+          stateLoaded.resolve()
         if (err.code === 'ENOENT') cb()
         else if (err.message === 'empty file') cb()
         else cb(err)
@@ -80,7 +83,10 @@ module.exports = function (dir, sbot, config) {
         }
 
         latestOffset.set(Math.min(offset, canDecryptOffset))
-        stateLoaded.resolve()
+        if (sbot.box2)
+          sbot.box2.isReady(stateLoaded.resolve)
+        else
+          stateLoaded.resolve()
         debug('loaded offset', latestOffset.value)
 
         cb()
