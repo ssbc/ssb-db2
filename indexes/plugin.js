@@ -39,6 +39,9 @@ module.exports = class Plugin {
       if (processedOffset < 0 || this.level.isClosed()) return cb()
       if (!this.onFlush) this.onFlush = (cb2) => cb2()
 
+      const processedOffsetAtFlush = processedOffset
+      const processedSeqAtFlush = processedSeq
+
       this.onFlush((err) => {
         if (err) return cb(err)
 
@@ -53,12 +56,12 @@ module.exports = class Plugin {
             // 2nd, persist the META because it has its own valueEncoding
             this.level.put(
               META,
-              { version, offset: processedOffset, processed: processedSeq },
+              { version, offset: processedOffsetAtFlush, processed: processedSeqAtFlush },
               { valueEncoding: 'json' },
               (err3) => {
                 if (err3) cb(err3)
                 else {
-                  this.offset.set(processedOffset)
+                  this.offset.set(processedOffsetAtFlush)
                   cb()
                 }
               }
