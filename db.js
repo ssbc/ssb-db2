@@ -602,7 +602,7 @@ exports.init = function (sbot, config) {
 
       for (const indexName in indexes) {
         const idx = indexes[indexName]
-        if (idx.indexesContent()) idx.processRecord(data.record, data.seq)
+        if (idx.indexesContent()) idx.processRecord(data, data.seq)
       }
 
       cb(null, data.offset)
@@ -643,7 +643,7 @@ exports.init = function (sbot, config) {
 
                 const seq = parseInt(seqNum, 10)
 
-                reindexOffset({ offset, seq }, cb)
+                reindexOffset({ offset, seq, value: buf }, cb)
               })
             })
           })
