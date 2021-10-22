@@ -31,6 +31,7 @@
     "lodash.debounce": "^4.0.8",
     "mkdirp": "^1.0.4",
     "multicb": "1.2.2",
+    "mutexify": "^1.3.1",
     "obz": "^1.0.3",
     "p-defer": "^3.0.0",
     "promisify-4loc": "1.0.0",

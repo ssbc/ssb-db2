@@ -21,6 +21,7 @@ const bendyButt = require('ssb-bendy-butt')
 const JITDb = require('jitdb')
 const Debug = require('debug')
 const multicb = require('multicb')
+const mutexify = require('mutexify')
 
 const operators = require('./operators')
 const { indexesPath } = require('./defaults')
@@ -608,53 +609,50 @@ exports.init = function (sbot, config) {
     })
   }
 
-  let reindexing = []
+  const reindexingLock = mutexify()
 
   function reindexEncrypted(cb) {
-    reindexing.push(cb)
-    // already indexing
-    if (reindexing.length > 1) return
+    reindexingLock((unlock) => {
+      const offsets = privateIndex.missingDecrypt()
+      const keysIndex = indexes['keys']
+      const B_KEY = Buffer.from('key')
+      const B_META = Buffer.from('meta')
+      const B_PRIVATE = Buffer.from('private')
 
-    const offsets = privateIndex.missingDecrypt()
-    const keysIndex = indexes['keys']
-    const B_KEY = Buffer.from('key')
-    const B_META = Buffer.from('meta')
-    const B_PRIVATE = Buffer.from('private')
+      push(
+        push.values(offsets),
+        push.asyncMap((offset, cb) => {
+          log.get(offset, (err, buf) => {
+            if (err) return cb(err)
 
-    push(
-      push.values(offsets),
-      push.asyncMap((offset, cb) => {
-        log.get(offset, (err, buf) => {
-          if (err) return cb(err)
+            const pMeta = bipf.seekKey(buf, 0, B_META)
+            if (pMeta < 0) return cb()
+            const pPrivate = bipf.seekKey(buf, pMeta, B_PRIVATE)
+            if (pPrivate < 0) return cb()
 
-          const pMeta = bipf.seekKey(buf, 0, B_META)
-          if (pMeta < 0) return cb()
-          const pPrivate = bipf.seekKey(buf, pMeta, B_PRIVATE)
-          if (pPrivate < 0) return cb()
+            // check if we can decrypt the record
+            if (!bipf.decode(buf, pPrivate)) return cb()
 
-          // check if we can decrypt the record
-          if (!bipf.decode(buf, pPrivate)) return cb()
+            const pKey = bipf.seekKey(buf, 0, B_KEY)
+            if (pKey < 0) return cb()
+            const key = bipf.decode(buf, pKey)
 
-          const pKey = bipf.seekKey(buf, 0, B_KEY)
-          if (pKey < 0) return cb()
-          const key = bipf.decode(buf, pKey)
+            onDrain('keys', () => {
+              keysIndex.getSeq(key, (err, seqNum) => {
+                if (err) return cb(err)
 
-          onDrain('keys', () => {
-            keysIndex.getSeq(key, (err, seqNum) => {
-              if (err) return cb(err)
+                const seq = parseInt(seqNum, 10)
 
-              const seq = parseInt(seqNum, 10)
-
-              reindexOffset({ offset, seq }, cb)
+                reindexOffset({ offset, seq }, cb)
+              })
             })
           })
+        }),
+        push.collect((err, result) => {
+          unlock(cb, err, result)
         })
-      }),
-      push.collect((err, result) => {
-        for (let i = 0; i < reindexing.length; ++i) reindexing[i](err, result)
-        reindexing = []
-      })
-    )
+      )
+    })
   }
 
   return (self = {
