@@ -147,6 +147,6 @@ module.exports = class Plugin {
 
   // used for reindexing encrypted content
   indexesContent() {
-    throw new Error('indexesContent() is missing an implementation')
+    return true
   }
 }

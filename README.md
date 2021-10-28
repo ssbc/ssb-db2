@@ -150,8 +150,10 @@ sbot.db.onDrain('aboutSelf', () => {
 
 It's wise to use JITDB when:
 
-1. You want the query output to be the msg itself, not state derived from msgs
-2. You want the query output ordered by timestamp (either descending or ascending)
+1. You want the query output to be the msg itself, not state derived
+   from msgs
+2. You want the query output ordered by timestamp (either descending
+   or ascending)
 
 There are some cases where the assumptions above are not met. For
 instance, with abouts, we often want to aggregate all `type: "about"`
@@ -197,12 +199,19 @@ exports.init = function (sbot, config) {
 There are three parts you'll always need:
 
 - `constructor`: here you set configurations for the Leveldb index
-  - `log` and `dir` you probably don't need to fiddle with, but you can use `this.log` methods if you know how to use async-append-only-log
-  - `name` is a string that you'll use in `getIndex(name)`, it's also used as a directory name
+  - `log` and `dir` you probably don't need to fiddle with, but you
+    can use `this.log` methods if you know how to use
+    async-append-only-log
+  - `name` is a string that you'll use in `getIndex(name)`, it's also
+    used as a directory name
   - `version`, upon changing, will cause a full rebuild of this index
-  - `keyEncoding` and `valueEncoding` must be strings from [level-codec](https://github.com/Level/codec#builtin-encodings)
-- `processRecord`: here you handle a msg (in [bipf]) and potentially write something to the index using `this.batch.push(leveldbOperation)`
-- **custom method**: this is an API of your own choosing, that allows you to read data from the index
+  - `keyEncoding` and `valueEncoding` must be strings from
+    [level-codec]
+- `processRecord`: here you handle a msg (in [bipf]) and potentially
+  write something to the index using
+  `this.batch.push(leveldbOperation)`
+- **custom method**: this is an API of your own choosing, that allows
+  you to read data from the index
 
 To call your custom methods, you'll have to pick them like this:
 
@@ -210,12 +219,19 @@ To call your custom methods, you'll have to pick them like this:
 sbot.db.getIndex('myindex').myOwnMethodToGetStuff()
 ```
 
-Or you can wrap that in a secret-stack plugin (in the example above, `exports.init` should return an object with the API functions).
+Or you can wrap that in a secret-stack plugin (in the example above,
+`exports.init` should return an object with the API functions).
 
-There are other special methods you can implement in order to add "hooks" in the `Plugin` subclass:
+There are other special methods you can implement in order to add
+"hooks" in the `Plugin` subclass:
 
-- `onLoaded(cb)`: called once, at startup, when the index is successfully loaded from disk and is ready to receive queries
-- `onFlush(cb)`: called when the leveldb index is about to be saved to disk
+- `onLoaded(cb)`: called once, at startup, when the index is
+  successfully loaded from disk and is ready to receive queries
+- `onFlush(cb)`: called when the leveldb index is about to be saved to
+  disk
+- `indexesContent()`: method used when reindexing private group
+  messages to determine if the leveldb index needs to be updated for
+  decrypted messages. The default method returns true.
 
 ### Compatibility plugins
 
@@ -481,3 +497,4 @@ const config = {
 [Bendy Butt]: https://github.com/ssb-ngi-pointer/ssb-bendy-butt
 [ssb-social-index]: https://github.com/ssbc/ssb-social-index
 [ssb-db2-box2]: https://github.com/ssb-ngi-pointer/ssb-db2-box2
+[level-codec]: https://github.com/Level/codec#builtin-encodings
