@@ -50,6 +50,20 @@ test('publish: auto encrypt message with recps', (t) => {
     t.equal(typeof privateMsg.value.content, 'string')
     db.get(privateMsg.key, (err, msg) => {
       t.equal(msg.content.text, 'super secret')
+      t.end()
+    })
+  })
+})
+
+test('publishAs classic', (t) => {
+  let content = { type: 'post', text: 'super secret', recps: [keys.id] }
+
+  db.publishAs(keys, content, (err, privateMsg) => {
+    t.error(err, 'no err')
+
+    t.equal(typeof privateMsg.value.content, 'string')
+    db.get(privateMsg.key, (err, msg) => {
+      t.equal(msg.content.text, 'super secret')
       sbot.close(t.end)
     })
   })

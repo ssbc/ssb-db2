@@ -29,6 +29,10 @@ module.exports = class EBT extends Plugin {
     })
   }
 
+  indexesContent() {
+    return false
+  }
+
   levelKeyToMessage(key, cb) {
     this.level.get(key, (err, offset) => {
       if (err) return cb(err)

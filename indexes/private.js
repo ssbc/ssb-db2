@@ -12,10 +12,11 @@ const ssbKeys = require('ssb-keys')
 const DeferredPromise = require('p-defer')
 const path = require('path')
 const Debug = require('debug')
+const SSBURI = require('ssb-uri2')
 
 const { indexesPath } = require('../defaults')
 
-module.exports = function (dir, keys) {
+module.exports = function (dir, sbot, config) {
   const latestOffset = Obv()
   const stateLoaded = DeferredPromise()
   let encrypted = []
@@ -24,6 +25,10 @@ module.exports = function (dir, keys) {
   const debug = Debug('ssb:db2:private')
 
   const encryptedFile = path.join(indexesPath(dir), 'encrypted.index')
+  // an option is to cache the read keys instead of only where the
+  // messages are, this has an overhead around storage.  The
+  // performance of that is a decrease in unbox time to 50% of
+  // original for box1 and around 75% box2
   const canDecryptFile = path.join(indexesPath(dir), 'canDecrypt.index')
 
   function save(filename, arr) {
@@ -54,7 +59,10 @@ module.exports = function (dir, keys) {
       if (err) {
         debug('failed to load encrypted')
         latestOffset.set(-1)
-        stateLoaded.resolve()
+        if (sbot.box2)
+          sbot.box2.isReady(stateLoaded.resolve)
+        else
+          stateLoaded.resolve()
         if (err.code === 'ENOENT') cb()
         else if (err.message === 'empty file') cb()
         else cb(err)
@@ -75,7 +83,10 @@ module.exports = function (dir, keys) {
         }
 
         latestOffset.set(Math.min(offset, canDecryptOffset))
-        stateLoaded.resolve()
+        if (sbot.box2)
+          sbot.box2.isReady(stateLoaded.resolve)
+        else
+          stateLoaded.resolve()
         debug('loaded offset', latestOffset.value)
 
         cb()
@@ -102,7 +113,12 @@ module.exports = function (dir, keys) {
   function reconstructMessage(record, unboxedContent) {
     const msg = bipf.decode(record.value, 0)
     const originalContent = msg.value.content
-    msg.value.content = unboxedContent
+    if (SSBURI.isBendyButtV1FeedSSBURI(msg.value.author) && Array.isArray(unboxedContent)) {
+      msg.value.content = unboxedContent[0]
+      msg.value.contentSignature = unboxedContent[1]
+    } else
+      msg.value.content = unboxedContent
+
     msg.meta = {
       private: true,
       originalContent,
@@ -117,46 +133,83 @@ module.exports = function (dir, keys) {
 
   const B_VALUE = Buffer.from('value')
   const B_CONTENT = Buffer.from('content')
+  const B_AUTHOR = Buffer.from('author')
+  const B_PREVIOUS = Buffer.from('previous')
+
+  function decryptBox1(ciphertext, keys) {
+    return ssbKeys.unbox(ciphertext, keys)
+  }
+
+  function tryDecryptContent(ciphertext, recBuffer, pValue) {
+    let content = ''
+    if (ciphertext.endsWith('.box')) content = decryptBox1(ciphertext, config.keys)
+    else if (sbot.box2 && ciphertext.endsWith('.box2')) {
+      const pAuthor = bipf.seekKey(recBuffer, pValue, B_AUTHOR)
+      if (pAuthor >= 0) {
+        const author = bipf.decode(recBuffer, pAuthor)
+        const pPrevious = bipf.seekKey(recBuffer, pValue, B_PREVIOUS)
+        if (pPrevious >= 0) {
+          const previousMsg = bipf.decode(recBuffer, pPrevious)
+          content = sbot.box2.decryptBox2(ciphertext, author, previousMsg)
+        }
+      }
+    }
+    return content
+  }
 
   function decrypt(record, streaming) {
     const recOffset = record.offset
     const recBuffer = record.value
     let p = 0 // note you pass in p!
     if (bsb.eq(canDecrypt, recOffset) !== -1) {
-      p = bipf.seekKey(recBuffer, p, B_VALUE)
-      if (p < 0) return record
-      p = bipf.seekKey(recBuffer, p, B_CONTENT)
-      if (p < 0) return record
+      const pValue = bipf.seekKey(recBuffer, p, B_VALUE)
+      if (pValue < 0) return record
+      const pContent = bipf.seekKey(recBuffer, pValue, B_CONTENT)
+      if (pContent < 0) return record
 
-      const unboxedContent = ssbKeys.unbox(bipf.decode(recBuffer, p), keys)
-      if (!unboxedContent) return record
+      const ciphertext = bipf.decode(recBuffer, pContent)
+      const content = tryDecryptContent(ciphertext, recBuffer, pValue)
+      if (!content) return record
 
-      return reconstructMessage(record, unboxedContent)
-    } else if (recOffset > latestOffset.value) {
+      const originalMsg = reconstructMessage(record, content)
+      return originalMsg
+    } else if (recOffset > latestOffset.value || !streaming) {
       if (streaming) latestOffset.set(recOffset)
 
-      p = bipf.seekKey(recBuffer, p, B_VALUE)
-      if (p < 0) return record
-      p = bipf.seekKey(recBuffer, p, B_CONTENT)
-      if (p < 0) return record
+      const pValue = bipf.seekKey(recBuffer, p, B_VALUE)
+      if (pValue < 0) return record
+      const pContent = bipf.seekKey(recBuffer, pValue, B_CONTENT)
+      if (pContent < 0) return record
 
-      const type = bipf.getEncodedType(recBuffer, p)
+      const type = bipf.getEncodedType(recBuffer, pContent)
       if (type !== bipf.types.string) return record
 
-      encrypted.push(recOffset)
-      const unboxedContent = ssbKeys.unbox(bipf.decode(recBuffer, p), keys)
-      if (!unboxedContent) return record
+      const ciphertext = bipf.decode(recBuffer, pContent)
+
+      if (streaming && ciphertext.endsWith('.box2'))
+        encrypted.push(recOffset)
+
+      const content = tryDecryptContent(ciphertext, recBuffer, pValue)
+      if (!content) return record
 
       canDecrypt.push(recOffset)
-      return reconstructMessage(record, unboxedContent)
+      if (!streaming) saveIndexes(() => {})
+      return reconstructMessage(record, content)
     } else {
       return record
     }
   }
 
+  function missingDecrypt() {
+    let canDecryptSet = new Set(canDecrypt)
+
+    return encrypted.filter(x => !canDecryptSet.has(x))
+  }
+
   return {
     latestOffset,
     decrypt,
+    missingDecrypt,
     saveIndexes,
     stateLoaded: stateLoaded.promise,
   }

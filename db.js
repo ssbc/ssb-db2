@@ -21,6 +21,7 @@ const bendyButt = require('ssb-bendy-butt')
 const JITDb = require('jitdb')
 const Debug = require('debug')
 const multicb = require('multicb')
+const mutexify = require('mutexify')
 
 const operators = require('./operators')
 const { indexesPath } = require('./defaults')
@@ -66,7 +67,7 @@ exports.init = function (sbot, config) {
   config.db2 = config.db2 || {}
   const indexes = {}
   const dir = config.path
-  const privateIndex = PrivateIndex(dir, config.keys)
+  const privateIndex = PrivateIndex(dir, sbot, config)
   const log = Log(dir, config, privateIndex)
   const jitdb = JITDb(log, indexesPath(dir))
   const status = Status(log, jitdb)
@@ -314,6 +315,13 @@ exports.init = function (sbot, config) {
     )
   }
 
+  function encryptContent(content) {
+    if (sbot.box2 && content.recps.every(sbot.box2.supportsBox2)) {
+      const feedState = state[config.keys.id]
+      return sbot.box2.encryptClassic(content, feedState ? feedState.key : null)
+    } else return ssbKeys.box(content, content.recps)
+  }
+
   function addImmediately(msgVal, cb) {
     const guard = guardAgainstDuplicateLogs('addImmediately()')
     if (guard) return cb(guard)
@@ -401,7 +409,7 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        if (content.recps) content = ssbKeys.box(content, content.recps)
+        if (content.recps) content = encryptContent(content)
         const latestKVT = state[keys.id]
         const msgVal = validate.create(
           latestKVT ? { queue: [latestKVT] } : null,
@@ -588,6 +596,65 @@ exports.init = function (sbot, config) {
     }
   }
 
+  function reindexOffset(data, cb) {
+    jitdb.reindex(data.offset, (err) => {
+      if (err) return cb(err)
+
+      for (const indexName in indexes) {
+        const idx = indexes[indexName]
+        if (idx.indexesContent()) idx.processRecord(data, data.seq)
+      }
+
+      cb(null, data.offset)
+    })
+  }
+
+  const reindexingLock = mutexify()
+
+  function reindexEncrypted(cb) {
+    reindexingLock((unlock) => {
+      const offsets = privateIndex.missingDecrypt()
+      const keysIndex = indexes['keys']
+      const B_KEY = Buffer.from('key')
+      const B_META = Buffer.from('meta')
+      const B_PRIVATE = Buffer.from('private')
+
+      push(
+        push.values(offsets),
+        push.asyncMap((offset, cb) => {
+          log.get(offset, (err, buf) => {
+            if (err) return cb(err)
+
+            const pMeta = bipf.seekKey(buf, 0, B_META)
+            if (pMeta < 0) return cb()
+            const pPrivate = bipf.seekKey(buf, pMeta, B_PRIVATE)
+            if (pPrivate < 0) return cb()
+
+            // check if we can decrypt the record
+            if (!bipf.decode(buf, pPrivate)) return cb()
+
+            const pKey = bipf.seekKey(buf, 0, B_KEY)
+            if (pKey < 0) return cb()
+            const key = bipf.decode(buf, pKey)
+
+            onDrain('keys', () => {
+              keysIndex.getSeq(key, (err, seqNum) => {
+                if (err) return cb(err)
+
+                const seq = parseInt(seqNum, 10)
+
+                reindexOffset({ offset, seq, value: buf }, cb)
+              })
+            })
+          })
+        }),
+        push.collect((err, result) => {
+          unlock(cb, err, result)
+        })
+      )
+    })
+  }
+
   return (self = {
     // Public API:
     get,
@@ -604,6 +671,7 @@ exports.init = function (sbot, config) {
     getStatus: () => status.obv,
     operators,
     post,
+    reindexEncrypted,
 
     // used for partial replication in browser, will be removed soon!
     setPost: post.set,
