@@ -409,7 +409,13 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        if (content.recps) content = encryptContent(content)
+        if (content.recps) {
+          try {
+            content = encryptContent(content)
+          } catch (ex) {
+            return cb(ex)
+          }
+        }
         const latestKVT = state[keys.id]
         const msgVal = validate.create(
           latestKVT ? { queue: [latestKVT] } : null,
