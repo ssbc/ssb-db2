@@ -460,6 +460,36 @@ test('validate needs to load', (t) => {
   })
 })
 
+test('validate when latest loaded was private message', (t) => {
+  let secretPost = { type: 'post', text: 'Secret stuff', recps: [keys.id] }
+  secretPost = ssbKeys.box(secretPost, [keys.id.substr(1)])
+
+  db.publish(secretPost, (err, msg) => {
+    t.error(err, 'no err')
+
+    db.onDrain(() => {
+      sbot.close(() => {
+        // reload
+        sbot = SecretStack({ appKey: caps.shs })
+          .use(require('../'))
+          .use(require('../compat/ebt'))
+          .call(null, {
+            keys,
+            path: dir,
+          })
+        db = sbot.db
+
+        let normalPost = { type: 'post', text: 'Public stuff'}
+        db.publish(normalPost, (err, msg2) => {
+          t.error(err, 'no err')
+          t.equal(msg.key, msg2.value.previous)
+          t.end()
+        })
+      })
+    })
+  })
+})
+
 test('publishAs classic', (t) => {
   const keys = ssbKeys.generate()
 
