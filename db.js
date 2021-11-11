@@ -119,7 +119,7 @@ exports.init = function (sbot, config) {
   }
 
   function updateState(kvt) {
-    state[kvt.value.author] = kvt
+    state[kvt.value.author] = PrivateIndex.reEncrypt(kvt)
   }
 
   // Crunch stats numbers to produce one number for the "indexing" progress
