@@ -315,10 +315,14 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function encryptContent(content) {
+  function encryptContent(keys, content) {
     if (sbot.box2 && content.recps.every(sbot.box2.supportsBox2)) {
-      const feedState = state[config.keys.id]
-      return sbot.box2.encryptClassic(content, feedState ? feedState.key : null)
+      const feedState = state[keys.id]
+      return sbot.box2.encryptClassic(
+        keys,
+        content,
+        feedState ? feedState.key : null
+      )
     } else return ssbKeys.box(content, content.recps)
   }
 
@@ -411,7 +415,7 @@ exports.init = function (sbot, config) {
       () => {
         if (content.recps) {
           try {
-            content = encryptContent(content)
+            content = encryptContent(keys, content)
           } catch (ex) {
             return cb(ex)
           }
