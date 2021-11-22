@@ -192,7 +192,14 @@ module.exports = function (dir, sbot, config) {
       const content = tryDecryptContent(ciphertext, recBuffer, pValue)
       if (!content) return record
 
-      canDecrypt.push(recOffset)
+      if (!streaming) {
+        // since we use bsb for canDecrypt we need to ensure recOffset
+        // is inserted at the correct place when reindexing
+        const insertLocation = bsb.gt(canDecrypt, recOffset)
+        canDecrypt.splice(insertLocation, 0, recOffset)
+      } else
+        canDecrypt.push(recOffset)
+
       if (!streaming) saveIndexes(() => {})
       return reconstructMessage(record, content)
     } else {
