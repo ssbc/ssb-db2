@@ -195,7 +195,7 @@ module.exports = function (dir, sbot, config) {
       if (!streaming) {
         // since we use bsb for canDecrypt we need to ensure recOffset
         // is inserted at the correct place when reindexing
-        var insertLocation = bsb.gt(canDecrypt, recOffset)
+        const insertLocation = bsb.gt(canDecrypt, recOffset)
         canDecrypt.splice(insertLocation, 0, recOffset)
       } else
         canDecrypt.push(recOffset)
