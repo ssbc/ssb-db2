@@ -28,6 +28,8 @@ are stored in `~/.ssb/db2/indexes/`.
 
 🎥 [Watch a presentation about this new database](https://www.youtube.com/watch?v=efzJheWQey8).
 
+[Read the developer guide](https://dev.scuttlebutt.nz/#/javascript/?id=ssb-db2)
+
 ## Usage
 
 To get the post messages of a specific author, you can do:
