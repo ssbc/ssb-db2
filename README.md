@@ -301,7 +301,10 @@ ssb-db2 comes with migration methods built-in, you can enable them
 (they are off by default!) in your config file (or object):
 
 ```js
+const path = require('path')
 const SecretStack = require('secret-stack')
+const ssbKeys = require('ssb-keys')
+const keys = ssbKeys.loadOrCreateSync(path.join(__dirname, 'secret'))
 
 const config = {
   keys: keys,
