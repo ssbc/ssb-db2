@@ -19,7 +19,7 @@
     "async-append-only-log": "^3.1.0",
     "atomic-file-rw": "^0.2.1",
     "binary-search-bounds": "^2.0.4",
-    "bipf": "1.5.1",
+    "bipf": "^1.5.4",
     "debug": "~4.3.1",
     "fastintcompression": "0.0.4",
     "flumecodec": "0.0.1",

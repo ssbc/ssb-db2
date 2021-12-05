@@ -153,14 +153,13 @@ function authorIsBendyButtV1() {
 }
 
 function isRoot() {
-  return equal(seekRoot, null, {
+  return equal(seekRoot, undefined, {
     indexType: 'value_content_root',
   })
 }
 
-const B_TRUE = Buffer.alloc(1, 1)
 function isPrivate() {
-  return equal(seekPrivate, B_TRUE, { indexType: 'meta_private' })
+  return equal(seekPrivate, true, { indexType: 'meta_private' })
 }
 
 function isPublic() {
