@@ -263,6 +263,16 @@ const sbot = SecretStack({ caps })
   .call(null, {})
 ```
 
+## Secret-stack modules using ssb-db2
+
+The following is a list of modules that works well with ssb-db2:
+
+ - [ssb-threads] for working with post messages as threads
+ - [ssb-suggest-lite] for fetching profiles of authors 
+ - [ssb-friends] for working with the social graph
+ - [ssb-search2] for full-text searching
+ - [ssb-crut] for working with records that can be modified
+
 ## Migrating from ssb-db
 
 The log used underneath ssb-db2 is different than that one in ssb-db,
@@ -503,3 +513,8 @@ const config = {
 [ssb-social-index]: https://github.com/ssbc/ssb-social-index
 [ssb-db2-box2]: https://github.com/ssb-ngi-pointer/ssb-db2-box2
 [level-codec]: https://github.com/Level/codec#builtin-encodings
+[ssb-threads]: https://github.com/ssbc/ssb-threads
+[ssb-suggest-lite]: https://github.com/ssb-ngi-pointer/ssb-suggest-lite
+[ssb-friends]: https://github.com/ssbc/ssb-friends
+[ssb-search2]: https://github.com/staltz/ssb-search2
+[ssb-crut]: https://gitlab.com/ahau/lib/ssb-crut
