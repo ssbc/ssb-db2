@@ -80,7 +80,7 @@ module.exports = function (dir, config, privateIndex) {
     const s = originalStream(opts)
     const originalPipe = s.pipe.bind(s)
     s.pipe = function pipe(o) {
-      let originalWrite = o.write
+      let originalWrite = o.write.bind(o)
       o.write = (record) => {
         const hot = tooHot()
         if (hot && !s.sink.paused) {
