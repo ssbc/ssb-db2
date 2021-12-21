@@ -84,8 +84,8 @@ module.exports = class Plugin {
         if (record.value) this.processRecord(record, processedSeq)
         changes = this.batch.length
         processedSeq++
+        processedOffset = record.offset
       }
-      processedOffset = record.offset
 
       if (changes > chunkSize) this.flush(thenMaybeReportError)
       else if (isLive) liveFlush(thenMaybeReportError)
