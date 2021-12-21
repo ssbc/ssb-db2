@@ -96,15 +96,13 @@ module.exports = class Plugin {
 
       if (status && status.version === version) {
         processedSeq = status.processed
+        processedOffset = status.offset
+        this.offset.set(status.offset)
         if (this.onLoaded) {
           this.onLoaded(() => {
-            processedOffset = status.offset
-            this.offset.set(status.offset)
             this._stateLoaded.resolve()
           })
         } else {
-          processedOffset = status.offset
-          this.offset.set(status.offset)
           this._stateLoaded.resolve()
         }
       } else {
