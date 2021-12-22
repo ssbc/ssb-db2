@@ -40,7 +40,7 @@ module.exports = class Plugin {
     this.batch = []
 
     this.flush = (cb) => {
-      if (processedOffset < 0 || this.level.isClosed()) return cb()
+      if (processedOffset === this.offset.value || this.level.isClosed()) return cb()
       if (!this.onFlush) this.onFlush = (cb2) => cb2()
 
       const processedOffsetAtFlush = processedOffset
@@ -80,12 +80,12 @@ module.exports = class Plugin {
 
     this.onRecord = function onRecord(record, isLive) {
       let changes = 0
-      if (record.offset > this.offset.value) {
+      if (record.offset > processedOffset) {
         if (record.value) this.processRecord(record, processedSeq)
         changes = this.batch.length
         processedSeq++
+        processedOffset = record.offset
       }
-      processedOffset = record.offset
 
       if (changes > chunkSize) this.flush(thenMaybeReportError)
       else if (isLive) liveFlush(thenMaybeReportError)
@@ -96,17 +96,18 @@ module.exports = class Plugin {
 
       if (status && status.version === version) {
         processedSeq = status.processed
+        processedOffset = status.offset
+        this.offset.set(status.offset)
         if (this.onLoaded) {
           this.onLoaded(() => {
-            this.offset.set(status.offset)
             this._stateLoaded.resolve()
           })
         } else {
-          this.offset.set(status.offset)
           this._stateLoaded.resolve()
         }
       } else {
         this.level.clear(() => {
+          processedOffset = -1
           this.offset.set(-1)
           this._stateLoaded.resolve()
         })
