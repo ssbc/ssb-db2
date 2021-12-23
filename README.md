@@ -448,6 +448,15 @@ at runtime and that changes what messages can be decrypted. Calling
 this function is needed after adding a new key. The function can be
 called multiple times safely.
 
+### onDrain(indexName?, cb)
+
+Waits for the index with name `indexName` to be in sync with the main
+log and then call `cb` with no arguments. If `indexName` is not
+provided, the base index will be used. 
+
+The reason we do it this way is that indexes are updated
+asynchronously in order to not block message writing.
+
 ## Configuration
 
 You can use ssb-config parameters to configure some aspects of ssb-db2:
