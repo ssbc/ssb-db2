@@ -160,6 +160,7 @@ module.exports = function (dir, sbot, config) {
   function decrypt(record, streaming) {
     const recOffset = record.offset
     const recBuffer = record.value
+    if (!recBuffer) return record
     let p = 0 // note you pass in p!
     if (bsb.eq(canDecrypt, recOffset) !== -1) {
       const pValue = bipf.seekKey(recBuffer, p, B_VALUE)
