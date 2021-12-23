@@ -17,7 +17,7 @@ mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
-const sbot = SecretStack({ appKey: caps.shs }).use(require('../')).call(null, {
+let sbot = SecretStack({ appKey: caps.shs }).use(require('../')).call(null, {
   keys,
   path: dir,
 })
@@ -64,7 +64,41 @@ test('publishAs classic', (t) => {
     t.equal(typeof privateMsg.value.content, 'string')
     db.get(privateMsg.key, (err, msg) => {
       t.equal(msg.content.text, 'super secret')
-      sbot.close(t.end)
+      t.end()
     })
   })
+})
+
+test('encrypted index can handle deleted records', (t) => {
+  let content = { type: 'post', text: 'super secret', recps: [keys.id] }
+
+  db.publish(content, (err, privateMsg) => {
+    t.error(err, 'no err')
+
+    db.del(privateMsg.key, (err, msg) => {
+      t.error(err, 'no err')
+
+      sbot.close(() => {
+        rimraf.sync(path.join(dir, 'db2', 'indexes', 'canDecrypt.index'))
+        rimraf.sync(path.join(dir, 'db2', 'indexes', 'encrypted.index'))
+
+        sbot = SecretStack({ appKey: caps.shs })
+          .use(require('../'))
+          .call(null, {
+            keys,
+            path: dir,
+          })
+
+        sbot.db.get(privateMsg.key, (err, msg) => {
+          t.notOk(msg, 'no message')
+          t.true(err.message.includes('Key not found in database'))
+          t.end()
+        })
+      })
+    })
+  })
+})
+
+test('teardown', (t) => {
+  sbot.close(t.end)
 })
