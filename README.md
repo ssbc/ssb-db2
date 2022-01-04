@@ -436,6 +436,13 @@ will be validated similar to `addOOOBatch`. Finally all the messages
 are added to the database in such a way that either all of them are
 written to disc or none of them are.
 
+### post(cb)
+
+Subscribe to any data added to the database. The `cb` will only
+receive one argument, the message added. `post` is an [observable] so
+the latest message added to the database can also be read using
+`ssb.db.post.value`.
+
 ### getStatus
 
 Gets the current db status, same functionality as
