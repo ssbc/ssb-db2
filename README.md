@@ -77,29 +77,6 @@ sbot.db.query(
 )
 ```
 
-### operators
-
-See [operators/index.js](https://github.com/ssb-ngi-pointer/ssb-db2/blob/master/operators/index.js)
-
-Also exposes all [jitDB operators](https://github.com/ssb-ngi-pointer/jitdb#operators)
-
-* type
-* author
-* channel
-* key
-* votesFor
-* contact
-* mentions
-* about
-* hasRoot
-* hasFork
-* hasBranch
-* authorIsBendyButtV1
-* isRoot
-* isPrivate
-* isPublic
-
-
 ### Leveldb plugins
 
 The queries you've seen above use JITDB, but there are some queries
@@ -395,6 +372,7 @@ automatically using `config.db2.automigrate` or manually like this:
 sbot.db2migrate.start()
 ```
 
+
 ## Methods
 
 ### get(msgId, cb)
@@ -544,6 +522,30 @@ const config = {
   }
 }
 ```
+
+### operators
+
+See [operators/index.js](https://github.com/ssb-ngi-pointer/ssb-db2/blob/master/operators/index.js)
+
+Also exposes all [jitDB operators](https://github.com/ssb-ngi-pointer/jitdb#operators)
+
+* type
+* author
+* channel
+* key
+* votesFor
+* contact
+* mentions
+* about
+* hasRoot
+* hasFork
+* hasBranch
+* authorIsBendyButtV1
+* isRoot
+* isPrivate
+* isPublic
+
+---------------------------------------------------------
 
 [ssb-db]: https://github.com/ssbc/ssb-db/
 [bipf]: https://github.com/ssbc/bipf/
