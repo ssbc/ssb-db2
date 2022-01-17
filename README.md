@@ -559,3 +559,5 @@ Also exposes all [jitDB operators](https://github.com/ssb-ngi-pointer/jitdb#oper
 [ssb-friends]: https://github.com/ssbc/ssb-friends
 [ssb-search2]: https://github.com/staltz/ssb-search2
 [ssb-crut]: https://gitlab.com/ahau/lib/ssb-crut
+[operators]: https://github.com/ssb-ngi-pointer/ssb-db2/blob/master/operators/index.js
+[jitDB operators]: https://github.com/ssb-ngi-pointer/jitdb#operators
