@@ -79,7 +79,7 @@ sbot.db.query(
 
 ### operators
 
-See [operators/index.js](https://github.com/planetary-social/ssb-db2/blob/docs/operators/index.js)
+See [operators/index.js](https://github.com/ssb-ngi-pointer/ssb-db2/blob/master/operators/index.js)
 
 Also exposes all [jitDB operators](https://github.com/ssb-ngi-pointer/jitdb#operators)
 
