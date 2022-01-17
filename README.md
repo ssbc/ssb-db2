@@ -77,6 +77,29 @@ sbot.db.query(
 )
 ```
 
+### operators
+
+See [operators/index.js](https://github.com/planetary-social/ssb-db2/blob/docs/operators/index.js)
+
+Also exposes all [jitDB operators](https://github.com/ssb-ngi-pointer/jitdb#operators)
+
+* type
+* author
+* channel
+* key
+* votesFor
+* contact
+* mentions
+* about
+* hasRoot
+* hasFork
+* hasBranch
+* authorIsBendyButtV1
+* isRoot
+* isPrivate
+* isPublic
+
+
 ### Leveldb plugins
 
 The queries you've seen above use JITDB, but there are some queries
