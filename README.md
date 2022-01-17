@@ -522,6 +522,28 @@ const config = {
 }
 ```
 
+## Operators
+
+The following operators are included by default, see
+[operators/index.js] for how they are implemented. Also exposed are
+all [JITDB operators]
+
+* type
+* author
+* channel
+* key
+* votesFor
+* contact
+* mentions
+* about
+* hasRoot
+* hasFork
+* hasBranch
+* authorIsBendyButtV1
+* isRoot
+* isPrivate
+* isPublic
+
 [ssb-db]: https://github.com/ssbc/ssb-db/
 [bipf]: https://github.com/ssbc/bipf/
 [jitdb]: https://github.com/ssb-ngi-pointer/jitdb/
@@ -534,3 +556,5 @@ const config = {
 [ssb-friends]: https://github.com/ssbc/ssb-friends
 [ssb-search2]: https://github.com/staltz/ssb-search2
 [ssb-crut]: https://gitlab.com/ahau/lib/ssb-crut
+[operators/index.js]: https://github.com/ssb-ngi-pointer/ssb-db2/blob/master/operators/index.js
+[JITDB operators]: https://github.com/ssb-ngi-pointer/jitdb#operators
