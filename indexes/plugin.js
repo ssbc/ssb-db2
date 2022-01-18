@@ -107,7 +107,8 @@ module.exports = class Plugin {
         }
       } else {
         this.level.clear(() => {
-          processedOffset = -1
+          // processedSeq & processedOffset have proper defaults
+
           this.offset.set(-1)
           this._stateLoaded.resolve()
         })
