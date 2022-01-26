@@ -63,6 +63,7 @@ exports.manifest = {
 
 exports.init = function (sbot, config) {
   let self
+  let closed = false
   config = config || {}
   config.db2 = config.db2 || {}
   const indexes = {}
@@ -533,6 +534,7 @@ exports.init = function (sbot, config) {
     setTimeout(() => {
       onIndexesStateLoaded(() => {
         log.onDrain(() => {
+          if (closed) return
           const index = indexes[indexName]
           if (!index) return cb('Unknown index:' + indexName)
 
@@ -543,6 +545,7 @@ exports.init = function (sbot, config) {
             cb()
           } else {
             const remove = index.offset(() => {
+              if (closed) return
               if (index.offset.value === log.since.value) {
                 remove()
                 status.updateIndex(indexName, index.offset.value)
@@ -580,6 +583,9 @@ exports.init = function (sbot, config) {
     }
     Promise.all(tasks)
       .then(() => promisify(log.close)())
+      .then(() => {
+        closed = true
+      })
       .then(cb, cb)
   }
 
