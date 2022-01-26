@@ -490,6 +490,29 @@ test('validate when latest loaded was private message', (t) => {
   })
 })
 
+test('onDrain not called after db closed', (t) => {
+  sbot.close(() => {
+    t.pass('closed sbot')
+
+    db.onDrain(() => {
+      t.fail('onDrain called after db closed')
+    })
+
+    setTimeout(() => {
+      sbot = SecretStack({ appKey: caps.shs })
+        .use(require('../'))
+        .use(require('../compat/ebt'))
+        .call(null, {
+          keys,
+          path: dir,
+        })
+      db = sbot.db
+      t.pass('restarted sbot')
+      t.end()
+    }, 200)
+  })
+})
+
 test('publishAs classic', (t) => {
   const keys = ssbKeys.generate()
 
