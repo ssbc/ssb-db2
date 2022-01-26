@@ -38,6 +38,29 @@ let sbot = SecretStack({ appKey: caps.shs })
   })
 let db = sbot.db
 
+test('onDrain not called after db closed', (t) => {
+  sbot.close(() => {
+    t.pass('closed sbot')
+
+    db.onDrain(() => {
+      t.fail('onDrain called after db closed')
+    })
+
+    setTimeout(() => {
+      sbot = SecretStack({ appKey: caps.shs })
+        .use(require('../'))
+        .use(require('../compat/ebt'))
+        .call(null, {
+          keys,
+          path: dir,
+        })
+      db = sbot.db
+      t.pass('restarted sbot')
+      t.end()
+    }, 200)
+  })
+})
+
 test('Base', (t) => {
   const posts = []
   for (var i = 0; i < 30; ++i) posts.push({ type: 'post', text: 'Testing!' })
@@ -479,7 +502,7 @@ test('validate when latest loaded was private message', (t) => {
           })
         db = sbot.db
 
-        let normalPost = { type: 'post', text: 'Public stuff'}
+        let normalPost = { type: 'post', text: 'Public stuff' }
         db.publish(normalPost, (err, msg2) => {
           t.error(err, 'no err')
           t.equal(msg.key, msg2.value.previous)
@@ -487,29 +510,6 @@ test('validate when latest loaded was private message', (t) => {
         })
       })
     })
-  })
-})
-
-test('onDrain not called after db closed', (t) => {
-  sbot.close(() => {
-    t.pass('closed sbot')
-
-    db.onDrain(() => {
-      t.fail('onDrain called after db closed')
-    })
-
-    setTimeout(() => {
-      sbot = SecretStack({ appKey: caps.shs })
-        .use(require('../'))
-        .use(require('../compat/ebt'))
-        .call(null, {
-          keys,
-          path: dir,
-        })
-      db = sbot.db
-      t.pass('restarted sbot')
-      t.end()
-    }, 200)
   })
 })
 
