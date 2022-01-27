@@ -524,6 +524,7 @@ exports.init = function (sbot, config) {
   }
 
   function onDrain(indexName, cb) {
+    if (closed) return
     if (!cb) {
       // default
       cb = indexName
@@ -532,7 +533,9 @@ exports.init = function (sbot, config) {
 
     // setTimeout to make sure extra indexes from secret-stack are also included
     setTimeout(() => {
+      if (closed) return
       onIndexesStateLoaded(() => {
+        if (closed) return
         log.onDrain(() => {
           if (closed) return
           const index = indexes[indexName]
@@ -576,6 +579,7 @@ exports.init = function (sbot, config) {
   if (timer.unref) timer.unref()
 
   function close(cb) {
+    closed = true
     const tasks = []
     for (const indexName in indexes) {
       const index = indexes[indexName]
@@ -583,9 +587,6 @@ exports.init = function (sbot, config) {
     }
     Promise.all(tasks)
       .then(() => promisify(log.close)())
-      .then(() => {
-        closed = true
-      })
       .then(cb, cb)
   }
 
