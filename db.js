@@ -2,6 +2,10 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-only
 
+const os = require('os')
+const path = require('path')
+const rimraf = require('rimraf')
+const mkdirp = require('mkdirp')
 const push = require('push-stream')
 const ssbKeys = require('ssb-keys')
 const validate = require('ssb-validate') // TODO: remove this eventually
@@ -66,6 +70,12 @@ exports.init = function (sbot, config) {
   let closed = false
   config = config || {}
   config.db2 = config.db2 || {}
+  if (config.temp) {
+    const temp = typeof config.temp === 'string' ? config.temp : '' + Date.now()
+    config.path = path.join(os.tmpdir(), temp)
+    rimraf.sync(config.path)
+    mkdirp.sync(config.path)
+  }
   const indexes = {}
   const dir = config.path
   const privateIndex = PrivateIndex(dir, sbot, config)

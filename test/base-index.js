@@ -8,23 +8,13 @@
 
 const test = require('tape')
 const ssbKeys = require('ssb-keys')
-const path = require('path')
-const rimraf = require('rimraf')
-const mkdirp = require('mkdirp')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const pull = require('pull-stream')
 
-const dir = '/tmp/ssb-db2-base-index'
-
-rimraf.sync(dir)
-mkdirp.sync(dir)
-
-const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
-
 const sbot = SecretStack({ appKey: caps.shs }).use(require('../')).call(null, {
-  keys,
-  path: dir,
+  keys: ssbKeys.generate(),
+  temp: 'ssb-db2-base-index',
 })
 const db = sbot.db
 
@@ -69,7 +59,7 @@ test('get latest', (t) => {
     t.error(err, 'no err')
 
     db.onDrain('base', () => {
-      db.getLatest(keys.id, (err, status) => {
+      db.getLatest(sbot.id, (err, status) => {
         t.error(err, 'no err')
         t.equal(status.sequence, postMsg.value.sequence)
         t.true(status.offset > 100)
@@ -93,7 +83,7 @@ test('get all latest', (t) => {
           t.error(err, 'no err')
           t.equals(all.length, 1)
           const { key, value } = all[0]
-          t.equal(key, keys.id)
+          t.equal(key, sbot.id)
           t.equal(value.sequence, postMsg.value.sequence)
           t.true(value.offset > 100)
 
