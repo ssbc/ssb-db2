@@ -5,7 +5,6 @@
 const pull = require('pull-stream')
 const pullCont = require('pull-cont')
 const ref = require('ssb-ref')
-const clarify = require('clarify-error')
 const Hookable = require('hoox')
 const { author } = require('../operators')
 const { reEncrypt } = require('../indexes/private')
@@ -63,12 +62,12 @@ exports.init = function (sbot, config) {
             sbot.db
               .getJITDB()
               .paginate(query, 0, limit, false, false, (err, answer) => {
-                if (err) cb(clarify(err, 'ssb-db2 createHistoryStream failed')) // prettier-ignore
+                if (err) cb(new Error('ssb-db2 createHistoryStream failed: ' + err.message)) // prettier-ignore
                 else cb(null, pull.values(answer.results.map(formatMsg)))
               })
           } else {
             sbot.db.getJITDB().all(query, 0, false, false, (err, results) => {
-              if (err) cb(clarify(err, 'ssb-db2 createHistoryStream failed')) // prettier-ignore
+              if (err) cb(new Error('ssb-db2 createHistoryStream failed: ' + err.message)) // prettier-ignore
               else cb(null, pull.values(results.map(formatMsg)))
             })
           }
