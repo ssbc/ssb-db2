@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 const pull = require('pull-stream')
+const clarify = require('clarify-error')
 
 // exports.name is blank to merge into global namespace
 
@@ -15,12 +16,13 @@ exports.manifest = {
 exports.init = function (sbot, config) {
   sbot.add = sbot.db.add
   sbot.get = function get(idOrObject, cb) {
-    if (typeof idOrObject === 'object' && idOrObject.meta)
+    if (typeof idOrObject === 'object' && idOrObject.meta) {
       sbot.db.getMsg(idOrObject.id, cb)
-    else if (typeof idOrObject === 'object')
+    } else if (typeof idOrObject === 'object') {
       sbot.db.get(idOrObject.id, cb)
-    else
+    } else {
       sbot.db.get(idOrObject, cb)
+    }
   }
   sbot.publish = sbot.db.publish
   sbot.whoami = () => ({ id: sbot.id })
@@ -31,10 +33,7 @@ exports.init = function (sbot, config) {
       pull.asyncMap(sbot.db.add),
       pull.drain(
         () => {},
-        cb ||
-          ((err) => {
-            console.error(`ssb-db2 createWriteStream got an error: ${err}`)
-          })
+        cb || ((err) => console.error(clarify(err, 'ssb-db2 createWriteStream failed to add messages'))) // prettier-ignore
       )
     )
   }

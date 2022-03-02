@@ -5,6 +5,7 @@
 const bipf = require('bipf')
 const pl = require('pull-level')
 const pull = require('pull-stream')
+const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 
 const B_VALUE = Buffer.from('value')
@@ -30,7 +31,8 @@ module.exports = function makeBaseIndex(privateIndex) {
             this.authorLatest.set(key, value)
           },
           (err) => {
-            cb()
+            if (err && err !== true) cb(clarify(err, 'BaseIndex.onLoaded() failed')) // prettier-ignore
+            else cb()
           }
         )
       )
@@ -81,12 +83,13 @@ module.exports = function makeBaseIndex(privateIndex) {
 
     removeFeedFromLatest(feedId, cb) {
       this.flush((err) => {
-        if (err) cb(err)
-        else
+        if (err) cb(clarify(err, 'BaseIndex.removeFeedFromLatest() failed when waiting for flush')) // prettier-ignore
+        else {
           this.level.del(feedId, (err2) => {
-            if (err2) cb(err2)
+            if (err2) cb(clarify(err2, 'BaseIndex.removeFeedFromLatest() failed when deleting')) // prettier-ignore
             else cb()
           })
+        }
       })
     }
   }

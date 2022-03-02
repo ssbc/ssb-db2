@@ -6,6 +6,7 @@ const Obv = require('obz')
 const bipf = require('bipf')
 const fic = require('fastintcompression')
 const bsb = require('binary-search-bounds')
+const clarify = require('clarify-error')
 const { readFile, writeFile } = require('atomic-file-rw')
 const toBuffer = require('typedarray-to-buffer')
 const ssbKeys = require('ssb-keys')
@@ -38,7 +39,7 @@ module.exports = function (dir, sbot, config) {
     buf.copy(b, 4)
 
     writeFile(filename, b, (err) => {
-      if (err) debug('failed to save file %o, got error %o', filename, err)
+      if (err) console.error(clarify(err, 'private plugin failed to save file ' + filename)) // prettier-ignore
     })
   }
 
@@ -59,13 +60,11 @@ module.exports = function (dir, sbot, config) {
       if (err) {
         debug('failed to load encrypted')
         latestOffset.set(-1)
-        if (sbot.box2)
-          sbot.box2.isReady(stateLoaded.resolve)
-        else
-          stateLoaded.resolve()
+        if (sbot.box2) sbot.box2.isReady(stateLoaded.resolve)
+        else stateLoaded.resolve()
         if (err.code === 'ENOENT') cb()
         else if (err.message === 'empty file') cb()
-        else cb(err)
+        else cb(clarify(err, 'private plugin failed to load "encrypted" index')) // prettier-ignore
         return
       }
 
@@ -83,10 +82,8 @@ module.exports = function (dir, sbot, config) {
         }
 
         latestOffset.set(Math.min(offset, canDecryptOffset))
-        if (sbot.box2)
-          sbot.box2.isReady(stateLoaded.resolve)
-        else
-          stateLoaded.resolve()
+        if (sbot.box2) sbot.box2.isReady(stateLoaded.resolve)
+        else stateLoaded.resolve()
         debug('loaded offset', latestOffset.value)
 
         cb()
@@ -113,11 +110,13 @@ module.exports = function (dir, sbot, config) {
   function reconstructMessage(record, unboxedContent) {
     const msg = bipf.decode(record.value, 0)
     const originalContent = msg.value.content
-    if (SSBURI.isBendyButtV1FeedSSBURI(msg.value.author) && Array.isArray(unboxedContent)) {
+    if (
+      SSBURI.isBendyButtV1FeedSSBURI(msg.value.author) &&
+      Array.isArray(unboxedContent)
+    ) {
       msg.value.content = unboxedContent[0]
       msg.value.contentSignature = unboxedContent[1]
-    } else
-      msg.value.content = unboxedContent
+    } else msg.value.content = unboxedContent
 
     msg.meta = {
       private: true,
@@ -142,8 +141,9 @@ module.exports = function (dir, sbot, config) {
 
   function tryDecryptContent(ciphertext, recBuffer, pValue) {
     let content = ''
-    if (ciphertext.endsWith('.box')) content = decryptBox1(ciphertext, config.keys)
-    else if (sbot.box2 && ciphertext.endsWith('.box2')) {
+    if (ciphertext.endsWith('.box')) {
+      content = decryptBox1(ciphertext, config.keys)
+    } else if (sbot.box2 && ciphertext.endsWith('.box2')) {
       const pAuthor = bipf.seekKey(recBuffer, pValue, B_AUTHOR)
       if (pAuthor >= 0) {
         const author = bipf.decode(recBuffer, pAuthor)
@@ -187,8 +187,7 @@ module.exports = function (dir, sbot, config) {
 
       const ciphertext = bipf.decode(recBuffer, pContent)
 
-      if (streaming && ciphertext.endsWith('.box2'))
-        encrypted.push(recOffset)
+      if (streaming && ciphertext.endsWith('.box2')) encrypted.push(recOffset)
 
       const content = tryDecryptContent(ciphertext, recBuffer, pValue)
       if (!content) return record
@@ -198,8 +197,7 @@ module.exports = function (dir, sbot, config) {
         // is inserted at the correct place when reindexing
         const insertLocation = bsb.gt(canDecrypt, recOffset)
         canDecrypt.splice(insertLocation, 0, recOffset)
-      } else
-        canDecrypt.push(recOffset)
+      } else canDecrypt.push(recOffset)
 
       if (!streaming) saveIndexes(() => {})
       return reconstructMessage(record, content)
@@ -211,7 +209,7 @@ module.exports = function (dir, sbot, config) {
   function missingDecrypt() {
     let canDecryptSet = new Set(canDecrypt)
 
-    return encrypted.filter(x => !canDecryptSet.has(x))
+    return encrypted.filter((x) => !canDecryptSet.has(x))
   }
 
   return {

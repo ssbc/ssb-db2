@@ -5,6 +5,7 @@
 const fs = require('fs')
 const pull = require('pull-stream')
 const drainGently = require('pull-drain-gently')
+const clarify = require('clarify-error')
 const FlumeLog = require('flumelog-offset')
 const AsyncLog = require('async-append-only-log')
 const bipf = require('bipf')
@@ -85,11 +86,12 @@ function scanAndCount(pushstream, cb) {
   let count = 0
   pushstream.pipe({
     paused: false,
-    write: () => {
+    write() {
       count += 1
     },
-    end: function (err) {
-      cb(null, count)
+    end(err) {
+      if (err) cb(clarify(err, 'scanAndCount() failed scanning async-append-only-log')) // prettier-ignore
+      else cb(null, count)
     },
   })
 }
@@ -114,7 +116,7 @@ function guardAgainstDecryptedMsg(msg) {
  */
 function inefficientFindMigratedOffset(newLog, oldLog, cb) {
   scanAndCount(newLog.stream({ gte: 0, decrypt: false }), (err, msgCount) => {
-    if (err) return cb(err) // TODO: might need an explain() here
+    if (err) return cb(err)
     if (!msgCount) return cb(null, -1)
 
     let result = -1
@@ -126,8 +128,8 @@ function inefficientFindMigratedOffset(newLog, oldLog, cb) {
           result = x.seq
         },
         (err) => {
-          if (err) return cb(err) // TODO: might need an explain() here
-          cb(null, result)
+          if (err) cb(clarify(err, 'inefficientFindMigratedOffset() failed scanning flumelog')) // prettier-ignore
+          else cb(null, result)
         }
       )
     )
@@ -149,11 +151,11 @@ function findMigratedOffset(sbot, oldLog, newLog, cb) {
 
     const offsetInNewLog = newLog.since.value
     newLog.get(offsetInNewLog, (err, buf) => {
-      if (err) return cb(err) // TODO: might need an explain() here
+      if (err) return cb(clarify(err, 'findMigratedOffset() failed to get msg in async-append-only-log')) // prettier-ignore
 
       const msgKey = bipf.decode(buf, seekers.seekKey(buf))
       sbot.get(msgKey, (err2, msg, offsetInOldLog) => {
-        if (err2) return cb(err2) // TODO: might need an explain() here
+        if (err2) return cb(clarify(err2, 'findMigratedOffset() failed to get msg in flumelog')) // prettier-ignore
 
         if (typeof offsetInOldLog === 'number') {
           cb(null, offsetInOldLog)
