@@ -5,6 +5,7 @@
 const bipf = require('bipf')
 const pull = require('pull-stream')
 const pl = require('pull-level')
+const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 
 const B_VALUE = Buffer.from('value')
@@ -29,7 +30,13 @@ module.exports = class AboutSelf extends Plugin {
         valueEncoding: this.valueEncoding,
         keys: true,
       }),
-      pull.drain((data) => (this.profiles[data.key] = data.value), cb)
+      pull.drain(
+        (data) => (this.profiles[data.key] = data.value),
+        (err) => {
+          if (err && err !== true) cb(clarify(err, 'AboutSelf.onLoaded() failed')) // prettier-ignore
+          else cb()
+        }
+      )
     )
   }
 

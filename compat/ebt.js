@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 const pull = require('pull-stream')
+const clarify = require('clarify-error')
 const EBTIndex = require('../indexes/ebt')
 const { onceWhen } = require('../utils')
 
@@ -15,7 +16,7 @@ exports.init = function (sbot, config) {
     })
   }
   sbot.add = sbot.db.add
-  sbot.getVectorClock = function (cb) {
+  sbot.getVectorClock = function getVectorClock(cb) {
     onceWhen(
       sbot.db2migrate && sbot.db2migrate.synchronized,
       (isSynced) => isSynced,
@@ -30,7 +31,7 @@ exports.init = function (sbot, config) {
               clock[authorId] = sequence
             }),
             pull.collect((err) => {
-              if (err) return cb(err)
+              if (err) return cb(clarify(err, 'ssb-db2 getVectorClock failed')) // prettier-ignore
               cb(null, clock)
             })
           )

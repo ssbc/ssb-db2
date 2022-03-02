@@ -6,6 +6,7 @@ const os = require('os')
 const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
+const clarify = require('clarify-error')
 const push = require('push-stream')
 const ssbKeys = require('ssb-keys')
 const validate = require('ssb-validate') // TODO: remove this eventually
@@ -116,7 +117,7 @@ exports.init = function (sbot, config) {
             })
           }, 8),
           pull.collect((err, kvts) => {
-            if (err) return console.error('loadStateFeeds failed: ' + err)
+            if (err) return console.error(clarify(err, 'loadStateFeeds failed'))
             for (const kvt of kvts) {
               updateState(kvt)
             }
@@ -164,7 +165,7 @@ exports.init = function (sbot, config) {
     self.query(
       where(key(id)),
       toCallback((err, results) => {
-        if (err) return cb(err)
+        if (err) return cb(clarify(err, 'ssb-db2 failed to get message'))
         else if (results.length)
           return cb(null, onlyValue ? results[0].value : results[0])
         else return cb(new Error('Key not found in database ' + id))
@@ -199,7 +200,7 @@ exports.init = function (sbot, config) {
       (ready) => ready === true,
       () => {
         validate2.validateOOOBatch(hmacKey, msgVals, (err, keys) => {
-          if (err) return cb(err)
+          if (err) return cb(clarify(err, 'validation in addOOOBatch() failed'))
 
           const done = multicb({ pluck: 1 })
           for (var i = 0; i < msgVals.length; ++i)
@@ -240,7 +241,7 @@ exports.init = function (sbot, config) {
         validate2.validateOOOBatch(hmacKey, oooMsgVals, done())
 
         done((err, keys) => {
-          if (err) return cb(err)
+          if (err) return cb(clarify(err, 'validation in addTransaction() failed')) // prettier-ignore
 
           const [msgKeys, oooKeys] = keys
 
@@ -256,7 +257,7 @@ exports.init = function (sbot, config) {
             msgKeys.concat(oooKeys),
             msgVals.concat(oooMsgVals),
             (err, kvts) => {
-              if (err) return cb(err)
+              if (err) return cb(clarify(err, 'addTransaction() failed in the log')) // prettier-ignore
 
               kvts.forEach((kvt) => post.set(kvt))
               cb(null, kvts)
@@ -304,7 +305,7 @@ exports.init = function (sbot, config) {
       () => {
         const latestMsgVal = state[author] ? state[author].value : null
         validate2.validateBatch(hmacKey, msgVals, latestMsgVal, (err, keys) => {
-          if (err) return cb(err)
+          if (err) return cb(clarify(err, 'validation in addBatch() failed'))
 
           const done = multicb({ pluck: 1 })
           for (var i = 0; i < msgVals.length; ++i) {
@@ -313,7 +314,7 @@ exports.init = function (sbot, config) {
             if (isLast) updateState({ key: keys[i], value: msgVals[i] })
 
             log.add(keys[i], msgVals[i], (err, kvt) => {
-              if (err) return done()(err)
+              if (err) return done()(clarify(err, 'addBatch() failed in the log')) // prettier-ignore
 
               post.set(kvt)
               done()(null, kvt)
@@ -348,15 +349,10 @@ exports.init = function (sbot, config) {
         if (Ref.isFeedId(msgVal.author)) {
           const previous = (state[msgVal.author] || { value: null }).value
           validate2.validateSingle(hmacKey, msgVal, previous, (err, key) => {
-            if (err) {
-              debug(
-                `validation failed for classic message in addImmediately(): ${err.message}`
-              )
-              return cb(err)
-            }
+            if (err) return cb(clarify(err, 'classic message validation in addImmediately() failed')) // prettier-ignore
             updateState({ key, value: msgVal })
             log.add(key, msgVal, (err, kvt) => {
-              if (err) return cb(err)
+              if (err) return cb(clarify(err, 'addImmediately() of a classic message failed in the log')) // prettier-ignore
 
               post.set(kvt)
               cb(null, kvt)
@@ -365,16 +361,11 @@ exports.init = function (sbot, config) {
         } else if (SSBURI.isBendyButtV1FeedSSBURI(msgVal.author)) {
           const previous = (state[msgVal.author] || { value: null }).value
           const err = bendyButt.validateSingle(msgVal, previous, hmacKey)
-          if (err) {
-            debug(
-              `validation failed for bendy butt message in addImmediately(): ${err.message}`
-            )
-            return cb(err)
-          }
+          if (err) return cb(clarify(err, 'bendy butt message validation in addImmediately() failed')) // prettier-ignore
           const key = bendyButt.hash(msgVal)
           updateState({ key, value: msgVal })
           log.add(key, msgVal, (err, kvt) => {
-            if (err) return cb(err)
+            if (err) return cb(clarify(err, 'addImmediately() of a bendy butt message failed in the log')) // prettier-ignore
 
             post.set(kvt)
             cb(null, kvt)
@@ -391,12 +382,12 @@ exports.init = function (sbot, config) {
     if (guard) return cb(guard)
 
     validate2.validateOOOBatch(hmacKey, [msgVal], (err, keys) => {
-      if (err) return cb(err)
+      if (err) return cb(clarify(err, 'validation in addOOO() failed'))
       const key = keys[0]
       get(key, (err, data) => {
         if (data) return cb(null, data)
         log.add(key, msgVal, (err, data) => {
-          if (err) return cb(err)
+          if (err) return cb(clarify(err, 'addOOO() failed in the log'))
           cb(null, data)
         })
       })
@@ -452,11 +443,8 @@ exports.init = function (sbot, config) {
       where(key(msgId)),
       asOffsets(),
       toCallback((err, results) => {
-        if (err) return cb(err)
-        if (results.length === 0)
-          return cb(
-            new Error('cannot delete ' + msgId + ' because it was not found')
-          )
+        if (err) return cb(clarify(err, 'del() failed when getting the message')) // prettier-ignore
+        if (results.length === 0) return cb(new Error(`cannot delete ${msgId} because it was not found`)) // prettier-ignore
 
         indexes['keys'].delMsg(msgId)
         log.del(results[0], cb)
@@ -475,7 +463,7 @@ exports.init = function (sbot, config) {
           log.del(offset, cb)
         }),
         push.collect((err) => {
-          if (err) cb(err)
+          if (err) cb(clarify(err, 'deleteFeed() failed for feed ' + feedId))
           else {
             delete state[feedId]
             indexes.base.removeFeedFromLatest(feedId, cb)
@@ -625,7 +613,7 @@ exports.init = function (sbot, config) {
 
   function reindexOffset(data, cb) {
     jitdb.reindex(data.offset, (err) => {
-      if (err) return cb(err)
+      if (err) return cb(clarify(err, 'reindexOffset() failed'))
 
       for (const indexName in indexes) {
         const idx = indexes[indexName]
@@ -650,7 +638,7 @@ exports.init = function (sbot, config) {
         push.values(offsets),
         push.asyncMap((offset, cb) => {
           log.get(offset, (err, buf) => {
-            if (err) return cb(err)
+            if (err) return cb(clarify(err, 'reindexEncrypted() failed when getting messages')) // prettier-ignore
 
             const pMeta = bipf.seekKey(buf, 0, B_META)
             if (pMeta < 0) return cb()
@@ -666,7 +654,7 @@ exports.init = function (sbot, config) {
 
             onDrain('keys', () => {
               keysIndex.getSeq(key, (err, seqNum) => {
-                if (err) return cb(err)
+                if (err) return cb(clarify(err, 'reindexEncrypted() failed when getting seq')) // prettier-ignore
 
                 const seq = parseInt(seqNum, 10)
 

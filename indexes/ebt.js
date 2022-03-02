@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 const bipf = require('bipf')
+const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 const { reEncrypt } = require('./private')
 
@@ -35,10 +36,10 @@ module.exports = class EBT extends Plugin {
 
   levelKeyToMessage(key, cb) {
     this.level.get(key, (err, offset) => {
-      if (err) return cb(err)
+      if (err) return cb(clarify(err, 'EBT.levelKeyToMessage() failed when getting leveldb item')) // prettier-ignore
       else
         this.log.get(parseInt(offset, 10), (err, record) => {
-          if (err) return cb(err)
+          if (err) return cb(clarify(err, 'EBT.levelKeyToMessage() failed when getting log record')) // prettier-ignore
           cb(null, bipf.decode(record, 0))
         })
     })
@@ -47,7 +48,7 @@ module.exports = class EBT extends Plugin {
   // this is for EBT so must be careful to not leak private messages
   getMessageFromAuthorSequence(key, cb) {
     this.levelKeyToMessage(JSON.stringify(key), (err, msg) => {
-      if (err) cb(err)
+      if (err) cb(clarify(err, 'EBT.getMessageFromAuthorSequence() failed'))
       else cb(null, reEncrypt(msg))
     })
   }
