@@ -12,7 +12,6 @@ const caps = require('ssb-caps')
 const generateFixture = require('ssb-fixtures')
 const fs = require('fs')
 const pull = require('pull-stream')
-const fromEvent = require('pull-stream-util/from-event')
 
 const dir = '/tmp/ssb-db2-migrate-alone'
 
