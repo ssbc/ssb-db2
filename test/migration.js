@@ -51,7 +51,7 @@ test('migrate moves msgs from old log to new log', (t) => {
   sbot.db2migrate.start()
 
   pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
+    sbot.db2migrate.progress(),
     pull.take(1),
     pull.collect((err, nums) => {
       t.error(err)
@@ -88,7 +88,7 @@ test('migrate moves msgs from ssb-db to new log', (t) => {
   sbot.db2migrate.start()
 
   pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
+    sbot.db2migrate.progress(),
     pull.take(1),
     pull.collect((err, nums) => {
       t.error(err)
@@ -126,7 +126,7 @@ test('migrate keeps new log synced with ssb-db being updated', (t) => {
     })
 
   pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
+    sbot.db2migrate.progress(),
     pull.filter((x) => x === 1),
     pull.take(1),
     pull.drain(() => {
@@ -199,7 +199,7 @@ test('refuses to db2.add() while old log exists', (t) => {
     .call(null, { keys, path: dir, db2: { automigrate: true } })
 
   pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
+    sbot.db2migrate.progress(),
     pull.filter((x) => x === 1),
     pull.take(1),
     pull.drain(() => {
@@ -259,7 +259,7 @@ test('dangerouslyKillFlumeWhenMigrated and refusing db2.publish()', (t) => {
   })
 
   pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
+    sbot.db2migrate.progress(),
     pull.filter((x) => x === 1),
     pull.take(1),
     pull.drain(() => {
@@ -299,7 +299,7 @@ test('migrate does nothing when there is no old log', (t) => {
   }, 1000)
 
   pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
+    sbot.db2migrate.progress(),
     pull.drain(() => {
       t.fail('we are not supposed to get any migrate progress events')
     })
@@ -336,7 +336,7 @@ test('migrate fixes buffers in msg.value.content.nonce', (t) => {
   sbot.db2migrate.start()
 
   pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
+    sbot.db2migrate.progress(),
     pull.take(1),
     pull.collect((err, nums) => {
       t.error(err)

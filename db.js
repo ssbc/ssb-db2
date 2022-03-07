@@ -8,6 +8,7 @@ const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const clarify = require('clarify-error')
 const push = require('push-stream')
+const Notify = require('pull-notify')
 const ssbKeys = require('ssb-keys')
 const validate = require('ssb-validate') // TODO: remove this eventually
 const validate2 =
@@ -57,6 +58,7 @@ exports.manifest = {
   addBatch: 'async',
   addOOOBatch: 'async',
   getStatus: 'sync',
+  indexingProgress: 'source',
 
   // `query` should be `sync`, but secret-stack is automagically converting it
   // to async because of secret-stack/utils.js#hookOptionalCB. Eventually we
@@ -85,6 +87,7 @@ exports.init = function (sbot, config) {
   const status = Status(log, jitdb)
   const debug = Debug('ssb:db2')
   const post = Obv()
+  const indexingProgress = Notify()
   const hmacKey = null
   const stateFeedsReady = Obv().set(false)
   const state = {}
@@ -146,7 +149,7 @@ exports.init = function (sbot, config) {
         .reduce((acc, x) => acc + x, 0) / N, // avg = (sum of all progress) / N
       1 // never go above 1
     )
-    sbot.emit('ssb:db2:indexing:progress', progress)
+    indexingProgress(progress)
   })
 
   function guardAgainstDuplicateLogs(methodName) {
@@ -687,6 +690,7 @@ exports.init = function (sbot, config) {
     operators,
     post,
     reindexEncrypted,
+    indexingProgress: () => indexingProgress.listen(),
 
     // used for partial replication in browser, will be removed soon!
     setPost: post.set,

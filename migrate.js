@@ -4,6 +4,7 @@
 
 const fs = require('fs')
 const pull = require('pull-stream')
+const Notify = require('pull-notify')
 const drainGently = require('pull-drain-gently')
 const clarify = require('clarify-error')
 const FlumeLog = require('flumelog-offset')
@@ -181,8 +182,10 @@ exports.version = '1.9.1'
 
 exports.manifest = {
   start: 'sync',
+  stop: 'sync',
   doesOldLogExist: 'sync',
   synchronized: 'async',
+  progress: 'source',
 }
 
 exports.init = function init(sbot, config) {
@@ -196,6 +199,7 @@ exports.init = function init(sbot, config) {
   const synchronized = Obv()
   synchronized.set(true) // assume true until we `start()`
 
+  const progressStream = Notify()
   let started = false
   let hasCloseHook = false
   let retryPeriod = 250
@@ -274,13 +278,13 @@ exports.init = function init(sbot, config) {
     function emitProgressEvent() {
       const oldSize = oldLog.getSize()
       if (migratedSize === 0 && oldSize === 0) {
-        sbot.emit('ssb:db2:migrate:progress', 1)
+        progressStream(1)
         return
       }
       if (!oldSize) return // avoid division by zero
       const progress = Math.min(migratedSize / oldSize, 1)
       if (progress === 1 || progress !== previousProgress) {
-        sbot.emit('ssb:db2:migrate:progress', progress)
+        progressStream(progress)
         previousProgress = progress
       }
     }
@@ -386,5 +390,6 @@ exports.init = function init(sbot, config) {
     stop,
     doesOldLogExist: () => oldLogExists.value,
     synchronized,
+    progress: () => progressStream.listen(),
   }
 }
