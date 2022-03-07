@@ -13,9 +13,7 @@ const caps = require('ssb-caps')
 const ssbKeys = require('ssb-keys')
 const multicb = require('multicb')
 const pull = require('pull-stream')
-const asyncFilter = require('pull-async-filter')
 const validate = require('ssb-validate')
-const fromEvent = require('pull-stream-util/from-event')
 const DeferredPromise = require('p-defer')
 const trammel = require('trammel')
 const sleep = require('util').promisify(setTimeout)
@@ -147,15 +145,15 @@ const randos = [
   ssbKeys.generate().id,
   ssbKeys.generate().id,
   ssbKeys.generate().id,
-  ssbKeys.generate().id
+  ssbKeys.generate().id,
 ]
 
 function shuffle(a) {
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
   }
-  return a;
+  return a
 }
 
 test('private', async (t) => {
@@ -181,7 +179,10 @@ test('private', async (t) => {
       if (err) t.fail(err)
 
       t.pass(`box duration: ${duration}ms`)
-      fs.appendFileSync(reportPath, `| add 1000 private box1 elements | ${duration}ms |\n`)
+      fs.appendFileSync(
+        reportPath,
+        `| add 1000 private box1 elements | ${duration}ms |\n`
+      )
 
       sbot.db.onDrain('base', () => {
         let startQuery = Date.now()
@@ -191,7 +192,10 @@ test('private', async (t) => {
           toCallback((err, results) => {
             const durationQuery = Date.now() - startQuery
             t.pass(`unbox first run duration: ${durationQuery}ms`)
-            fs.appendFileSync(reportPath, `| unbox 1000 private box1 elements first run | ${durationQuery}ms |\n`)
+            fs.appendFileSync(
+              reportPath,
+              `| unbox 1000 private box1 elements first run | ${durationQuery}ms |\n`
+            )
 
             startQuery = Date.now()
 
@@ -200,7 +204,10 @@ test('private', async (t) => {
               toCallback((err, results) => {
                 const durationQuery2 = Date.now() - startQuery
                 t.pass(`unbox second run duration: ${durationQuery2}ms`)
-                fs.appendFileSync(reportPath, `| unbox 1000 private box1 elements second run | ${durationQuery2}ms |\n`)
+                fs.appendFileSync(
+                  reportPath,
+                  `| unbox 1000 private box1 elements second run | ${durationQuery2}ms |\n`
+                )
 
                 sbot.close(() => ended.resolve())
               })
@@ -222,8 +229,8 @@ test('private box2', async (t) => {
       keys: keys2,
       path: dirPrivate,
       box2: {
-        alwaysbox2: true
-      }
+        alwaysbox2: true,
+      },
     })
 
   const recps = [...randos, keys2.id]
@@ -251,7 +258,10 @@ test('private box2', async (t) => {
       if (err) t.fail(err)
 
       t.pass(`box duration: ${duration}ms`)
-      fs.appendFileSync(reportPath, `| add 1000 private box2 elements | ${duration}ms |\n`)
+      fs.appendFileSync(
+        reportPath,
+        `| add 1000 private box2 elements | ${duration}ms |\n`
+      )
 
       sbot.db.onDrain('base', () => {
         let startQuery = Date.now()
@@ -261,7 +271,10 @@ test('private box2', async (t) => {
           toCallback((err, results) => {
             const durationQuery = Date.now() - startQuery
             t.pass(`unbox duration first run: ${durationQuery}ms`)
-            fs.appendFileSync(reportPath, `| unbox 1000 private box2 elements first run | ${durationQuery}ms |\n`)
+            fs.appendFileSync(
+              reportPath,
+              `| unbox 1000 private box2 elements first run | ${durationQuery}ms |\n`
+            )
 
             startQuery = Date.now()
 
@@ -270,7 +283,10 @@ test('private box2', async (t) => {
               toCallback((err, results) => {
                 const durationQuery2 = Date.now() - startQuery
                 t.pass(`unbox duration second run: ${durationQuery2}ms`)
-                fs.appendFileSync(reportPath, `| unbox 1000 private box2 elements second run | ${durationQuery2}ms |\n`)
+                fs.appendFileSync(
+                  reportPath,
+                  `| unbox 1000 private box2 elements second run | ${durationQuery2}ms |\n`
+                )
 
                 sbot.close(() => ended.resolve())
               })
@@ -307,7 +323,7 @@ test('migrate (+db1)', async (t) => {
   sbot.db2migrate.start()
 
   pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
+    sbot.db2migrate.progress(),
     pull.filter((progress) => progress === 1),
     pull.take(1),
     pull.drain(async () => {
@@ -337,7 +353,7 @@ test('migrate (alone)', async (t) => {
   sbot.db2migrate.start()
 
   pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
+    sbot.db2migrate.progress(),
     pull.filter((progress) => progress === 1),
     pull.take(1),
     pull.drain(async () => {
@@ -368,7 +384,7 @@ test('migrate (+db1 +db2)', async (t) => {
   sbot.db2migrate.start()
 
   pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
+    sbot.db2migrate.progress(),
     pull.filter((progress) => progress === 1),
     pull.take(1),
     pull.drain(async () => {
@@ -398,7 +414,7 @@ test('migrate (+db2)', async (t) => {
   sbot.db2migrate.start()
 
   pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
+    sbot.db2migrate.progress(),
     pull.filter((progress) => progress === 1),
     pull.take(1),
     pull.drain(async () => {
@@ -427,7 +443,7 @@ test('migrate continuation (+db2)', async (t) => {
   sbot.db2migrate.start()
 
   pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
+    sbot.db2migrate.progress(),
     pull.filter((progress) => progress > 0.9),
     pull.take(1),
     pull.drain(async () => {
@@ -449,7 +465,7 @@ test('migrate continuation (+db2)', async (t) => {
       sbot.db2migrate.start()
 
       pull(
-        fromEvent('ssb:db2:migrate:progress', sbot),
+        sbot.db2migrate.progress(),
         pull.filter((progress) => progress === 1),
         pull.take(1),
         pull.drain(async () => {
