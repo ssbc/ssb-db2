@@ -46,7 +46,7 @@ test('migrate (alone) moves msgs from old log to new log', (t) => {
   sbot.db2migrate.start()
 
   pull(
-    fromEvent('ssb:db2:migrate:progress', sbot),
+    sbot.db2migrate.progress(),
     pull.filter((x) => x === 1),
     pull.take(1),
     pull.collect((err) => {
