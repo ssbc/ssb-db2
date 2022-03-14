@@ -176,7 +176,7 @@ test('delete all', (t) => {
     db.publish(post2, (err) => {
       t.error(err, 'no err')
 
-      db.getJITDB().all(author(keys.id), 0, false, false, (err, results) => {
+      db.getJITDB().all(author(keys.id), 0, false, false, 'declared', (err, results) => {
         t.error(err, 'no err')
         t.equal(results.length, 30 + 5, 'got both new messages')
 
@@ -188,6 +188,7 @@ test('delete all', (t) => {
             0,
             false,
             false,
+            'declared',
             (err, results) => {
               t.error(err, 'no err')
               t.equal(results.length, 0, 'gone')
