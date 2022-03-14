@@ -61,12 +61,12 @@ exports.init = function (sbot, config) {
           if (limit) {
             sbot.db
               .getJITDB()
-              .paginate(query, 0, limit, false, false, (err, answer) => {
+              .paginate(query, 0, limit, false, false, 'declared', (err, answer) => {
                 if (err) cb(new Error('ssb-db2 createHistoryStream failed: ' + err.message)) // prettier-ignore
                 else cb(null, pull.values(answer.results.map(formatMsg)))
               })
           } else {
-            sbot.db.getJITDB().all(query, 0, false, false, (err, results) => {
+            sbot.db.getJITDB().all(query, 0, false, false, 'declared', (err, results) => {
               if (err) cb(new Error('ssb-db2 createHistoryStream failed: ' + err.message)) // prettier-ignore
               else cb(null, pull.values(results.map(formatMsg)))
             })

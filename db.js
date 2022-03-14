@@ -459,7 +459,7 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('deleteFeed()')
     if (guard) return cb(guard)
 
-    jitdb.all(author(feedId), 0, false, true, (err, offsets) => {
+    jitdb.all(author(feedId), 0, false, true, 'declared', (err, offsets) => {
       push(
         push.values(offsets),
         push.asyncMap((offset, cb) => {
