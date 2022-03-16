@@ -82,6 +82,8 @@ module.exports = class AboutSelf extends Plugin {
       profile.image = content.image.link
     else if (typeof content.image === 'string') profile.image = content.image
 
+    if (content.publicWebHosting !== 'undefined')  profile.publicWebHosting = content.publicWebHosting
+    
     this.profiles[author] = profile
   }
 
