@@ -1,0 +1,67 @@
+
+
+test('should handle indexing publicWebHosting when blank', (t) => {
+  const aboutWithoutPublicWebHosting = { type: 'about', about: sbot.id, name: 'alice', image: '%blob' }
+
+  db.publish(aboutWithoutPublicWebHosting, (err, firstPostMsg) => {
+    t.error(err, 'no err')
+
+    sbot.db.onDrain('aboutSelf', () => {
+      const profileWithout = sbot.db.getIndex('aboutSelf').getProfile(aboutWithoutPublicWebHosting.about)
+      //t.equal(profileWithout.publicWebHosting, aboutWithoutPublicWebHosting.publicWebHosting)
+      t.end()
+    })
+  })
+})
+
+test('should handle indexing publicWebHosting when true', (t) => {
+  const aboutWithPublicWebHostingTrue = { type: 'about', about: '@other', name: 'bob', publicWebHosting: true }
+
+  db.publish(aboutWithPublicWebHostingTrue, (err, secondPostMsg) => {
+    t.error(err, 'no err')
+    sbot.db.onDrain('aboutSelf', () => {
+      const profileWithTrue = sbot.db.getIndex('aboutSelf').getProfile(aboutWithPublicWebHostingTrue.id)
+      //t.equal(profileWithTrue.publicWebHosting, aboutWithPublicWebHostingTrue.publicWebHosting)
+      t.end()
+    })
+  })
+})
+
+test('should handle indexing publicWebHosting when false', (t) => {
+  const aboutWithPublicWebHostingFalse = { type: 'about', about: '@carol', name: 'carol', publicWebHosting: false }
+
+  db.publish(aboutWithPublicWebHostingFalse, (err, thirdPostMsg) => {
+    t.error(err, 'no err')
+    sbot.db.onDrain('aboutSelf', () => {
+      const profileWithFalse = sbot.db.getIndex('aboutSelf').getProfile(aboutWithPublicWebHostingFalse.id)
+      //t.equal(profileWithFalse.publicWebHosting, aboutWithPublicWebHostingFalse.publicWebHosting)
+      t.end()
+    })
+  })
+})
+
+test('should update indexing publicWebHosting when adding value', (t) => {
+  const newAbout = {
+    type: 'about',
+    about: sbot.id,
+    name: 'alice with new name',
+    image: {
+      link: '%blob',
+      size: 1024,
+    },
+    publicWebHosting: true,
+  }
+
+  db.publish(newAbout, (err, forthPostMsg) => {
+    t.error(err, 'no err')
+
+    sbot.db.onDrain('aboutSelf', () => {
+      const profile = sbot.db.getIndex('aboutSelf').getProfile("@alice")
+      t.equal(profile.name, newAbout.name)
+      t.equal(profile.image, newAbout.image.link)
+      t.equal(profile.publicWebHosting, newAbout.publicWebHosting)
+
+      t.end()
+    })
+  })
+})

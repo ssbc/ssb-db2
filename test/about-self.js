@@ -28,37 +28,34 @@ let sbot = SecretStack({ appKey: caps.shs })
 const db = sbot.db
 
 test('set publicWebHosting to false', (t) => {
-  const about = { type: 'about', about: sbot.id, publicWebHosting: false}
-  
+  const about = { type: 'about', about: sbot.id, publicWebHosting: false }
+
   db.publish(about, (err, postMsg) => {
     t.error(err, 'no err')
 
     sbot.db.onDrain('aboutSelf', () => {
       const profile = sbot.db.getIndex('aboutSelf').getProfile(sbot.id)
-      t.equal(profile.publicWebHosting, about.publicWebHosting) // should be false
+      t.false(profile.publicWebHosting)
 
       t.end()
     })
   })
 })
-
 
 test('set publicWebHosting to true', (t) => {
-  const about = { type: 'about', about: sbot.id, publicWebHosting: true}
-  
+  const about = { type: 'about', about: sbot.id, publicWebHosting: true }
+
   db.publish(about, (err, postMsg) => {
     t.error(err, 'no err')
 
     sbot.db.onDrain('aboutSelf', () => {
       const profile = sbot.db.getIndex('aboutSelf').getProfile(sbot.id)
-      t.equal(profile.publicWebHosting, about.publicWebHosting) // should be true
+      t.true(profile.publicWebHosting)
 
       t.end()
     })
   })
 })
-
-
 
 test('get self assigned', (t) => {
   const about = { type: 'about', about: sbot.id, name: 'arj', image: '%blob' }
@@ -135,7 +132,6 @@ test('get live profile', (t) => {
   })
 })
 
-
 test('should load about-self from disk', (t) => {
   sbot.close((err) => {
     t.error(err)
@@ -155,8 +151,6 @@ test('should load about-self from disk', (t) => {
     })
   })
 })
-
-
 
 test('teardown sbot', (t) => {
   sbot.close(() => t.end())

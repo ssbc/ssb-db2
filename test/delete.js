@@ -39,24 +39,38 @@ test('index, delete, query', (t) => {
 
     db.getLog().onDrain(() => {
       // create index
-      db.getJITDB().all(author(keys.id), 0, false, false, 'declared', (err, results) => {
-        t.error(err, 'no err')
-        t.equal(results.length, 1, 'got msg')
-
-        db.publish(post2, (err, post2Msg) => {
+      db.getJITDB().all(
+        author(keys.id),
+        0,
+        false,
+        false,
+        'declared',
+        (err, results) => {
           t.error(err, 'no err')
+          t.equal(results.length, 1, 'got msg')
 
-          db.del(postMsg.key, (err) => {
+          db.publish(post2, (err, post2Msg) => {
             t.error(err, 'no err')
 
-            db.getJITDB().all(type('post'), 0, false, false, 'declared', (err, results) => {
-              t.equal(results.length, 1, 'got msg')
-              t.equal(results[0].value.sequence, 2, 'got correct msg')
-              sbot.close(t.end)
+            db.del(postMsg.key, (err) => {
+              t.error(err, 'no err')
+
+              db.getJITDB().all(
+                type('post'),
+                0,
+                false,
+                false,
+                'declared',
+                (err, results) => {
+                  t.equal(results.length, 1, 'got msg')
+                  t.equal(results[0].value.sequence, 2, 'got correct msg')
+                  sbot.close(t.end)
+                }
+              )
             })
           })
-        })
-      })
+        }
+      )
     })
   })
 })
