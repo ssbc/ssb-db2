@@ -67,16 +67,16 @@
     "ssb-fixtures": "3.0.2",
     "ssb-friends": "5.1.0",
     "ssb-threads": "9.2.0",
-    "tap-spec": "^5.0.0",
+    "tap-arc": "^0.1.2",
     "tape": "^5.2.2",
     "trammel": "~4.0.0"
   },
   "scripts": {
-    "test": "tape test/*.js | tap-spec",
+    "test": "tape test/*.js | tap-arc",
     "format-code": "prettier --write \"*.js\" \"(test|compat|indexes|operators)/*.js\"",
     "format-code-staged": "pretty-quick --staged --pattern \"*.js\" --pattern \"(test|compat|indexes|operators)/*.js\"",
-    "benchmark": "node --expose-gc benchmark/index.js | tap-spec",
-    "benchmark-no-create": "node --expose-gc benchmark/index.js noCreate | tap-spec"
+    "benchmark": "node --expose-gc benchmark/index.js | tap-arc",
+    "benchmark-no-create": "node --expose-gc benchmark/index.js noCreate | tap-arc"
   },
   "husky": {
     "hooks": {
