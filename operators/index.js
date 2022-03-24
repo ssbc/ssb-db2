@@ -64,7 +64,7 @@ function author(value, opts = { dedicated: false }) {
       prefix: 32,
       prefixOffset: AUTHOR_PREFIX_OFFSET,
       indexType: 'value_author',
-      version: 2,
+      version: 3,
     })
   }
 }
