@@ -35,14 +35,18 @@ const {
 
 const dir = '/tmp/ssb-db2-benchmark'
 const dirAdd = '/tmp/ssb-db2-benchmark-add'
-const dirPrivate = '/tmp/ssb-db2-benchmark-private'
+const dirBox1 = '/tmp/ssb-db2-benchmark-box1'
+const dirBox1NoDecrypt = '/tmp/ssb-db2-benchmark-box1-no-decrypt'
+const dirBox2 = '/tmp/ssb-db2-benchmark-box2'
 const oldLogPath = path.join(dir, 'flume', 'log.offset')
 const db2Path = path.join(dir, 'db2')
 const indexesPath = path.join(dir, 'db2', 'indexes')
 const reportPath = path.join(dir, 'benchmark.md')
 
 rimraf.sync(dirAdd)
-rimraf.sync(dirPrivate)
+rimraf.sync(dirBox1)
+rimraf.sync(dirBox1NoDecrypt)
+rimraf.sync(dirBox2)
 
 const skipCreate = process.argv[2] === 'noCreate'
 
@@ -91,10 +95,12 @@ function reportMem() {
   return `${rss} MB = ${heap} MB + etc`
 }
 
-let keys, keys2
+let keys, keys2, keys3, keys4
 test('setup', (t) => {
   keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
-  keys2 = ssbKeys.loadOrCreateSync(path.join(dirPrivate, 'secret'))
+  keys2 = ssbKeys.loadOrCreateSync(path.join(dirBox1, 'secret'))
+  keys3 = ssbKeys.loadOrCreateSync(path.join(dirBox1NoDecrypt, 'secret'))
+  keys4 = ssbKeys.loadOrCreateSync(path.join(dirBox2, 'secret'))
   t.end()
 })
 
@@ -156,10 +162,10 @@ function shuffle(a) {
   return a
 }
 
-test('private', async (t) => {
+test('box1', async (t) => {
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
-    .call(null, { keys, path: dirPrivate })
+    .call(null, { keys: keys2, path: dirBox1 })
 
   const recps = [...randos, keys.id]
 
@@ -221,13 +227,83 @@ test('private', async (t) => {
   await ended.promise
 })
 
+test('private box1 no decrypt', async (t) => {
+  const startFrom = new Date()
+  startFrom.setDate(startFrom.getDate() + 1)
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .call(null, {
+      keys: keys3, path: dirBox1NoDecrypt,
+      db2: { startDecryptBox1: startFrom.toISOString().split('T')[0] }
+    })
+
+  const recps = [...randos, keys.id]
+
+  let contents = []
+  for (var i = 0; i < 1000; ++i)
+    contents.push({ type: 'tick', count: i, recps: shuffle(recps) })
+
+  const ended = DeferredPromise()
+  const start = Date.now()
+
+  pull(
+    pull.values(contents),
+    pull.asyncMap(sbot.db.publish),
+    pull.collect((err, msgs) => {
+      const duration = Date.now() - start
+
+      if (err) t.fail(err)
+
+      t.pass(`box duration: ${duration}ms`)
+      fs.appendFileSync(
+        reportPath,
+        `| add 1000 private box1 elements | ${duration}ms |\n`
+      )
+
+      sbot.db.onDrain('base', () => {
+        let startQuery = Date.now()
+
+        sbot.db.query(
+          where(author(sbot.id)),
+          toCallback((err, results) => {
+            const durationQuery = Date.now() - startQuery
+            t.pass(`query first run duration: ${durationQuery}ms`)
+            fs.appendFileSync(
+              reportPath,
+              `| query 1000 elements first run | ${durationQuery}ms |\n`
+            )
+
+            startQuery = Date.now()
+
+            sbot.db.query(
+              where(author(sbot.id)),
+              toCallback((err, results) => {
+                const durationQuery2 = Date.now() - startQuery
+                t.pass(`query second run duration: ${durationQuery2}ms`)
+                fs.appendFileSync(
+                  reportPath,
+                  `| query 1000 elements second run | ${durationQuery2}ms |\n`
+                )
+
+                sbot.close(() => ended.resolve())
+              })
+            )
+          })
+        )
+      })
+    })
+  )
+
+  await ended.promise
+})
+
 test('private box2', async (t) => {
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .use(require('ssb-db2-box2'))
     .call(null, {
-      keys: keys2,
-      path: dirPrivate,
+      keys: keys4,
+      path: dirBox2,
       box2: {
         alwaysbox2: true,
       },

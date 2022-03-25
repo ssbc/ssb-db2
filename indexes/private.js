@@ -23,6 +23,10 @@ module.exports = function (dir, sbot, config) {
   let encrypted = []
   let canDecrypt = []
 
+  let startDecryptBox1 = null
+  if (config.db2.startDecryptBox1)
+    startDecryptBox1 = new Date(config.db2.startDecryptBox1)
+
   const debug = Debug('ssb:db2:private')
 
   const encryptedFile = path.join(indexesPath(dir), 'encrypted.index')
@@ -134,6 +138,7 @@ module.exports = function (dir, sbot, config) {
   const B_CONTENT = Buffer.from('content')
   const B_AUTHOR = Buffer.from('author')
   const B_PREVIOUS = Buffer.from('previous')
+  const B_TIMESTAMP = Buffer.from('timestamp')
 
   function decryptBox1(ciphertext, keys) {
     return ssbKeys.unbox(ciphertext, keys)
@@ -187,6 +192,12 @@ module.exports = function (dir, sbot, config) {
 
       const ciphertext = bipf.decode(recBuffer, pContent)
 
+      if (ciphertext.endsWith('.box') && startDecryptBox1) {
+        const pTimestamp = bipf.seekKey(recBuffer, pValue, B_TIMESTAMP)
+        const declaredTimestamp = bipf.decode(recBuffer, pTimestamp)
+        if (declaredTimestamp < startDecryptBox1)
+          return record
+      }
       if (streaming && ciphertext.endsWith('.box2')) encrypted.push(recOffset)
 
       const content = tryDecryptContent(ciphertext, recBuffer, pValue)
