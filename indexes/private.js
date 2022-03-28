@@ -23,9 +23,9 @@ module.exports = function (dir, sbot, config) {
   let encrypted = []
   let canDecrypt = []
 
-  let startDecryptBox1 = null
-  if (config.db2.startDecryptBox1)
-    startDecryptBox1 = new Date(config.db2.startDecryptBox1)
+  const startDecryptBox1 = config.db2.startDecryptBox1
+        ? new Date(config.db2.startDecryptBox1)
+        : null
 
   const debug = Debug('ssb:db2:private')
 

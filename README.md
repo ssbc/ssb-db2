@@ -493,7 +493,7 @@ const config = {
     dangerouslyKillFlumeWhenMigrated: false,
 
     /**
-     * Only try to decrypt box1 messages created before this date
+     * Only try to decrypt box1 messages created after this date
      * Default: null
      */
     startDecryptBox1: "2022-03-25",
