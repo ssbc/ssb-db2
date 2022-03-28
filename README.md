@@ -493,6 +493,12 @@ const config = {
     dangerouslyKillFlumeWhenMigrated: false,
 
     /**
+     * Only try to decrypt box1 messages created after this date
+     * Default: null
+     */
+    startDecryptBox1: "2022-03-25",
+
+    /**
      * A debouncing interval (measured in milliseconds) to control how often
      * should messages given to `sbot.add` be flushed in batches.
      * Default: 250
