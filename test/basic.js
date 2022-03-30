@@ -18,6 +18,7 @@ const {
   where,
   author,
   authorIsBendyButtV1,
+  type,
   toPullStream,
   toPromise,
 } = require('../operators')
