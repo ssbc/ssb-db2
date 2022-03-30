@@ -542,6 +542,26 @@ test('publishAs classic', (t) => {
   })
 })
 
+test('prepare()', (t) => {
+  db.publish({ type: 'article', text: 'The News Today' }, (err, msg) => {
+    t.error(err, 'no err')
+
+    setTimeout(() => {
+      const stats = db.getStatus().value
+      t.ok(stats.jit)
+      t.notOk(stats.jit['value_content_type_article'])
+      db.prepare(type('article'), (err, duration) => {
+        t.error(err, 'no err')
+        const stats = db.getStatus().value
+        t.ok(stats.jit)
+        t.ok(stats.jit['value_content_type_article'])
+        t.ok(duration)
+        t.end()
+      })
+    }, 500)
+  })
+})
+
 test('teardown', (t) => {
   sbot.close(t.end)
 })

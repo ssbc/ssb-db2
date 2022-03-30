@@ -455,6 +455,10 @@ at runtime and that changes what messages can be decrypted. Calling
 this function is needed after adding a new key. The function can be
 called multiple times safely.
 
+### prepare(operation, cb)
+
+Use [JITDB's prepare](https://github.com/ssb-ngi-pointer/jitdb/#prepareoperation-cb) method to warm up a JIT index.
+
 ### onDrain(indexName?, cb)
 
 Waits for the index with name `indexName` to be in sync with the main
