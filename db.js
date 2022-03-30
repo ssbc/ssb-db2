@@ -137,19 +137,8 @@ exports.init = function (sbot, config) {
     state[kvt.value.author] = PrivateIndex.reEncrypt(kvt)
   }
 
-  // Crunch stats numbers to produce one number for the "indexing" progress
   status.obv((stats) => {
-    const logSize = Math.max(1, stats.log) // 1 prevents division by zero
-    const nums = Object.values(stats.indexes).concat(Object.values(stats.jit))
-    const N = Math.max(1, nums.length) // 1 prevents division by zero
-    const progress = Math.min(
-      nums
-        .map((offset) => Math.max(0, offset)) // avoid -1 numbers
-        .map((offset) => offset / logSize) // this index's progress
-        .reduce((acc, x) => acc + x, 0) / N, // avg = (sum of all progress) / N
-      1 // never go above 1
-    )
-    indexingProgress(progress)
+    indexingProgress(stats.progress)
   })
 
   function guardAgainstDuplicateLogs(methodName) {
