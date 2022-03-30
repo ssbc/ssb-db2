@@ -614,6 +614,20 @@ exports.init = function (sbot, config) {
     }
   }
 
+  function prepare(operation, cb) {
+    if (sbot.db2migrate) {
+      sbot.db2migrate.synchronized((isSynced) => {
+        if (isSynced) onDrain(next)
+      })
+    } else {
+      onDrain(next)
+    }
+
+    function next() {
+      jitdb.prepare(operation, cb)
+    }
+  }
+
   function reindexOffset(data, cb) {
     jitdb.reindex(data.offset, (err) => {
       if (err) return cb(clarify(err, 'reindexOffset() failed'))
@@ -678,6 +692,7 @@ exports.init = function (sbot, config) {
     get,
     getMsg,
     query,
+    prepare,
     del,
     deleteFeed,
     add,
