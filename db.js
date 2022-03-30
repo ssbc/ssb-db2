@@ -617,10 +617,10 @@ exports.init = function (sbot, config) {
   function prepare(operation, cb) {
     if (sbot.db2migrate) {
       sbot.db2migrate.synchronized((isSynced) => {
-        if (isSynced) onDrain(next)
+        if (isSynced) next()
       })
     } else {
-      onDrain(next)
+      next()
     }
 
     function next() {
