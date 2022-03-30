@@ -13,8 +13,6 @@ module.exports = function Status(log, jitdb) {
   const obv = Obv()
   obv.set(statsObj)
   const EMIT_INTERVAL = 1000
-  const PRUNE_INTERVAL = 2000
-  let jitdbLastTime = Date.now()
   let i = 0
   let iTimer = 0
   let timer = null
@@ -22,7 +20,6 @@ module.exports = function Status(log, jitdb) {
   jitdb.status((jitStats) => {
     updateLog()
     statsObj.jit = jitStats
-    jitdbLastTime = Date.now()
     obv.set(statsObj)
   })
 
@@ -36,9 +33,6 @@ module.exports = function Status(log, jitdb) {
         i = iTimer = 0
       } else {
         iTimer = i
-        if (jitdbLastTime + PRUNE_INTERVAL < Date.now()) {
-          statsObj.jit = {}
-        }
         obv.set(statsObj)
       }
     }, EMIT_INTERVAL)
@@ -46,7 +40,7 @@ module.exports = function Status(log, jitdb) {
   }
 
   function updateLog() {
-    statsObj.log = log.since.value
+    statsObj.log = log.since.value || 0
   }
 
   function updateIndex(name, offset) {
@@ -55,9 +49,6 @@ module.exports = function Status(log, jitdb) {
     ++i
     if (!timer) {
       iTimer = i
-      if (jitdbLastTime + PRUNE_INTERVAL < Date.now()) {
-        statsObj.jit = {}
-      }
       obv.set(statsObj)
       setTimer()
     }
