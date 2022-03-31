@@ -40,15 +40,28 @@ module.exports = function Status(log, jitdb) {
   function calculateProgress() {
     const avgJITDBOffset = avgOffset(Object.values(stats.jit), stats)
     const offsets = Object.values(stats.indexes).concat(avgJITDBOffset)
-    stats.progress = avgPercent(offsets, stats)
+    return avgPercent(offsets, stats)
   }
 
   jitdb.status((jitStats) => {
     updateLog()
     stats.jit = jitStats
-    calculateProgress()
-    obv.set(stats)
+    update()
   })
+
+  function update() {
+    ++i
+    if (!timer) {
+      iTimer = i
+      emit()
+      setTimer()
+    }
+  }
+
+  function emit() {
+    stats.progress = calculateProgress()
+    obv.set(stats)
+  }
 
   function setTimer() {
     // Turn on
@@ -60,8 +73,7 @@ module.exports = function Status(log, jitdb) {
         i = iTimer = 0
       } else {
         iTimer = i
-        calculateProgress()
-        obv.set(stats)
+        emit()
       }
     }, EMIT_INTERVAL)
     if (timer.unref) timer.unref()
@@ -72,16 +84,10 @@ module.exports = function Status(log, jitdb) {
   }
 
   function updateIndex(name, offset) {
-    updateLog()
     if (stats.indexes[name] === offset) return
+    updateLog()
     stats.indexes[name] = offset
-    ++i
-    if (!timer) {
-      iTimer = i
-      calculateProgress()
-      obv.set(stats)
-      setTimer()
-    }
+    update()
   }
 
   return {
