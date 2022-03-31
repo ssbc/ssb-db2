@@ -11,7 +11,6 @@ module.exports = function Status(log, jitdb) {
     indexes: {},
     progress: 0,
   }
-  let prevProgress = 0
   const obv = Obv()
   obv.set(stats)
   const EMIT_INTERVAL = 1000
@@ -19,21 +18,29 @@ module.exports = function Status(log, jitdb) {
   let iTimer = 0
   let timer = null
 
-  // Crunch stats numbers to produce one number for the "indexing" progress
-  function calculateProgress() {
-    const logSize = Math.max(1, stats.log) // 1 prevents division by zero
-    const nums = Object.values(stats.indexes).concat(Object.values(stats.jit))
-    const N = Math.max(1, nums.length) // 1 prevents division by zero
-    stats.progress = Math.min(
-      nums
-        .map((offset) => Math.max(0, offset)) // avoid -1 numbers
+  function avgPercent(offsets, stats) {
+    if (offsets.length === 0) return 1 // assume 100% if there are no numbers
+    const logSize = Math.max(1, stats.log)
+    const N = offsets.length
+    return Math.min(
+      offsets
+        .map((offset) => Math.max(0, offset)) // avoid negative numbers
         .map((offset) => offset / logSize) // this index's progress
-        .reduce((acc, x) => acc + x, 0) / N, // avg = (sum of all progress) / N
+        .reduce((sum, x) => sum + x, 0) / N, // avg = (sum of all progress) / N
       1 // never go above 1
     )
-    const justFinished = stats.progress === 1 && prevProgress < 1
-    prevProgress = stats.progress
-    if (justFinished) jitdb.resetStatus()
+  }
+
+  function avgOffset(offsets, stats) {
+    const logSize = Math.max(1, stats.log)
+    return avgPercent(offsets, stats) * logSize
+  }
+
+  // Crunch stats numbers to produce one number for the "indexing" progress
+  function calculateProgress() {
+    const avgJITDBOffset = avgOffset(Object.values(stats.jit), stats)
+    const offsets = Object.values(stats.indexes).concat(avgJITDBOffset)
+    return avgPercent(offsets, stats)
   }
 
   jitdb.status((jitStats) => {
