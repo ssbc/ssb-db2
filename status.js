@@ -40,7 +40,7 @@ module.exports = function Status(log, jitdb) {
   function calculateProgress() {
     const avgJITDBOffset = avgOffset(Object.values(stats.jit), stats)
     const offsets = Object.values(stats.indexes).concat(avgJITDBOffset)
-    return avgPercent(offsets, stats)
+    stats.progress = avgPercent(offsets, stats)
   }
 
   jitdb.status((jitStats) => {
