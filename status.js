@@ -73,6 +73,7 @@ module.exports = function Status(log, jitdb) {
 
   function updateIndex(name, offset) {
     updateLog()
+    if (stats.indexes[name] === offset) return
     stats.indexes[name] = offset
     ++i
     if (!timer) {
