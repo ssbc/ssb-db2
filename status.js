@@ -38,6 +38,7 @@ module.exports = function Status(log, jitdb) {
 
   // Crunch stats numbers to produce one number for the "indexing" progress
   function calculateProgress() {
+    if (!stats.log || stats.log < 0) return 1
     const avgJITDBOffset = avgOffset(Object.values(stats.jit), stats)
     const offsets = Object.values(stats.indexes).concat(avgJITDBOffset)
     return avgPercent(offsets, stats)
