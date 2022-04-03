@@ -8,7 +8,6 @@ const pl = require('pull-level')
 const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 
-const B_VALUE = Buffer.from('value')
 const B_AUTHOR = Buffer.from('author')
 const B_CONTENT = Buffer.from('content')
 const B_TYPE = Buffer.from('type')
@@ -40,14 +39,13 @@ module.exports = class AboutSelf extends Plugin {
     )
   }
 
-  processRecord(record, seq) {
+  processRecord(record, seq, pValue) {
+    if (pValue < 0) return
+
     const buf = record.value
 
-    let p = 0 // note you pass in p!
-    p = bipf.seekKey(buf, p, B_VALUE)
-    if (p < 0) return
-    const pAuthor = bipf.seekKey(buf, p, B_AUTHOR)
-    const pContent = bipf.seekKey(buf, p, B_CONTENT)
+    const pAuthor = bipf.seekKey(buf, pValue, B_AUTHOR)
+    const pContent = bipf.seekKey(buf, pValue, B_CONTENT)
     if (pContent < 0) return
     const pType = bipf.seekKey(buf, pContent, B_TYPE)
     if (pType < 0) return

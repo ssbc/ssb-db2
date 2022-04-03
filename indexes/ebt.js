@@ -7,7 +7,6 @@ const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 const { reEncrypt } = require('./private')
 
-const B_VALUE = Buffer.from('value')
 const B_AUTHOR = Buffer.from('author')
 const B_SEQUENCE = Buffer.from('sequence')
 
@@ -17,10 +16,10 @@ module.exports = class EBT extends Plugin {
     super(log, dir, 'ebt', 1, 'json')
   }
 
-  processRecord(record, seq) {
-    const buf = record.value
-    const pValue = bipf.seekKey(buf, 0, B_VALUE)
+  processRecord(record, seq, pValue) {
     if (pValue < 0) return
+
+    const buf = record.value
     const author = bipf.decode(buf, bipf.seekKey(buf, pValue, B_AUTHOR))
     const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, B_SEQUENCE))
     this.batch.push({

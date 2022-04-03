@@ -79,10 +79,10 @@ module.exports = class Plugin {
 
     const liveFlush = debounce(this.flush, 250)
 
-    this.onRecord = function onRecord(record, isLive) {
+    this.onRecord = function onRecord(record, isLive, pValue) {
       let changes = 0
       if (record.offset > processedOffset) {
-        if (record.value) this.processRecord(record, processedSeq)
+        if (record.value) this.processRecord(record, processedSeq, pValue)
         changes = this.batch.length
         processedSeq++
         processedOffset = record.offset
