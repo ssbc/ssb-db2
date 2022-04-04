@@ -17,8 +17,6 @@ module.exports = class EBT extends Plugin {
   }
 
   processRecord(record, seq, pValue) {
-    if (pValue < 0) return
-
     const buf = record.value
     const author = bipf.decode(buf, bipf.seekKey(buf, pValue, B_AUTHOR))
     const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, B_SEQUENCE))

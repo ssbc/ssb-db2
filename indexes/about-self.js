@@ -40,8 +40,6 @@ module.exports = class AboutSelf extends Plugin {
   }
 
   processRecord(record, seq, pValue) {
-    if (pValue < 0) return
-
     const buf = record.value
 
     const pAuthor = bipf.seekKey(buf, pValue, B_AUTHOR)

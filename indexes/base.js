@@ -39,7 +39,6 @@ module.exports = function makeBaseIndex(privateIndex) {
 
     processRecord(record, seq, pValue) {
       const buf = record.value
-      if (pValue < 0) return
       const author = bipf.decode(buf, bipf.seekKey(buf, pValue, B_AUTHOR))
       const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, B_SEQUENCE))
       const latestSequence = this.authorLatest.has(author)

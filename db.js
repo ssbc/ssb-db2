@@ -496,7 +496,7 @@ exports.init = function (sbot, config) {
       paused: false,
       write(record) {
         const buf = record.value
-        const pValue = bipf.seekKey(buf, 0, B_VALUE)
+        const pValue = buf ? bipf.seekKey(buf, 0, B_VALUE) : null
         indexesArr.forEach((idx) => idx.onRecord(record, false, pValue))
       },
       end() {
@@ -510,7 +510,7 @@ exports.init = function (sbot, config) {
             paused: false,
             write(record) {
               const buf = record.value
-              const pValue = bipf.seekKey(buf, 0, B_VALUE)
+              const pValue = buf ? bipf.seekKey(buf, 0, B_VALUE) : null
               indexesArr.forEach((idx) => idx.onRecord(record, true, pValue))
             },
           })

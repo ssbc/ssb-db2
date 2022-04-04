@@ -82,7 +82,7 @@ module.exports = class Plugin {
     this.onRecord = function onRecord(record, isLive, pValue) {
       let changes = 0
       if (record.offset > processedOffset) {
-        if (record.value) this.processRecord(record, processedSeq, pValue)
+        if (record.value && pValue >= 0) this.processRecord(record, processedSeq, pValue)
         changes = this.batch.length
         processedSeq++
         processedOffset = record.offset
