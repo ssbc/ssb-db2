@@ -15,7 +15,7 @@ module.exports = class Keys extends Plugin {
     super(log, dir, 'keys', 1)
   }
 
-  processRecord(record, seq) {
+  processRecord(record, seq, pValue) {
     const buf = record.value
     const pKey = bipf.seekKey(buf, 0, B_KEY)
     if (pKey < 0) return

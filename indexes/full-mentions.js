@@ -10,7 +10,6 @@ const Plugin = require('./plugin')
 const { or, seqs, liveSeqs } = require('../operators')
 
 const B_KEY = Buffer.from('key')
-const B_VALUE = Buffer.from('value')
 const B_CONTENT = Buffer.from('content')
 const B_MENTIONS = Buffer.from('mentions')
 
@@ -24,13 +23,11 @@ module.exports = class FullMentions extends Plugin {
     super(log, dir, 'fullMentions', 1, 'json')
   }
 
-  processRecord(record, seq) {
+  processRecord(record, seq, pValue) {
     const buf = record.value
     const pKey = bipf.seekKey(buf, 0, B_KEY)
     let p = 0 // note you pass in p!
-    p = bipf.seekKey(buf, p, B_VALUE)
-    if (p < 0) return
-    p = bipf.seekKey(buf, p, B_CONTENT)
+    p = bipf.seekKey(buf, pValue, B_CONTENT)
     if (p < 0) return
     p = bipf.seekKey(buf, p, B_MENTIONS)
     if (p < 0) return
