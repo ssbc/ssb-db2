@@ -7,19 +7,22 @@ const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 const { reEncrypt } = require('./private')
 
-const B_AUTHOR = Buffer.from('author')
-const B_SEQUENCE = Buffer.from('sequence')
-
 // [author, sequence] => offset
 module.exports = class EBT extends Plugin {
   constructor(log, dir) {
     super(log, dir, 'ebt', 1, 'json')
   }
 
-  processRecord(record, seq, pValue) {
+  processRecord(record, seq) {
     const buf = record.value
-    const author = bipf.decode(buf, bipf.seekKey(buf, pValue, B_AUTHOR))
-    const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, B_SEQUENCE))
+    const pValue = bipf.seekKeyCached(buf, 0, 'value')
+    if (pValue < 0) return
+    const pValueAuthor = bipf.seekKeyCached(buf, pValue, 'author')
+    if (pValueAuthor < 0) return
+    const author = bipf.decode(buf, pValueAuthor)
+    const pValueSequence = bipf.seekKeyCached(buf, pValue, 'sequence')
+    if (pValueSequence < 0) return
+    const sequence = bipf.decode(buf, pValueSequence)
     this.batch.push({
       type: 'put',
       key: [author, sequence],

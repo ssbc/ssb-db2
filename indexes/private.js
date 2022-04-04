@@ -24,8 +24,8 @@ module.exports = function (dir, sbot, config) {
   let canDecrypt = []
 
   const startDecryptBox1 = config.db2.startDecryptBox1
-        ? new Date(config.db2.startDecryptBox1)
-        : null
+    ? new Date(config.db2.startDecryptBox1)
+    : null
 
   const debug = Debug('ssb:db2:private')
 
@@ -134,11 +134,7 @@ module.exports = function (dir, sbot, config) {
     return { offset: record.offset, value: buf }
   }
 
-  const B_VALUE = Buffer.from('value')
-  const B_CONTENT = Buffer.from('content')
-  const B_AUTHOR = Buffer.from('author')
   const B_PREVIOUS = Buffer.from('previous')
-  const B_TIMESTAMP = Buffer.from('timestamp')
 
   function decryptBox1(ciphertext, keys) {
     return ssbKeys.unbox(ciphertext, keys)
@@ -149,7 +145,7 @@ module.exports = function (dir, sbot, config) {
     if (ciphertext.endsWith('.box')) {
       content = decryptBox1(ciphertext, config.keys)
     } else if (sbot.box2 && ciphertext.endsWith('.box2')) {
-      const pAuthor = bipf.seekKey(recBuffer, pValue, B_AUTHOR)
+      const pAuthor = bipf.seekKeyCached(recBuffer, pValue, 'author')
       if (pAuthor >= 0) {
         const author = bipf.decode(recBuffer, pAuthor)
         const pPrevious = bipf.seekKey(recBuffer, pValue, B_PREVIOUS)
@@ -168,12 +164,12 @@ module.exports = function (dir, sbot, config) {
     if (!recBuffer) return record
     let p = 0 // note you pass in p!
     if (bsb.eq(canDecrypt, recOffset) !== -1) {
-      const pValue = bipf.seekKey(recBuffer, p, B_VALUE)
+      const pValue = bipf.seekKeyCached(recBuffer, p, 'value')
       if (pValue < 0) return record
-      const pContent = bipf.seekKey(recBuffer, pValue, B_CONTENT)
-      if (pContent < 0) return record
+      const pValueContent = bipf.seekKeyCached(recBuffer, pValue, 'content')
+      if (pValueContent < 0) return record
 
-      const ciphertext = bipf.decode(recBuffer, pContent)
+      const ciphertext = bipf.decode(recBuffer, pValueContent)
       const content = tryDecryptContent(ciphertext, recBuffer, pValue)
       if (!content) return record
 
@@ -182,21 +178,20 @@ module.exports = function (dir, sbot, config) {
     } else if (recOffset > latestOffset.value || !streaming) {
       if (streaming) latestOffset.set(recOffset)
 
-      const pValue = bipf.seekKey(recBuffer, p, B_VALUE)
+      const pValue = bipf.seekKeyCached(recBuffer, p, 'value')
       if (pValue < 0) return record
-      const pContent = bipf.seekKey(recBuffer, pValue, B_CONTENT)
-      if (pContent < 0) return record
+      const pValueContent = bipf.seekKeyCached(recBuffer, pValue, 'content')
+      if (pValueContent < 0) return record
 
-      const type = bipf.getEncodedType(recBuffer, pContent)
+      const type = bipf.getEncodedType(recBuffer, pValueContent)
       if (type !== bipf.types.string) return record
 
-      const ciphertext = bipf.decode(recBuffer, pContent)
+      const ciphertext = bipf.decode(recBuffer, pValueContent)
 
       if (ciphertext.endsWith('.box') && startDecryptBox1) {
-        const pTimestamp = bipf.seekKey(recBuffer, pValue, B_TIMESTAMP)
+        const pTimestamp = bipf.seekKeyCached(recBuffer, pValue, 'timestamp')
         const declaredTimestamp = bipf.decode(recBuffer, pTimestamp)
-        if (declaredTimestamp < startDecryptBox1)
-          return record
+        if (declaredTimestamp < startDecryptBox1) return record
       }
       if (streaming && ciphertext.endsWith('.box2')) encrypted.push(recOffset)
 

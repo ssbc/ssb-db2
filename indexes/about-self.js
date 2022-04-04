@@ -8,9 +8,6 @@ const pl = require('pull-level')
 const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 
-const B_AUTHOR = Buffer.from('author')
-const B_CONTENT = Buffer.from('content')
-const B_TYPE = Buffer.from('type')
 const B_ABOUT = Buffer.from('about')
 
 // feedId => hydratedAboutObj
@@ -39,13 +36,15 @@ module.exports = class AboutSelf extends Plugin {
     )
   }
 
-  processRecord(record, seq, pValue) {
+  processRecord(record, seq) {
     const buf = record.value
 
-    const pAuthor = bipf.seekKey(buf, pValue, B_AUTHOR)
-    const pContent = bipf.seekKey(buf, pValue, B_CONTENT)
+    const pValue = bipf.seekKeyCached(buf, 0, 'value')
+    if (pValue < 0) return
+    const pAuthor = bipf.seekKeyCached(buf, pValue, 'author')
+    const pContent = bipf.seekKeyCached(buf, pValue, 'content')
     if (pContent < 0) return
-    const pType = bipf.seekKey(buf, pContent, B_TYPE)
+    const pType = bipf.seekKeyCached(buf, pContent, 'type')
     if (pType < 0) return
 
     if (bipf.compareString(buf, pType, B_ABOUT) === 0) {

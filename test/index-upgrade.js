@@ -34,7 +34,7 @@ class IndexTestV1 extends Plugin {
     this.batch.push({
       type: 'put',
       key,
-      value: 1
+      value: 1,
     })
   }
 
@@ -55,7 +55,7 @@ class IndexTestV2 extends Plugin {
     this.batch.push({
       type: 'put',
       key,
-      value: 2
+      value: 2,
     })
   }
 
@@ -64,12 +64,10 @@ class IndexTestV2 extends Plugin {
   }
 }
 
-let sbot = SecretStack({ appKey: caps.shs })
-  .use(require('../'))
-  .call(null, {
-    keys,
-    path: dir,
-  })
+let sbot = SecretStack({ appKey: caps.shs }).use(require('../')).call(null, {
+  keys,
+  path: dir,
+})
 sbot.db.registerIndex(IndexTestV1)
 
 let msgKey
@@ -93,12 +91,10 @@ test('1 index first', (t) => {
 })
 
 test('second index', (t) => {
-  sbot = SecretStack({ appKey: caps.shs })
-    .use(require('../'))
-    .call(null, {
-      keys,
-      path: dir,
-    })
+  sbot = SecretStack({ appKey: caps.shs }).use(require('../')).call(null, {
+    keys,
+    path: dir,
+  })
   sbot.db.registerIndex(IndexTestV2)
 
   sbot.db.onDrain('indextest', () => {

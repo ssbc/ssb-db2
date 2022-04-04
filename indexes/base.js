@@ -8,9 +8,6 @@ const pull = require('pull-stream')
 const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 
-const B_AUTHOR = Buffer.from('author')
-const B_SEQUENCE = Buffer.from('sequence')
-
 // authorId => latestMsg { offset, sequence }
 //
 // Necessary for feed validation and for EBT
@@ -37,10 +34,16 @@ module.exports = function makeBaseIndex(privateIndex) {
       )
     }
 
-    processRecord(record, seq, pValue) {
+    processRecord(record, seq) {
       const buf = record.value
-      const author = bipf.decode(buf, bipf.seekKey(buf, pValue, B_AUTHOR))
-      const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, B_SEQUENCE))
+      const pValue = bipf.seekKeyCached(buf, 0, 'value')
+      if (pValue < 0) return
+      const pValueAuthor = bipf.seekKeyCached(buf, pValue, 'author')
+      if (pValueAuthor < 0) return
+      const author = bipf.decode(buf, pValueAuthor)
+      const pValueSequence = bipf.seekKeyCached(buf, pValue, 'sequence')
+      if (pValueSequence < 0) return
+      const sequence = bipf.decode(buf, pValueSequence)
       const latestSequence = this.authorLatest.has(author)
         ? this.authorLatest.get(author).sequence
         : 0

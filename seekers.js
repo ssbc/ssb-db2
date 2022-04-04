@@ -2,13 +2,9 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-only
 
-const { seekKey } = require('bipf')
+const { seekKey, seekKeyCached } = require('bipf')
 
 const B_KEY = Buffer.from('key')
-const B_VALUE = Buffer.from('value')
-const B_AUTHOR = Buffer.from('author')
-const B_CONTENT = Buffer.from('content')
-const B_TYPE = Buffer.from('type')
 const B_ROOT = Buffer.from('root')
 const B_FORK = Buffer.from('fork')
 const B_ABOUT = Buffer.from('about')
@@ -16,110 +12,103 @@ const B_BRANCH = Buffer.from('branch')
 const B_VOTE = Buffer.from('vote')
 const B_CONTACT = Buffer.from('contact')
 const B_LINK = Buffer.from('link')
-const B_META = Buffer.from('meta')
 const B_PRIVATE = Buffer.from('private')
 const B_CHANNEL = Buffer.from('channel')
-const B_MENTIONS = Buffer.from('mentions')
 
 module.exports = {
-  seekAuthor: function (buffer, start, pValue) {
+  seekAuthor(buffer) {
+    const pValue = seekKeyCached(buffer, 0, 'value')
     if (pValue < 0) return
-    return seekKey(buffer, pValue, B_AUTHOR)
+    return seekKeyCached(buffer, pValue, 'author')
   },
 
-  seekType: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_TYPE)
+  seekType(buffer) {
+    const pValue = seekKeyCached(buffer, 0, 'value')
+    if (pValue < 0) return
+    const pValueContent = seekKeyCached(buffer, pValue, 'content')
+    if (pValueContent < 0) return
+    return seekKeyCached(buffer, pValueContent, 'type')
   },
 
-  seekRoot: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_ROOT)
+  seekRoot(buffer) {
+    const pValue = seekKeyCached(buffer, 0, 'value')
+    if (pValue < 0) return
+    const pValueContent = seekKeyCached(buffer, pValue, 'content')
+    if (pValueContent < 0) return
+    return seekKey(buffer, pValueContent, B_ROOT)
   },
 
-  seekFork: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_FORK)
+  seekFork(buffer) {
+    const pValue = seekKeyCached(buffer, 0, 'value')
+    if (pValue < 0) return
+    const pValueContent = seekKeyCached(buffer, pValue, 'content')
+    if (pValueContent < 0) return
+    return seekKey(buffer, pValueContent, B_FORK)
   },
 
-  seekBranch: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_BRANCH)
+  seekBranch(buffer) {
+    const pValue = seekKeyCached(buffer, 0, 'value')
+    if (pValue < 0) return
+    const pValueContent = seekKeyCached(buffer, pValue, 'content')
+    return seekKey(buffer, pValueContent, B_BRANCH)
   },
 
-  seekVoteLink: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    p = seekKey(buffer, p, B_VOTE)
-    if (p < 0) return
-    return seekKey(buffer, p, B_LINK)
+  seekVoteLink(buffer) {
+    const pValue = seekKeyCached(buffer, 0, 'value')
+    if (pValue < 0) return
+    const pValueContent = seekKeyCached(buffer, pValue, 'content')
+    if (pValueContent < 0) return
+    const pValueContentVote = seekKey(buffer, pValueContent, B_VOTE)
+    if (pValueContentVote < 0) return
+    return seekKey(buffer, pValueContentVote, B_LINK)
   },
 
-  seekContact: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_CONTACT)
+  seekContact(buffer) {
+    const pValue = seekKeyCached(buffer, 0, 'value')
+    if (pValue < 0) return
+    const pValueContent = seekKeyCached(buffer, pValue, 'content')
+    return seekKey(buffer, pValueContent, B_CONTACT)
   },
 
-  seekMentions: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_MENTIONS)
+  seekMentions(buffer) {
+    const pValue = seekKeyCached(buffer, 0, 'value')
+    if (pValue < 0) return
+    const pValueContent = seekKeyCached(buffer, pValue, 'content')
+    if (pValueContent < 0) return
+    return seekKeyCached(buffer, pValueContent, 'mentions')
   },
 
-  seekAbout: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_ABOUT)
+  seekAbout(buffer) {
+    const pValue = seekKeyCached(buffer, 0, 'value')
+    if (pValue < 0) return
+    const pValueContent = seekKeyCached(buffer, pValue, 'content')
+    if (pValueContent < 0) return
+    return seekKey(buffer, pValueContent, B_ABOUT)
   },
 
-  pluckLink: function (buffer, start) {
-    let p = start
-    return seekKey(buffer, p, B_LINK)
+  pluckLink(buffer, start) {
+    return seekKey(buffer, start, B_LINK)
   },
 
-  seekPrivate: function (buffer, start, pValue) {
-    let p = 0 // note you pass in p!
-    p = seekKey(buffer, p, B_META)
-    if (p < 0) return
-    return seekKey(buffer, p, B_PRIVATE)
+  seekPrivate(buffer) {
+    const pMeta = seekKeyCached(buffer, 0, 'meta')
+    if (pMeta < 0) return
+    return seekKey(buffer, pMeta, B_PRIVATE)
   },
 
-  seekMeta: function (buffer, start, pValue) {
-    let p = 0 // note you pass in p!
-    return seekKey(buffer, p, B_META)
+  seekMeta(buffer) {
+    return seekKeyCached(buffer, 0, 'meta')
   },
 
-  seekChannel: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_CHANNEL)
+  seekChannel(buffer) {
+    const pValue = seekKeyCached(buffer, 0, 'value')
+    if (pValue < 0) return
+    const pValueContent = seekKeyCached(buffer, pValue, 'content')
+    if (pValueContent < 0) return
+    return seekKey(buffer, pValueContent, B_CHANNEL)
   },
 
-  seekKey: function (buffer, start, pValue) {
-    var p = 0 // note you pass in p!
-    return seekKey(buffer, p, B_KEY)
+  seekKey(buffer) {
+    return seekKeyCached(buffer, 0, 'key')
   },
 }

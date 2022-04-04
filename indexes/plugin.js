@@ -41,7 +41,8 @@ module.exports = class Plugin {
     this.batch = []
 
     this.flush = (cb) => {
-      if (processedOffset === this.offset.value || this.level.isClosed()) return cb()
+      if (processedOffset === this.offset.value || this.level.isClosed())
+        return cb()
       if (!this.onFlush) this.onFlush = (cb2) => cb2()
 
       const processedOffsetAtFlush = processedOffset
@@ -61,7 +62,11 @@ module.exports = class Plugin {
             // 2nd, persist the META because it has its own valueEncoding
             this.level.put(
               META,
-              { version, offset: processedOffsetAtFlush, processed: processedSeqAtFlush },
+              {
+                version,
+                offset: processedOffsetAtFlush,
+                processed: processedSeqAtFlush,
+              },
               { valueEncoding: 'json' },
               (err3) => {
                 if (err3) cb(clarify(err3, 'failed to persist META when flushing')) // prettier-ignore
@@ -79,10 +84,10 @@ module.exports = class Plugin {
 
     const liveFlush = debounce(this.flush, 250)
 
-    this.onRecord = function onRecord(record, isLive, pValue) {
+    this.onRecord = function onRecord(record, isLive) {
       let changes = 0
       if (record.offset > processedOffset) {
-        if (record.value && pValue >= 0) this.processRecord(record, processedSeq, pValue)
+        if (record.value) this.processRecord(record, processedSeq)
         changes = this.batch.length
         processedSeq++
         processedOffset = record.offset

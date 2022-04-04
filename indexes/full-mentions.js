@@ -9,10 +9,6 @@ const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 const { or, seqs, liveSeqs } = require('../operators')
 
-const B_KEY = Buffer.from('key')
-const B_CONTENT = Buffer.from('content')
-const B_MENTIONS = Buffer.from('mentions')
-
 function parseInt10(x) {
   return parseInt(x, 10)
 }
@@ -23,18 +19,19 @@ module.exports = class FullMentions extends Plugin {
     super(log, dir, 'fullMentions', 1, 'json')
   }
 
-  processRecord(record, seq, pValue) {
+  processRecord(record, seq) {
     const buf = record.value
-    const pKey = bipf.seekKey(buf, 0, B_KEY)
-    let p = 0 // note you pass in p!
-    p = bipf.seekKey(buf, pValue, B_CONTENT)
-    if (p < 0) return
-    p = bipf.seekKey(buf, p, B_MENTIONS)
-    if (p < 0) return
-    const mentionsData = bipf.decode(buf, p)
+    const pKey = bipf.seekKeyCached(buf, 0, 'key')
+    const pValue = bipf.seekKeyCached(buf, 0, 'value')
+    if (pValue < 0) return
+    const pValueContent = bipf.seekKeyCached(buf, pValue, 'content')
+    if (pValueContent < 0) return
+    const pMentions = bipf.seekKeyCached(buf, pValueContent, 'mentions')
+    if (pMentions < 0) return
+    const mentionsData = bipf.decode(buf, pMentions)
     if (!Array.isArray(mentionsData)) return
     const shortKey = bipf.decode(buf, pKey).slice(1, 10)
-    mentionsData.forEach((mention) => {
+    for (const mention of mentionsData) {
       if (
         mention.link &&
         typeof mention.link === 'string' &&
@@ -46,7 +43,7 @@ module.exports = class FullMentions extends Plugin {
           value: seq,
         })
       }
-    })
+    }
   }
 
   indexesContent() {

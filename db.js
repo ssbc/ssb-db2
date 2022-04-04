@@ -490,14 +490,10 @@ exports.init = function (sbot, config) {
     )
     debug(`lowest offset for all indexes is ${lowestOffset}`)
 
-    const B_VALUE = Buffer.from('value')
-
     log.stream({ gt: lowestOffset }).pipe({
       paused: false,
       write(record) {
-        const buf = record.value
-        const pValue = buf ? bipf.seekKey(buf, 0, B_VALUE) : null
-        indexesArr.forEach((idx) => idx.onRecord(record, false, pValue))
+        indexesArr.forEach((idx) => idx.onRecord(record, false))
       },
       end() {
         debug(`updateIndexes() scan time: ${Date.now() - start}ms`)
@@ -509,9 +505,7 @@ exports.init = function (sbot, config) {
           log.stream({ gt: indexes['base'].offset.value, live: true }).pipe({
             paused: false,
             write(record) {
-              const buf = record.value
-              const pValue = buf ? bipf.seekKey(buf, 0, B_VALUE) : null
-              indexesArr.forEach((idx) => idx.onRecord(record, true, pValue))
+              indexesArr.forEach((idx) => idx.onRecord(record, true))
             },
           })
         })
