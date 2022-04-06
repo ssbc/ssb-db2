@@ -5,7 +5,6 @@
 const { seekKey } = require('bipf')
 
 const B_KEY = Buffer.from('key')
-const B_VALUE = Buffer.from('value')
 const B_AUTHOR = Buffer.from('author')
 const B_CONTENT = Buffer.from('content')
 const B_TYPE = Buffer.from('type')
@@ -22,104 +21,91 @@ const B_CHANNEL = Buffer.from('channel')
 const B_MENTIONS = Buffer.from('mentions')
 
 module.exports = {
-  seekAuthor: function (buffer, start, pValue) {
-    if (pValue < 0) return
+  seekAuthor(buffer, start, pValue) {
+    if (pValue < 0) return -1
     return seekKey(buffer, pValue, B_AUTHOR)
   },
 
-  seekType: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_TYPE)
+  seekType(buffer, start, pValue) {
+    if (pValue < 0) return -1
+    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    if (pValueContent < 0) return -1
+    return seekKey(buffer, pValueContent, B_TYPE)
   },
 
-  seekRoot: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_ROOT)
+  seekRoot(buffer, start, pValue) {
+    if (pValue < 0) return -1
+    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    if (pValueContent < 0) return -1
+    return seekKey(buffer, pValueContent, B_ROOT)
   },
 
-  seekFork: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_FORK)
+  seekFork(buffer, start, pValue) {
+    if (pValue < 0) return -1
+    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    if (pValueContent < 0) return -1
+    return seekKey(buffer, pValueContent, B_FORK)
   },
 
-  seekBranch: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_BRANCH)
+  seekBranch(buffer, start, pValue) {
+    if (pValue < 0) return -1
+    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    if (pValueContent < 0) return -1
+    return seekKey(buffer, pValueContent, B_BRANCH)
   },
 
-  seekVoteLink: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    p = seekKey(buffer, p, B_VOTE)
-    if (p < 0) return
-    return seekKey(buffer, p, B_LINK)
+  seekVoteLink(buffer, start, pValue) {
+    if (pValue < 0) return -1
+    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    if (pValueContent < 0) return -1
+    const pValueContentVote = seekKey(buffer, pValueContent, B_VOTE)
+    if (pValueContentVote < 0) return -1
+    return seekKey(buffer, pValueContentVote, B_LINK)
   },
 
-  seekContact: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_CONTACT)
+  seekContact(buffer, start, pValue) {
+    if (pValue < 0) return -1
+    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    if (pValueContent < 0) return -1
+    return seekKey(buffer, pValueContent, B_CONTACT)
   },
 
-  seekMentions: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_MENTIONS)
+  seekMentions(buffer, start, pValue) {
+    if (pValue < 0) return -1
+    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    if (pValueContent < 0) return -1
+    return seekKey(buffer, pValueContent, B_MENTIONS)
   },
 
-  seekAbout: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_ABOUT)
+  seekAbout(buffer, start, pValue) {
+    if (pValue < 0) return -1
+    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    if (pValueContent < 0) return -1
+    return seekKey(buffer, pValueContent, B_ABOUT)
   },
 
-  pluckLink: function (buffer, start) {
-    let p = start
-    return seekKey(buffer, p, B_LINK)
+  pluckLink(buffer, start) {
+    return seekKey(buffer, start, B_LINK)
   },
 
-  seekPrivate: function (buffer, start, pValue) {
-    let p = 0 // note you pass in p!
-    p = seekKey(buffer, p, B_META)
-    if (p < 0) return
-    return seekKey(buffer, p, B_PRIVATE)
+  seekPrivate(buffer, start, pValue) {
+    const pMeta = seekKey(buffer, 0, B_META)
+    if (pMeta < 0) return -1
+    return seekKey(buffer, pMeta, B_PRIVATE)
   },
 
-  seekMeta: function (buffer, start, pValue) {
-    let p = 0 // note you pass in p!
-    return seekKey(buffer, p, B_META)
+  seekMeta(buffer, start, pValue) {
+    return seekKey(buffer, 0, B_META)
   },
 
-  seekChannel: function (buffer, start, pValue) {
-    let p = pValue
-    if (p < 0) return
-    p = seekKey(buffer, p, B_CONTENT)
-    if (p < 0) return
-    return seekKey(buffer, p, B_CHANNEL)
+  seekChannel(buffer, start, pValue) {
+    if (pValue < 0) return -1
+    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    if (pValueContent < 0) return -1
+    return seekKey(buffer, pValueContent, B_CHANNEL)
   },
 
-  seekKey: function (buffer, start, pValue) {
-    var p = 0 // note you pass in p!
-    return seekKey(buffer, p, B_KEY)
+  seekKey(buffer, start, pValue) {
+    return seekKey(buffer, 0, B_KEY)
   },
 }
