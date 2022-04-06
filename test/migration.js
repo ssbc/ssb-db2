@@ -350,7 +350,9 @@ test('migrate fixes buffers in msg.value.content.nonce', (t) => {
         sbot.db.query(
           toCallback((err1, msgs) => {
             t.error(err1, 'no err')
-            t.equal(msgs.length, M * A + A)
+            // (seed + announce + main + indexes + 4*index) * A
+            const META_MSGS = 8 * A
+            t.equal(msgs.length, M + META_MSGS)
 
             sbot.db.query(
               where(type('metafeed/add/derived')),
