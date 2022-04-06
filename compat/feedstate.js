@@ -5,7 +5,7 @@
 const { onceWhen } = require('../utils')
 
 exports.init = function (sbot, config) {
-  sbot.getFeedState = function(feedId, cb) {
+  sbot.getFeedState = function (feedId, cb) {
     onceWhen(
       sbot.db.stateFeedsReady,
       (ready) => ready === true,
@@ -17,7 +17,7 @@ exports.init = function (sbot, config) {
 
         return cb(null, {
           id: feedState.key,
-          sequence: feedState.value.sequence
+          sequence: feedState.value.sequence,
         })
       }
     )

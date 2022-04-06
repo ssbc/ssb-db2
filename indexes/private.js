@@ -24,8 +24,8 @@ module.exports = function (dir, sbot, config) {
   let canDecrypt = []
 
   const startDecryptBox1 = config.db2.startDecryptBox1
-        ? new Date(config.db2.startDecryptBox1)
-        : null
+    ? new Date(config.db2.startDecryptBox1)
+    : null
 
   const debug = Debug('ssb:db2:private')
 
@@ -195,8 +195,7 @@ module.exports = function (dir, sbot, config) {
       if (ciphertext.endsWith('.box') && startDecryptBox1) {
         const pTimestamp = bipf.seekKey(recBuffer, pValue, B_TIMESTAMP)
         const declaredTimestamp = bipf.decode(recBuffer, pTimestamp)
-        if (declaredTimestamp < startDecryptBox1)
-          return record
+        if (declaredTimestamp < startDecryptBox1) return record
       }
       if (streaming && ciphertext.endsWith('.box2')) encrypted.push(recOffset)
 
