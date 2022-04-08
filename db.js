@@ -39,6 +39,11 @@ const makeBaseIndex = require('./indexes/base')
 const KeysIndex = require('./indexes/keys')
 const PrivateIndex = require('./indexes/private')
 
+const B_VALUE = Buffer.from('value')
+const B_KEY = Buffer.from('key')
+const B_META = Buffer.from('meta')
+const B_PRIVATE = Buffer.from('private')
+
 const { where, fromDB, key, author, deferred, toCallback, asOffsets } =
   operators
 
@@ -490,27 +495,25 @@ exports.init = function (sbot, config) {
     )
     debug(`lowest offset for all indexes is ${lowestOffset}`)
 
-    const B_VALUE = Buffer.from('value')
-
     log.stream({ gt: lowestOffset }).pipe({
       paused: false,
       write(record) {
         const buf = record.value
-        const pValue = buf ? bipf.seekKey(buf, 0, B_VALUE) : null
+        const pValue = buf ? bipf.seekKey(buf, 0, B_VALUE) : -1
         indexesArr.forEach((idx) => idx.onRecord(record, false, pValue))
       },
       end() {
         debug(`updateIndexes() scan time: ${Date.now() - start}ms`)
-        const writeTasks = indexesArr.map((idx) =>
+        const flushTasks = indexesArr.map((idx) =>
           promisify(idx.flush.bind(idx))()
         )
-        Promise.all(writeTasks).then(() => {
+        Promise.all(flushTasks).then(() => {
           debug('updateIndexes() live streaming')
           log.stream({ gt: indexes['base'].offset.value, live: true }).pipe({
             paused: false,
             write(record) {
               const buf = record.value
-              const pValue = buf ? bipf.seekKey(buf, 0, B_VALUE) : null
+              const pValue = buf ? bipf.seekKey(buf, 0, B_VALUE) : -1
               indexesArr.forEach((idx) => idx.onRecord(record, true, pValue))
             },
           })
@@ -623,16 +626,16 @@ exports.init = function (sbot, config) {
     }
   }
 
-  function reindexOffset(data, cb) {
-    jitdb.reindex(data.offset, (err) => {
+  function reindexOffset(record, seq, pValue, cb) {
+    jitdb.reindex(record.offset, (err) => {
       if (err) return cb(clarify(err, 'reindexOffset() failed'))
 
       for (const indexName in indexes) {
         const idx = indexes[indexName]
-        if (idx.indexesContent()) idx.processRecord(data, data.seq)
+        if (idx.indexesContent()) idx.processRecord(record, seq, pValue)
       }
 
-      cb(null, data.offset)
+      cb(null, record.offset)
     })
   }
 
@@ -642,15 +645,13 @@ exports.init = function (sbot, config) {
     reindexingLock((unlock) => {
       const offsets = privateIndex.missingDecrypt()
       const keysIndex = indexes['keys']
-      const B_KEY = Buffer.from('key')
-      const B_META = Buffer.from('meta')
-      const B_PRIVATE = Buffer.from('private')
 
       push(
         push.values(offsets),
         push.asyncMap((offset, cb) => {
           log.get(offset, (err, buf) => {
             if (err) return cb(clarify(err, 'reindexEncrypted() failed when getting messages')) // prettier-ignore
+            const record = { offset, value: buf }
 
             const pMeta = bipf.seekKey(buf, 0, B_META)
             if (pMeta < 0) return cb()
@@ -664,19 +665,26 @@ exports.init = function (sbot, config) {
             if (pKey < 0) return cb()
             const key = bipf.decode(buf, pKey)
 
+            const pValue = bipf.seekKey(buf, 0, B_VALUE)
+
             onDrain('keys', () => {
               keysIndex.getSeq(key, (err, seqNum) => {
                 if (err) return cb(clarify(err, 'reindexEncrypted() failed when getting seq')) // prettier-ignore
 
                 const seq = parseInt(seqNum, 10)
 
-                reindexOffset({ offset, seq, value: buf }, cb)
+                reindexOffset(record, seq, pValue, cb)
               })
             })
           })
         }),
         push.collect((err, result) => {
-          unlock(cb, err, result)
+          const flushTasks = Object.values(indexes)
+            .filter((idx) => idx.indexesContent())
+            .map((idx) => promisify(idx.forcedFlush.bind(idx))())
+          Promise.all(flushTasks).then(() => {
+            unlock(cb, err, result)
+          })
         })
       )
     })
