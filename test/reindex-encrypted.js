@@ -80,9 +80,9 @@ test('box2 group reindex larger', async (t) => {
   const msg3 = await pify(alice.db.publish)(content3)
   const msg4 = await pify(alice.db.publish)(content4)
 
-  t.false(msg0.value.content.endsWith('.box2'), 'public')
+  t.notEqual(typeof msg0.value.content, 'string', 'public')
   t.true(msg1.value.content.endsWith('.box2'), 'box2 encoded')
-  t.false(msg2.value.content.endsWith('.box2'), 'public')
+  t.notEqual(typeof msg2.value.content, 'string', 'public')
   t.true(msg3.value.content.endsWith('.box2'), 'box2 encoded')
   t.true(msg4.value.content.endsWith('.box2'), 'box2 encoded')
 
