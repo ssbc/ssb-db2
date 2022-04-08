@@ -20,6 +20,7 @@
     "atomic-file-rw": "^0.2.1",
     "binary-search-bounds": "^2.0.4",
     "bipf": "^1.5.4",
+    "c8": "^7.11.0",
     "clarify-error": "^1.0.0",
     "debug": "^4.3.1",
     "fastintcompression": "0.0.4",
@@ -76,7 +77,8 @@
     "format-code": "prettier --write \"*.js\" \"(test|compat|indexes|operators)/*.js\"",
     "format-code-staged": "pretty-quick --staged --pattern \"*.js\" --pattern \"(test|compat|indexes|operators)/*.js\"",
     "benchmark": "node --expose-gc benchmark/index.js | tap-arc",
-    "benchmark-no-create": "node --expose-gc benchmark/index.js noCreate | tap-arc"
+    "benchmark-no-create": "node --expose-gc benchmark/index.js noCreate | tap-arc",
+    "coverage": "c8 --reporter=lcov npm run test"
   },
   "husky": {
     "hooks": {
