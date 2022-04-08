@@ -33,10 +33,12 @@ module.exports = class EBT extends Plugin {
 
   levelKeyToMessage(key, cb) {
     this.level.get(key, (err, offset) => {
-      if (err) return cb(clarify(err, 'EBT.levelKeyToMessage() failed when getting leveldb item')) // prettier-ignore
+      // prettier-ignore
+      if (err) return cb(clarify(err, 'EBT.levelKeyToMessage() failed when getting leveldb item'))
       else
         this.log.get(parseInt(offset, 10), (err, record) => {
-          if (err) return cb(clarify(err, 'EBT.levelKeyToMessage() failed when getting log record')) // prettier-ignore
+          // prettier-ignore
+          if (err) return cb(clarify(err, 'EBT.levelKeyToMessage() failed when getting log record'))
           cb(null, bipf.decode(record, 0))
         })
     })

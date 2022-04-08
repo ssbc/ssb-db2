@@ -64,7 +64,8 @@ module.exports = class FullMentions extends Plugin {
     pull(
       pl.read(this.level, opts),
       pull.collect((err, seqArr) => {
-        if (err) return cb(clarify(err, 'FullMentions.getMessagesByMention() failed to read leveldb')) // prettier-ignore
+        // prettier-ignore
+        if (err) return cb(clarify(err, 'FullMentions.getMessagesByMention() failed to read leveldb'))
         if (live) {
           const ps = pull(
             pl.read(this.level, Object.assign({}, opts, { live, old: false })),

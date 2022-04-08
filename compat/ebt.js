@@ -31,7 +31,8 @@ exports.init = function (sbot, config) {
               clock[authorId] = sequence
             }),
             pull.collect((err) => {
-              if (err) return cb(clarify(err, 'ssb-db2 getVectorClock failed')) // prettier-ignore
+              // prettier-ignore
+              if (err) return cb(clarify(err, 'ssb-db2 getVectorClock failed'))
               cb(null, clock)
             })
           )

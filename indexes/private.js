@@ -43,7 +43,8 @@ module.exports = function (dir, sbot, config) {
     buf.copy(b, 4)
 
     writeFile(filename, b, (err) => {
-      if (err) console.error(clarify(err, 'private plugin failed to save file ' + filename)) // prettier-ignore
+      // prettier-ignore
+      if (err) console.error(clarify(err, 'private plugin failed to save file ' + filename))
     })
   }
 
@@ -68,7 +69,8 @@ module.exports = function (dir, sbot, config) {
         else stateLoaded.resolve()
         if (err.code === 'ENOENT') cb()
         else if (err.message === 'empty file') cb()
-        else cb(clarify(err, 'private plugin failed to load "encrypted" index')) // prettier-ignore
+        // prettier-ignore
+        else cb(clarify(err, 'private plugin failed to load "encrypted" index'))
         return
       }
 

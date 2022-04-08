@@ -33,7 +33,8 @@ exports.init = function (sbot, config) {
       pull.asyncMap(sbot.db.add),
       pull.drain(
         () => {},
-        cb || ((err) => console.error(clarify(err, 'ssb-db2 createWriteStream failed to add messages'))) // prettier-ignore
+        // prettier-ignore
+        cb || ((err) => console.error(clarify(err, 'ssb-db2 createWriteStream failed to add messages')))
       )
     )
   }
