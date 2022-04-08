@@ -40,8 +40,12 @@ module.exports = class Plugin {
     this._stateLoaded = DeferredPromise()
     this.batch = []
 
-    this.flush = (cb) => {
-      if (processedOffset === this.offset.value || this.level.isClosed()) return cb()
+    /**
+     * Internal flush() method. Do not call this from other modules.
+     */
+    this._flush = (overwriting, cb) => {
+      if (this.level.isClosed()) return cb()
+      if (!overwriting && processedOffset === this.offset.value) return cb()
       if (!this.onFlush) this.onFlush = (cb2) => cb2()
 
       const processedOffsetAtFlush = processedOffset
@@ -76,6 +80,18 @@ module.exports = class Plugin {
         this.batch = []
       })
     }
+
+    /**
+     * Flush the batched operations such that leveldb is written to disk, only
+     * if this index's offset has moved forwards.
+     */
+    this.flush = this._flush.bind(this, false)
+
+    /**
+     * Flush the batched operations such that leveldb is written to disk, even
+     * if this index's offset hasn't changed (thus we're overwriting old items).
+     */
+    this.forcedFlush = this._flush.bind(this, true)
 
     const liveFlush = debounce(this.flush, 250)
 
