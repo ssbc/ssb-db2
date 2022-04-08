@@ -91,7 +91,8 @@ function scanAndCount(pushstream, cb) {
       count += 1
     },
     end(err) {
-      if (err) cb(clarify(err, 'scanAndCount() failed scanning async-append-only-log')) // prettier-ignore
+      // prettier-ignore
+      if (err) cb(clarify(err, 'scanAndCount() failed scanning async-append-only-log'))
       else cb(null, count)
     },
   })
@@ -129,7 +130,8 @@ function inefficientFindMigratedOffset(newLog, oldLog, cb) {
           result = x.seq
         },
         (err) => {
-          if (err) cb(clarify(err, 'inefficientFindMigratedOffset() failed scanning flumelog')) // prettier-ignore
+          // prettier-ignore
+          if (err) cb(clarify(err, 'inefficientFindMigratedOffset() failed scanning flumelog'))
           else cb(null, result)
         }
       )
@@ -152,11 +154,13 @@ function findMigratedOffset(sbot, oldLog, newLog, cb) {
 
     const offsetInNewLog = newLog.since.value
     newLog.get(offsetInNewLog, (err, buf) => {
-      if (err) return cb(clarify(err, 'findMigratedOffset() failed to get msg in async-append-only-log')) // prettier-ignore
+      // prettier-ignore
+      if (err) return cb(clarify(err, 'findMigratedOffset() failed to get msg in async-append-only-log'))
 
       const msgKey = bipf.decode(buf, seekers.seekKey(buf))
       sbot.get(msgKey, (err2, msg, offsetInOldLog) => {
-        if (err2) return cb(clarify(err2, 'findMigratedOffset() failed to get msg in flumelog')) // prettier-ignore
+        // prettier-ignore
+        if (err2) return cb(clarify(err2, 'findMigratedOffset() failed to get msg in flumelog'))
 
         if (typeof offsetInOldLog === 'number') {
           cb(null, offsetInOldLog)

@@ -30,7 +30,8 @@ module.exports = function makeBaseIndex(privateIndex) {
             this.authorLatest.set(key, value)
           },
           (err) => {
-            if (err && err !== true) cb(clarify(err, 'BaseIndex.onLoaded() failed')) // prettier-ignore
+            // prettier-ignore
+            if (err && err !== true) cb(clarify(err, 'BaseIndex.onLoaded() failed'))
             else cb()
           }
         )
@@ -80,10 +81,12 @@ module.exports = function makeBaseIndex(privateIndex) {
 
     removeFeedFromLatest(feedId, cb) {
       this.flush((err) => {
-        if (err) cb(clarify(err, 'BaseIndex.removeFeedFromLatest() failed when waiting for flush')) // prettier-ignore
+        // prettier-ignore
+        if (err) cb(clarify(err, 'BaseIndex.removeFeedFromLatest() failed when waiting for flush'))
         else {
           this.level.del(feedId, (err2) => {
-            if (err2) cb(clarify(err2, 'BaseIndex.removeFeedFromLatest() failed when deleting')) // prettier-ignore
+            // prettier-ignore
+            if (err2) cb(clarify(err2, 'BaseIndex.removeFeedFromLatest() failed when deleting'))
             else cb()
           })
         }

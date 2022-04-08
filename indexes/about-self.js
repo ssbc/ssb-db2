@@ -32,7 +32,8 @@ module.exports = class AboutSelf extends Plugin {
       pull.drain(
         (data) => (this.profiles[data.key] = data.value),
         (err) => {
-          if (err && err !== true) cb(clarify(err, 'AboutSelf.onLoaded() failed')) // prettier-ignore
+          // prettier-ignore
+          if (err && err !== true) cb(clarify(err, 'AboutSelf.onLoaded() failed'))
           else cb()
         }
       )

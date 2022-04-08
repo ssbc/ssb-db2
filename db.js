@@ -238,7 +238,8 @@ exports.init = function (sbot, config) {
         validate2.validateOOOBatch(hmacKey, oooMsgVals, done())
 
         done((err, keys) => {
-          if (err) return cb(clarify(err, 'validation in addTransaction() failed')) // prettier-ignore
+          // prettier-ignore
+          if (err) return cb(clarify(err, 'validation in addTransaction() failed'))
 
           const [msgKeys, oooKeys] = keys
 
@@ -254,7 +255,8 @@ exports.init = function (sbot, config) {
             msgKeys.concat(oooKeys),
             msgVals.concat(oooMsgVals),
             (err, kvts) => {
-              if (err) return cb(clarify(err, 'addTransaction() failed in the log')) // prettier-ignore
+              // prettier-ignore
+              if (err) return cb(clarify(err, 'addTransaction() failed in the log'))
 
               kvts.forEach((kvt) => post.set(kvt))
               cb(null, kvts)
@@ -311,7 +313,8 @@ exports.init = function (sbot, config) {
             if (isLast) updateState({ key: keys[i], value: msgVals[i] })
 
             log.add(keys[i], msgVals[i], (err, kvt) => {
-              if (err) return done()(clarify(err, 'addBatch() failed in the log')) // prettier-ignore
+              // prettier-ignore
+              if (err) return done()(clarify(err, 'addBatch() failed in the log'))
 
               post.set(kvt)
               done()(null, kvt)
@@ -346,10 +349,12 @@ exports.init = function (sbot, config) {
         if (Ref.isFeedId(msgVal.author)) {
           const previous = (state[msgVal.author] || { value: null }).value
           validate2.validateSingle(hmacKey, msgVal, previous, (err, key) => {
-            if (err) return cb(clarify(err, 'classic message validation in addImmediately() failed')) // prettier-ignore
+            // prettier-ignore
+            if (err) return cb(clarify(err, 'classic message validation in addImmediately() failed'))
             updateState({ key, value: msgVal })
             log.add(key, msgVal, (err, kvt) => {
-              if (err) return cb(clarify(err, 'addImmediately() of a classic message failed in the log')) // prettier-ignore
+              // prettier-ignore
+              if (err) return cb(clarify(err, 'addImmediately() of a classic message failed in the log'))
 
               post.set(kvt)
               cb(null, kvt)
@@ -358,11 +363,13 @@ exports.init = function (sbot, config) {
         } else if (SSBURI.isBendyButtV1FeedSSBURI(msgVal.author)) {
           const previous = (state[msgVal.author] || { value: null }).value
           const err = bendyButt.validateSingle(msgVal, previous, hmacKey)
-          if (err) return cb(clarify(err, 'bendy butt message validation in addImmediately() failed')) // prettier-ignore
+          // prettier-ignore
+          if (err) return cb(clarify(err, 'bendy butt message validation in addImmediately() failed'))
           const key = bendyButt.hash(msgVal)
           updateState({ key, value: msgVal })
           log.add(key, msgVal, (err, kvt) => {
-            if (err) return cb(clarify(err, 'addImmediately() of a bendy butt message failed in the log')) // prettier-ignore
+            // prettier-ignore
+            if (err) return cb(clarify(err, 'addImmediately() of a bendy butt message failed in the log'))
 
             post.set(kvt)
             cb(null, kvt)
@@ -440,8 +447,10 @@ exports.init = function (sbot, config) {
       where(key(msgId)),
       asOffsets(),
       toCallback((err, results) => {
-        if (err) return cb(clarify(err, 'del() failed when getting the message')) // prettier-ignore
-        if (results.length === 0) return cb(new Error(`cannot delete ${msgId} because it was not found`)) // prettier-ignore
+        // prettier-ignore
+        if (err) return cb(clarify(err, 'del() failed when getting the message'))
+        // prettier-ignore
+        if (results.length === 0) return cb(new Error(`cannot delete ${msgId} because it was not found`))
 
         indexes['keys'].delMsg(msgId)
         log.del(results[0], cb)
@@ -650,7 +659,8 @@ exports.init = function (sbot, config) {
         push.values(offsets),
         push.asyncMap((offset, cb) => {
           log.get(offset, (err, buf) => {
-            if (err) return cb(clarify(err, 'reindexEncrypted() failed when getting messages')) // prettier-ignore
+            // prettier-ignore
+            if (err) return cb(clarify(err, 'reindexEncrypted() failed when getting messages'))
             const record = { offset, value: buf }
 
             const pMeta = bipf.seekKey(buf, 0, B_META)
@@ -669,7 +679,8 @@ exports.init = function (sbot, config) {
 
             onDrain('keys', () => {
               keysIndex.getSeq(key, (err, seqNum) => {
-                if (err) return cb(clarify(err, 'reindexEncrypted() failed when getting seq')) // prettier-ignore
+                // prettier-ignore
+                if (err) return cb(clarify(err, 'reindexEncrypted() failed when getting seq'))
 
                 const seq = parseInt(seqNum, 10)
 
