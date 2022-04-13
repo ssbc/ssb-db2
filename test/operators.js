@@ -63,22 +63,22 @@ test('dedicated author (opt-in) and dedicated type (default)', (t) => {
         t.equal(msgs[0].value.content.type, 'dogs')
         setTimeout(() => {
           const dedicatedAuthorIndex = fs
-            .readdirSync(path.join(dir, 'db2', 'indexes'))
+            .readdirSync(path.join(dir, 'db2', 'jit'))
             .find((f) => f.startsWith('value_author_@') && f.endsWith('.index'))
           t.ok(dedicatedAuthorIndex, 'dedicated author index exists')
 
           const dedicatedTypeIndex = fs
-            .readdirSync(path.join(dir, 'db2', 'indexes'))
+            .readdirSync(path.join(dir, 'db2', 'jit'))
             .find((f) => f === 'value_content_type_dogs.index')
           t.ok(dedicatedTypeIndex, 'dedicated type index exists')
 
           const sharedTypeIndex = fs
-            .readdirSync(path.join(dir, 'db2', 'indexes'))
+            .readdirSync(path.join(dir, 'db2', 'jit'))
             .find((f) => f === 'value_content_type.32prefix')
           t.notOk(sharedTypeIndex, 'shared type index does NOT exist')
 
           const sharedAuthorIndex = fs
-            .readdirSync(path.join(dir, 'db2', 'indexes'))
+            .readdirSync(path.join(dir, 'db2', 'jit'))
             .find((f) => f === 'value_author.32prefix')
           t.notOk(sharedAuthorIndex, 'shared author index does NOT exist')
 
@@ -98,12 +98,12 @@ test('non-dedicated author (default) and non-dedicated type (opt-in)', (t) => {
       t.equal(msgs[0].value.content.type, 'dogs')
       setTimeout(() => {
         const sharedTypeIndex = fs
-          .readdirSync(path.join(dir, 'db2', 'indexes'))
+          .readdirSync(path.join(dir, 'db2', 'jit'))
           .find((f) => f === 'value_content_type.32prefix')
         t.ok(sharedTypeIndex, 'shared type index exists')
 
         const sharedAuthorIndex = fs
-          .readdirSync(path.join(dir, 'db2', 'indexes'))
+          .readdirSync(path.join(dir, 'db2', 'jit'))
           .find((f) => f === 'value_author.32prefix')
         t.ok(sharedAuthorIndex, 'shared author index exists')
 
