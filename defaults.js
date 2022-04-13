@@ -9,6 +9,7 @@ exports.flumePath = (dir) => path.join(dir, 'flume')
 exports.oldLogPath = (dir) => path.join(dir, 'flume', 'log.offset')
 exports.newLogPath = (dir) => path.join(dir, 'db2', 'log.bipf')
 exports.indexesPath = (dir) => path.join(dir, 'db2', 'indexes')
+exports.jitIndexesPath = (dir) => path.join(dir, 'db2', 'jit')
 exports.tooHotOpts = (config) =>
   config.db2
     ? {
