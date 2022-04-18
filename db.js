@@ -180,10 +180,10 @@ exports.init = function (sbot, config) {
   function getHelper(id, onlyValue, cb) {
     if (sbot.db2migrate) {
       sbot.db2migrate.synchronized((isSynced) => {
-        if (isSynced) onDrain(next)
+        if (isSynced) onDrain('keys', next)
       })
     } else {
-      onDrain(next)
+      onDrain('keys', next)
     }
 
     function next() {
