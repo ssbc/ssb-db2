@@ -478,7 +478,15 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('del()')
     if (guard) return cb(guard)
 
-    onDrain('keys', () => {
+    if (sbot.db2migrate) {
+      sbot.db2migrate.synchronized((isSynced) => {
+        if (isSynced) onDrain('keys', next)
+      })
+    } else {
+      onDrain('keys', next)
+    }
+
+    function next() {
       indexes['keys'].getSeq(msgId, (err, seqStr) => {
         if (err)
           return cb(clarify(err, 'del() failed to find msgId from index'))
@@ -489,7 +497,7 @@ exports.init = function (sbot, config) {
           log.del(offset, cb)
         })
       })
-    })
+    }
   }
 
   function deleteFeed(feedId, cb) {
