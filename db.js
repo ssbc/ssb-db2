@@ -31,7 +31,7 @@ const mutexify = require('mutexify')
 
 const operators = require('./operators')
 const { jitIndexesPath } = require('./defaults')
-const { onceWhen } = require('./utils')
+const { onceWhen, ReadyGate } = require('./utils')
 const DebouncingBatchAdd = require('./debounce-batch')
 const Log = require('./log')
 const Status = require('./status')
@@ -44,8 +44,7 @@ const B_KEY = Buffer.from('key')
 const B_META = Buffer.from('meta')
 const B_PRIVATE = Buffer.from('private')
 
-const { where, fromDB, key, author, deferred, toCallback, asOffsets } =
-  operators
+const { where, fromDB, author, deferred, asOffsets, toCallback } = operators
 
 exports.name = 'db'
 
@@ -96,6 +95,8 @@ exports.init = function (sbot, config) {
   const hmacKey = null
   const stateFeedsReady = Obv().set(false)
   const state = {}
+  const secretStackLoaded = new ReadyGate()
+  const indexesStateLoaded = new ReadyGate()
 
   sbot.close.hook(function (fn, args) {
     close((err) => {
@@ -107,6 +108,24 @@ exports.init = function (sbot, config) {
   registerIndex(KeysIndex)
 
   loadStateFeeds()
+
+  // Wait a bit for other secret-stack plugins (which may add indexes) to load
+  const secretStackTimer = setTimeout(() => {
+    secretStackLoaded.setReady()
+  }, 16)
+  if (secretStackTimer.unref) secretStackTimer.unref()
+
+  secretStackLoaded.onReady(() => {
+    const stateLoadedPromises = [privateIndex.stateLoaded]
+    for (const indexName in indexes) {
+      stateLoadedPromises.push(indexes[indexName].stateLoaded)
+    }
+    Promise.all(stateLoadedPromises).then(() => {
+      indexesStateLoaded.setReady()
+    })
+  })
+
+  indexesStateLoaded.onReady(updateIndexes)
 
   function setStateFeedsReady(x) {
     stateFeedsReady.set(x)
@@ -159,15 +178,31 @@ exports.init = function (sbot, config) {
   }
 
   function getHelper(id, onlyValue, cb) {
-    self.query(
-      where(key(id)),
-      toCallback((err, results) => {
-        if (err) return cb(clarify(err, 'ssb-db2 failed to get message'))
-        else if (results.length)
-          return cb(null, onlyValue ? results[0].value : results[0])
-        else return cb(new Error('Key not found in database ' + id))
+    if (sbot.db2migrate) {
+      sbot.db2migrate.synchronized((isSynced) => {
+        if (isSynced) onDrain(next)
       })
-    )
+    } else {
+      onDrain(next)
+    }
+
+    function next() {
+      indexes['keys'].getSeq(id, (err, seqStr) => {
+        if (err) cb(clarify(err, 'Msg ' + id + ' not found in leveldb index'))
+        else {
+          const seq = parseInt(seqStr, 10)
+          jitdb.lookup('seq', seq, (err, offset) => {
+            if (err) cb(clarify(err, 'Msg ' + id + ' not found in jit index'))
+            else {
+              getMsgByOffset(offset, (err, msg) => {
+                if (err) cb(clarify(err, 'Msg ' + id + ' not found in the log'))
+                else cb(null, onlyValue ? msg.value : msg)
+              })
+            }
+          })
+        }
+      })
+    }
   }
 
   function get(id, cb) {
@@ -443,40 +478,42 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('del()')
     if (guard) return cb(guard)
 
-    self.query(
-      where(key(msgId)),
-      asOffsets(),
-      toCallback((err, results) => {
-        // prettier-ignore
-        if (err) return cb(clarify(err, 'del() failed when getting the message'))
-        // prettier-ignore
-        if (results.length === 0) return cb(new Error(`cannot delete ${msgId} because it was not found`))
-
-        indexes['keys'].delMsg(msgId)
-        log.del(results[0], cb)
+    onDrain('keys', () => {
+      indexes['keys'].getSeq(msgId, (err, seqStr) => {
+        if (err)
+          return cb(clarify(err, 'del() failed to find msgId from index'))
+        const seq = parseInt(seqStr, 10)
+        jitdb.lookup('seq', seq, (err, offset) => {
+          if (err)
+            return cb(clarify(err, 'del() failed to find seq from jitdb'))
+          log.del(offset, cb)
+        })
       })
-    )
+    })
   }
 
   function deleteFeed(feedId, cb) {
     const guard = guardAgainstDuplicateLogs('deleteFeed()')
     if (guard) return cb(guard)
 
-    jitdb.all(author(feedId), 0, false, true, 'declared', (err, offsets) => {
-      push(
-        push.values(offsets),
-        push.asyncMap((offset, cb) => {
-          log.del(offset, cb)
-        }),
-        push.collect((err) => {
-          if (err) cb(clarify(err, 'deleteFeed() failed for feed ' + feedId))
-          else {
-            delete state[feedId]
-            indexes.base.removeFeedFromLatest(feedId, cb)
-          }
-        })
-      )
-    })
+    self.query(
+      where(author(feedId)),
+      asOffsets(),
+      toCallback((err, offsets) => {
+        if (err) return cb(clarify(err, 'deleteFeed() failed to query jitdb'))
+        push(
+          push.values(offsets),
+          push.asyncMap(log.del),
+          push.collect((err) => {
+            if (err) cb(clarify(err, 'deleteFeed() failed for feed ' + feedId))
+            else {
+              delete state[feedId]
+              indexes.base.removeFeedFromLatest(feedId, cb)
+            }
+          })
+        )
+      })
+    )
   }
 
   function clearIndexes() {
@@ -539,10 +576,9 @@ exports.init = function (sbot, config) {
       indexName = 'base'
     }
 
-    // setTimeout to make sure extra indexes from secret-stack are also included
-    setTimeout(() => {
+    secretStackLoaded.onReady(() => {
       if (closed) return
-      onIndexesStateLoaded(() => {
+      indexesStateLoaded.onReady(() => {
         if (closed) return
         log.onDrain(() => {
           if (closed) return
@@ -568,23 +604,6 @@ exports.init = function (sbot, config) {
       })
     })
   }
-
-  function onIndexesStateLoaded(cb) {
-    if (!onIndexesStateLoaded.promise) {
-      const stateLoadedPromises = [privateIndex.stateLoaded]
-      for (const indexName in indexes) {
-        stateLoadedPromises.push(indexes[indexName].stateLoaded)
-      }
-      onIndexesStateLoaded.promise = Promise.all(stateLoadedPromises)
-    }
-    onIndexesStateLoaded.promise.then(cb)
-  }
-
-  // setTimeout to make sure extra indexes from secret-stack are also included
-  const timer = setTimeout(() => {
-    onIndexesStateLoaded(updateIndexes)
-  })
-  if (timer.unref) timer.unref()
 
   function close(cb) {
     closed = true

@@ -123,7 +123,7 @@ test('get missing key', (t) => {
     t.error(err, 'no err')
 
     db.get('%fake', (err, getMsg) => {
-      t.equal(err.message, 'Key not found in database %fake')
+      t.equal(err.message, 'Msg %fake not found in leveldb index')
       t.end()
     })
   })
