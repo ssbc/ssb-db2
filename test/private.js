@@ -78,21 +78,23 @@ test('encrypted index can handle deleted records', (t) => {
     db.del(privateMsg.key, (err, msg) => {
       t.error(err, 'no err')
 
-      sbot.close(() => {
-        rimraf.sync(path.join(dir, 'db2', 'indexes', 'canDecrypt.index'))
-        rimraf.sync(path.join(dir, 'db2', 'indexes', 'encrypted.index'))
+      db.getLog().onDeletesFlushed(() => {
+        sbot.close(() => {
+          rimraf.sync(path.join(dir, 'db2', 'indexes', 'canDecrypt.index'))
+          rimraf.sync(path.join(dir, 'db2', 'indexes', 'encrypted.index'))
 
-        sbot = SecretStack({ appKey: caps.shs })
-          .use(require('../'))
-          .call(null, {
-            keys,
-            path: dir,
+          sbot = SecretStack({ appKey: caps.shs })
+            .use(require('../'))
+            .call(null, {
+              keys,
+              path: dir,
+            })
+
+          sbot.db.get(privateMsg.key, (err, msg) => {
+            t.notOk(msg, 'no message')
+            t.match(err.message, /not found in the log/)
+            t.end()
           })
-
-        sbot.db.get(privateMsg.key, (err, msg) => {
-          t.notOk(msg, 'no message')
-          t.true(err.message.includes('Key not found in database'))
-          t.end()
         })
       })
     })

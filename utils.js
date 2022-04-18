@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2021 Anders Rune Jensen
+// SPDX-FileCopyrightText: 2021-2022 Anders Rune Jensen
 //
 // SPDX-License-Identifier: LGPL-3.0-only
 
@@ -26,4 +26,22 @@ function onceWhen(obv, filter, cb) {
   })
 }
 
-module.exports = { onceWhen }
+class ReadyGate {
+  constructor() {
+    this.waiting = []
+    this.ready = false
+  }
+
+  onReady(cb) {
+    if (this.ready) cb()
+    else this.waiting.push(cb)
+  }
+
+  setReady() {
+    this.ready = true
+    for (const cb of this.waiting) cb()
+    this.waiting = []
+  }
+}
+
+module.exports = { onceWhen, ReadyGate }

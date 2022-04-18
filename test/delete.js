@@ -7,8 +7,7 @@ const ssbKeys = require('ssb-keys')
 const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
-const validate = require('ssb-validate')
-const pull = require('pull-stream')
+const pify = require('util').promisify
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 
@@ -64,7 +63,7 @@ test('index, delete, query', (t) => {
                 (err, results) => {
                   t.equal(results.length, 1, 'got msg')
                   t.equal(results[0].value.sequence, 2, 'got correct msg')
-                  sbot.close(t.end)
+                  t.end()
                 }
               )
             })
@@ -73,4 +72,36 @@ test('index, delete, query', (t) => {
       )
     })
   })
+})
+
+test('delete a bunch', async (t) => {
+  t.timeoutAfter(60e3)
+
+  const TOTAL = 1000
+  const keys = []
+  console.time('publish')
+  for (let i = 0; i < TOTAL; i += 1) {
+    const msg = await pify(sbot.db.publish)({ type: 'post', text: `hi ${i}` })
+    keys.push(msg.key)
+  }
+  t.pass('published messages')
+  console.timeEnd('publish')
+
+  await pify(sbot.db.onDrain)()
+
+  console.time('delete')
+  for (let i = 0; i < TOTAL; i += 2) {
+    await pify(sbot.db.del)(keys[i])
+  }
+  console.timeEnd('delete')
+  console.time('flush delete')
+  await pify(sbot.db.getLog().onDeletesFlushed)()
+  console.timeEnd('flush delete')
+  t.pass('deleted messages')
+
+  t.end()
+})
+
+test('teardown', (t) => {
+  sbot.close(t.end)
 })
