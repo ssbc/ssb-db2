@@ -11,8 +11,7 @@ module.exports = function Status(log, jitdb) {
     indexes: {},
     progress: 0,
   }
-  const obv = Obv()
-  obv.set(stats)
+  const obv = Obv().set(stats)
   const EMIT_INTERVAL = 1000
   let i = 0
   let iTimer = 0

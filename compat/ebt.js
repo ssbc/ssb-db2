@@ -19,7 +19,7 @@ exports.init = function (sbot, config) {
   sbot.getVectorClock = function getVectorClock(cb) {
     onceWhen(
       sbot.db2migrate && sbot.db2migrate.synchronized,
-      (isSynced) => isSynced,
+      (isSynced) => isSynced === true,
       () => {
         sbot.db.onDrain('base', () => {
           const clock = {}
