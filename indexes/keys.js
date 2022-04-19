@@ -5,7 +5,6 @@
 const bipf = require('bipf')
 const clarify = require('clarify-error')
 const Plugin = require('./plugin')
-const { seqs } = require('../operators')
 
 const B_KEY = Buffer.from('key')
 
@@ -31,15 +30,14 @@ module.exports = class Keys extends Plugin {
     return false
   }
 
-  getMsgByKey(msgId, cb) {
-    this.level.get(msgId, (err, seqNum) => {
-      if (err) cb(null, seqs([]))
-      else cb(null, seqs([parseInt(seqNum, 10)]))
-    })
-  }
-
   getSeq(msgId, cb) {
-    this.level.get(msgId, cb)
+    this.level.get(msgId, (err, seqStr) => {
+      if (err) cb(err)
+      else {
+        const seq = parseInt(seqStr, 10)
+        cb(null, seq)
+      }
+    })
   }
 
   delMsg(msgId) {
