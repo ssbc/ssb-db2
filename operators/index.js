@@ -19,12 +19,15 @@ const {
   seekBranch,
   seekAbout,
 } = require('../seekers')
-const { and, equal, predicate, includes, deferred } = jitdbOperators
+const { and, seqs, equal, predicate, includes, deferred } = jitdbOperators
 
 function key(msgId) {
   return deferred((meta, cb) => {
     meta.db.onDrain('keys', () => {
-      meta.db.getIndex('keys').getMsgByKey(msgId, cb)
+      meta.db.getIndex('keys').getSeq(msgId, (err, seq) => {
+        if (err) cb(null, seqs([]))
+        else cb(null, seqs([seq]))
+      })
     })
   })
 }

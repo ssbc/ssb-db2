@@ -189,10 +189,9 @@ exports.init = function (sbot, config) {
     }
 
     function next() {
-      indexes['keys'].getSeq(id, (err, seqStr) => {
+      indexes['keys'].getSeq(id, (err, seq) => {
         if (err) cb(clarify(err, 'Msg ' + id + ' not found in leveldb index'))
         else {
-          const seq = parseInt(seqStr, 10)
           jitdb.lookup('seq', seq, (err, offset) => {
             if (err) cb(clarify(err, 'Msg ' + id + ' not found in jit index'))
             else {
@@ -491,13 +490,12 @@ exports.init = function (sbot, config) {
     }
 
     function next() {
-      indexes['keys'].getSeq(msgId, (err, seqStr) => {
-        if (err)
-          return cb(clarify(err, 'del() failed to find msgId from index'))
-        const seq = parseInt(seqStr, 10)
+      indexes['keys'].getSeq(msgId, (err, seq) => {
+        // prettier-ignore
+        if (err) return cb(clarify(err, 'del() failed to find msgId from index'))
         jitdb.lookup('seq', seq, (err, offset) => {
-          if (err)
-            return cb(clarify(err, 'del() failed to find seq from jitdb'))
+          // prettier-ignore
+          if (err) return cb(clarify(err, 'del() failed to find seq from jitdb'))
           log.del(offset, cb)
         })
       })
@@ -715,12 +713,9 @@ exports.init = function (sbot, config) {
             const pValue = bipf.seekKey(buf, 0, B_VALUE)
 
             onDrain('keys', () => {
-              keysIndex.getSeq(key, (err, seqNum) => {
+              keysIndex.getSeq(key, (err, seq) => {
                 // prettier-ignore
                 if (err) return cb(clarify(err, 'reindexEncrypted() failed when getting seq'))
-
-                const seq = parseInt(seqNum, 10)
-
                 reindexOffset(record, seq, pValue, cb)
               })
             })
