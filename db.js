@@ -562,10 +562,11 @@ exports.init = function (sbot, config) {
       },
       end() {
         debug(`updateIndexes() scan time: ${Date.now() - start}ms`)
-        const flushTasks = indexesArr.map((idx) =>
-          promisify(idx.flush.bind(idx))()
-        )
-        Promise.all(flushTasks).then(() => {
+        const doneFlushing = multicb({ pluck: 1 })
+        for (const idx of indexesArr) idx.flush(doneFlushing())
+        doneFlushing((err) => {
+          // prettier-ignore
+          if (err) console.error(clarify(err, 'updateIndexes() failed to flush indexes'))
           debug('updateIndexes() live streaming')
           log.stream({ gt: indexes['base'].offset.value, live: true }).pipe({
             paused: false,
@@ -619,14 +620,15 @@ exports.init = function (sbot, config) {
 
   function close(cb) {
     closed = true
-    const tasks = []
+    const done = multicb({ pluck: 1 })
     for (const indexName in indexes) {
       const index = indexes[indexName]
-      tasks.push(promisify(index.close.bind(index))())
+      index.close(done())
     }
-    Promise.all(tasks)
-      .then(() => promisify(log.close)())
-      .then(cb, cb)
+    done((err) => {
+      if (err) return cb(err)
+      log.close(cb)
+    })
   }
 
   // override query() from jitdb to implicitly call fromDB()
@@ -679,7 +681,7 @@ exports.init = function (sbot, config) {
         if (idx.indexesContent()) idx.processRecord(record, seq, pValue)
       }
 
-      cb(null, record.offset)
+      cb()
     })
   }
 
@@ -724,12 +726,17 @@ exports.init = function (sbot, config) {
             })
           })
         }),
-        push.collect((err, result) => {
-          const flushTasks = Object.values(indexes)
-            .filter((idx) => idx.indexesContent())
-            .map((idx) => promisify(idx.forcedFlush.bind(idx))())
-          Promise.all(flushTasks).then(() => {
-            unlock(cb, err, result)
+        push.collect((err) => {
+          if (err) return unlock(cb, err)
+          const done = multicb({ pluck: 1 })
+          for (const indexName in indexes) {
+            const idx = indexes[indexName]
+            if (idx.indexesContent()) idx.forcedFlush(done())
+          }
+          done((err) => {
+            // prettier-ignore
+            if (err) return unlock(cb, clarify(err, 'reindexEncrypted() failed to force-flush indexes'))
+            unlock(cb)
           })
         })
       )
