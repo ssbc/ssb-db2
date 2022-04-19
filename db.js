@@ -295,7 +295,7 @@ exports.init = function (sbot, config) {
               // prettier-ignore
               if (err) return cb(clarify(err, 'addTransaction() failed in the log'))
 
-              kvts.forEach((kvt) => post.set(kvt))
+              for (const kvt of kvts) post.set(kvt)
               cb(null, kvts)
             }
           )
@@ -558,7 +558,7 @@ exports.init = function (sbot, config) {
       write(record) {
         const buf = record.value
         const pValue = buf ? bipf.seekKey(buf, 0, B_VALUE) : -1
-        indexesArr.forEach((idx) => idx.onRecord(record, false, pValue))
+        for (const idx of indexesArr) idx.onRecord(record, false, pValue)
       },
       end() {
         debug(`updateIndexes() scan time: ${Date.now() - start}ms`)
@@ -572,7 +572,7 @@ exports.init = function (sbot, config) {
             write(record) {
               const buf = record.value
               const pValue = buf ? bipf.seekKey(buf, 0, B_VALUE) : -1
-              indexesArr.forEach((idx) => idx.onRecord(record, true, pValue))
+              for (const idx of indexesArr) idx.onRecord(record, true, pValue)
             },
           })
         })
