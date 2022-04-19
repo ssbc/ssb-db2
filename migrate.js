@@ -27,12 +27,6 @@ function fileExists(filename) {
   return fs.existsSync(filename) && fs.statSync(filename).size > 0
 }
 
-function makeFileExistsObv(filename) {
-  const obv = Obv()
-  obv.set(fileExists(filename))
-  return obv
-}
-
 // Forked from flumecodec because we have to support
 // bendy butt messages which may contain Buffers
 const jsonCodecForSSBFixtures = {
@@ -195,7 +189,7 @@ exports.manifest = {
 exports.init = function init(sbot, config) {
   config = config || {}
   config.db2 = config.db2 || {}
-  const oldLogExists = makeFileExistsObv(oldLogPath(config.path))
+  const oldLogExists = Obv().set(fileExists(oldLogPath(config.path)))
 
   /**
    * Boolean obv that indicates whether the new log is synced with the old log.

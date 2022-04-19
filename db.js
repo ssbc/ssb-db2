@@ -179,9 +179,11 @@ exports.init = function (sbot, config) {
 
   function getHelper(id, onlyValue, cb) {
     if (sbot.db2migrate) {
-      sbot.db2migrate.synchronized((isSynced) => {
-        if (isSynced) onDrain('keys', next)
-      })
+      onceWhen(
+        sbot.db2migrate.synchronized,
+        (isSynced) => isSynced === true,
+        () => onDrain('keys', next)
+      )
     } else {
       onDrain('keys', next)
     }
@@ -479,9 +481,11 @@ exports.init = function (sbot, config) {
     if (guard) return cb(guard)
 
     if (sbot.db2migrate) {
-      sbot.db2migrate.synchronized((isSynced) => {
-        if (isSynced) onDrain('keys', next)
-      })
+      onceWhen(
+        sbot.db2migrate.synchronized,
+        (isSynced) => isSynced === true,
+        () => onDrain('keys', next)
+      )
     } else {
       onDrain('keys', next)
     }
@@ -599,14 +603,14 @@ exports.init = function (sbot, config) {
             status.updateIndex(indexName, index.offset.value)
             cb()
           } else {
-            const remove = index.offset(() => {
-              if (closed) return
-              if (index.offset.value === log.since.value) {
-                remove()
+            onceWhen(
+              index.offset.bind(index),
+              (offset) => !closed && offset === log.since.value,
+              () => {
                 status.updateIndex(indexName, index.offset.value)
                 cb()
               }
-            })
+            )
           }
         })
       })
@@ -631,9 +635,11 @@ exports.init = function (sbot, config) {
     // old log and it should be 'drained'
     const waitUntilReady = deferred((meta, cb) => {
       if (sbot.db2migrate) {
-        sbot.db2migrate.synchronized((isSynced) => {
-          if (isSynced) onDrain(cb)
-        })
+        onceWhen(
+          sbot.db2migrate.synchronized,
+          (isSynced) => isSynced === true,
+          () => onDrain(cb)
+        )
       } else {
         onDrain(cb)
       }
@@ -650,9 +656,11 @@ exports.init = function (sbot, config) {
 
   function prepare(operation, cb) {
     if (sbot.db2migrate) {
-      sbot.db2migrate.synchronized((isSynced) => {
-        if (isSynced) next()
-      })
+      onceWhen(
+        sbot.db2migrate.synchronized,
+        (isSynced) => isSynced === true,
+        next
+      )
     } else {
       next()
     }
