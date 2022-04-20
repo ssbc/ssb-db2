@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 const os = require('os')
+const fs = require('fs')
 const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
@@ -21,7 +22,6 @@ const pull = require('pull-stream')
 const paramap = require('pull-paramap')
 const Ref = require('ssb-ref')
 const Obv = require('obz')
-const promisify = require('promisify-4loc')
 const jitdbOperators = require('jitdb/operators')
 const bendyButt = require('ssb-bendy-butt')
 const JITDB = require('jitdb')
@@ -30,7 +30,12 @@ const multicb = require('multicb')
 const mutexify = require('mutexify')
 
 const operators = require('./operators')
-const { jitIndexesPath } = require('./defaults')
+const {
+  jitIndexesPath,
+  resetLevelPath,
+  resetPrivatePath,
+  reindexJitPath,
+} = require('./defaults')
 const { onceWhen, ReadyGate } = require('./utils')
 const DebouncingBatchAdd = require('./debounce-batch')
 const Log = require('./log')
@@ -92,6 +97,8 @@ exports.init = function (sbot, config) {
   const debug = Debug('ssb:db2')
   const post = Obv()
   const indexingProgress = Notify()
+  const indexingActive = Obv().set(0)
+  const compacting = Obv().set(false)
   const hmacKey = null
   const stateFeedsReady = Obv().set(false)
   const state = {}
@@ -526,8 +533,15 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function clearIndexes() {
-    for (const indexName in indexes) indexes[indexName].remove(() => {})
+  function resetAllIndexes(cb) {
+    const done = multicb({ pluck: 1 })
+    for (const indexName in indexes) {
+      indexes[indexName].reset(done())
+    }
+    done(function onResetAllIndexesDone() {
+      cb()
+      updateIndexes()
+    })
   }
 
   function registerIndex(Index) {
@@ -551,6 +565,7 @@ exports.init = function (sbot, config) {
     )
     debug(`lowest offset for all indexes is ${lowestOffset}`)
 
+    indexingActive.set(indexingActive.value + 1)
     log.stream({ gt: lowestOffset }).pipe({
       paused: false,
       write(record) {
@@ -565,6 +580,7 @@ exports.init = function (sbot, config) {
         doneFlushing((err) => {
           // prettier-ignore
           if (err) console.error(clarify(err, 'updateIndexes() failed to flush indexes'))
+          indexingActive.set(indexingActive.value - 1)
           debug('updateIndexes() live streaming')
           log.stream({ gt: indexes['base'].offset.value, live: true }).pipe({
             paused: false,
@@ -638,10 +654,18 @@ exports.init = function (sbot, config) {
         onceWhen(
           sbot.db2migrate.synchronized,
           (isSynced) => isSynced === true,
-          () => onDrain(cb)
+          next
         )
       } else {
-        onDrain(cb)
+        next()
+      }
+
+      function next() {
+        onceWhen(
+          compacting,
+          (isCompacting) => isCompacting === false,
+          () => onDrain(cb)
+        )
       }
     })
 
@@ -686,6 +710,7 @@ exports.init = function (sbot, config) {
   const reindexingLock = mutexify()
 
   function reindexEncrypted(cb) {
+    indexingActive.set(indexingActive.value + 1)
     reindexingLock((unlock) => {
       const offsets = privateIndex.missingDecrypt()
       const keysIndex = indexes['keys']
@@ -731,12 +756,71 @@ exports.init = function (sbot, config) {
           done((err) => {
             // prettier-ignore
             if (err) return unlock(cb, clarify(err, 'reindexEncrypted() failed to force-flush indexes'))
+            indexingActive.set(indexingActive.value - 1)
             unlock(cb)
           })
         })
       )
     })
   }
+
+  function notYetZero(obz, fn, ...args) {
+    if (obz.value > 0) {
+      onceWhen(obz, (x) => x === 0, fn.bind(null, ...args))
+      return true
+    } else {
+      return false
+    }
+  }
+
+  function compact(cb) {
+    if (notYetZero(jitdb.indexingActive, compact, cb)) return
+    if (notYetZero(jitdb.queriesActive, compact, cb)) return
+    if (notYetZero(indexingActive, compact, cb)) return
+
+    fs.closeSync(fs.openSync(resetLevelPath(dir), 'w'))
+    fs.closeSync(fs.openSync(resetPrivatePath(dir), 'w'))
+    fs.closeSync(fs.openSync(reindexJitPath(dir), 'w'))
+    log.compact(function onLogCompacted(err) {
+      if (err) cb(clarify(err, 'ssb-db2 compact() failed with the log'))
+      else cb()
+    })
+  }
+
+  let compactStartOffset = null
+  log.compactionProgress((stats) => {
+    if (typeof stats.startOffset === 'number' && compactStartOffset === null) {
+      compactStartOffset = stats.startOffset
+    }
+
+    if (compacting.value !== !stats.done) compacting.set(!stats.done)
+
+    if (stats.done) {
+      if (stats.sizeDiff > 0) {
+        if (fs.existsSync(resetLevelPath(dir))) {
+          resetAllIndexes(() => {
+            rimraf.sync(resetLevelPath(dir))
+          })
+        }
+        if (fs.existsSync(resetPrivatePath(dir))) {
+          privateIndex.reset(() => {
+            rimraf.sync(resetPrivatePath(dir))
+          })
+        }
+        if (fs.existsSync(reindexJitPath(dir))) {
+          jitdb.reindex(compactStartOffset || 0, (err) => {
+            if (err) console.error('ssb-db2 reindex jitdb after compact', err)
+            rimraf.sync(reindexJitPath(dir))
+          })
+        }
+        compactStartOffset = null
+      } else {
+        rimraf.sync(resetLevelPath(dir))
+        rimraf.sync(resetPrivatePath(dir))
+        rimraf.sync(reindexJitPath(dir))
+      }
+    }
+  })
 
   return (self = {
     // Public API:
@@ -755,6 +839,7 @@ exports.init = function (sbot, config) {
     getStatus: () => status.obv,
     operators,
     post,
+    compact,
     reindexEncrypted,
     indexingProgress: () => indexingProgress.listen(),
 
@@ -774,7 +859,6 @@ exports.init = function (sbot, config) {
     getState: () => state,
     getIndexes: () => indexes,
     getIndex: (index) => indexes[index],
-    clearIndexes,
     onDrain,
     getJITDB: () => jitdb,
   })
