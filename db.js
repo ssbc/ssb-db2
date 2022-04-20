@@ -67,6 +67,7 @@ exports.manifest = {
   addBatch: 'async',
   addOOOBatch: 'async',
   getStatus: 'sync',
+  compact: 'async',
   indexingProgress: 'source',
 
   // `query` should be `sync`, but secret-stack is automagically converting it
