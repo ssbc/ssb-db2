@@ -224,11 +224,19 @@ module.exports = function (dir, sbot, config) {
     return encrypted.filter((x) => !canDecryptSet.has(x))
   }
 
+  function reset(cb) {
+    encrypted = []
+    canDecrypt = []
+    latestOffset.set(-1)
+    saveIndexes(cb)
+  }
+
   return {
     latestOffset,
     decrypt,
     missingDecrypt,
     saveIndexes,
+    reset,
     stateLoaded: stateLoaded.promise,
   }
 }

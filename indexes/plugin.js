@@ -139,6 +139,16 @@ module.exports = class Plugin {
         })
       }
     })
+
+    this.reset = (cb) => {
+      this.level.clear(() => {
+        processedSeq = 0
+        processedOffset = -1
+        this.batch = []
+        this.offset.set(-1)
+        cb()
+      })
+    }
   }
 
   get stateLoaded() {
@@ -158,10 +168,6 @@ module.exports = class Plugin {
   get valueEncoding() {
     if (encodings[this._valueEncoding]) return encodings[this._valueEncoding]
     else return undefined
-  }
-
-  remove(...args) {
-    this.level.clear(...args)
   }
 
   close(cb) {
