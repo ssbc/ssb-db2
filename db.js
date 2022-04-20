@@ -99,6 +99,7 @@ exports.init = function (sbot, config) {
   const post = Obv()
   const indexingProgress = Notify()
   const indexingActive = Obv().set(0)
+  let abortLogStreamForIndexes = null
   const compacting = Obv().set(false)
   const hmacKey = null
   const stateFeedsReady = Obv().set(false)
@@ -536,6 +537,10 @@ exports.init = function (sbot, config) {
 
   function resetAllIndexes(cb) {
     const done = multicb({ pluck: 1 })
+    if (abortLogStreamForIndexes) {
+      abortLogStreamForIndexes()
+      abortLogStreamForIndexes = null
+    }
     for (const indexName in indexes) {
       indexes[indexName].reset(done())
     }
@@ -567,7 +572,7 @@ exports.init = function (sbot, config) {
     debug(`lowest offset for all indexes is ${lowestOffset}`)
 
     indexingActive.set(indexingActive.value + 1)
-    log.stream({ gt: lowestOffset }).pipe({
+    const sink = log.stream({ gt: lowestOffset }).pipe({
       paused: false,
       write(record) {
         const buf = record.value
@@ -576,6 +581,7 @@ exports.init = function (sbot, config) {
       },
       end() {
         debug(`updateIndexes() scan time: ${Date.now() - start}ms`)
+        abortLogStreamForIndexes = null
         const doneFlushing = multicb({ pluck: 1 })
         for (const idx of indexesArr) idx.flush(doneFlushing())
         doneFlushing((err) => {
@@ -583,7 +589,8 @@ exports.init = function (sbot, config) {
           if (err) console.error(clarify(err, 'updateIndexes() failed to flush indexes'))
           indexingActive.set(indexingActive.value - 1)
           debug('updateIndexes() live streaming')
-          log.stream({ gt: indexes['base'].offset.value, live: true }).pipe({
+          const gt = indexes['base'].offset.value
+          const sink = log.stream({ gt, live: true }).pipe({
             paused: false,
             write(record) {
               const buf = record.value
@@ -591,9 +598,11 @@ exports.init = function (sbot, config) {
               for (const idx of indexesArr) idx.onRecord(record, true, pValue)
             },
           })
+          abortLogStreamForIndexes = sink.source.abort.bind(sink.source)
         })
       },
     })
+    abortLogStreamForIndexes = sink.source.abort.bind(sink.source)
   }
 
   function onDrain(indexName, cb) {
