@@ -68,6 +68,10 @@ module.exports = class AboutSelf extends Plugin {
     return true
   }
 
+  reset() {
+    this.profiles = {}
+  }
+
   updateProfileData(author, content) {
     let profile = this.profiles[author] || {}
 

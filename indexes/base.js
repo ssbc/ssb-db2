@@ -64,6 +64,10 @@ module.exports = function makeBaseIndex(privateIndex) {
       this.privateIndex.saveIndexes(cb)
     }
 
+    reset() {
+      this.authorLatest.clear()
+    }
+
     // pull-stream where each item is { key, value }
     // where key is the authorId and value is { offset, sequence }
     getAllLatest() {
