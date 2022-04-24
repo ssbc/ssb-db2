@@ -140,7 +140,9 @@ module.exports = class Plugin {
       }
     })
 
+    const subClassReset = this.reset
     this.reset = (cb) => {
+      if (subClassReset) subClassReset.call(this)
       this.level.clear(() => {
         processedSeq = 0
         processedOffset = -1

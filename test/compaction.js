@@ -155,3 +155,56 @@ test('queries are queued if compaction is in progress', async (t) => {
   await pify(sbot.close)(true)
   t.end()
 })
+
+test('post-compaction reindex resets state in memory too', async (t) => {
+  t.timeoutAfter(20e3)
+
+  const dir = '/tmp/ssb-db2-compaction3'
+
+  rimraf.sync(dir)
+  mkdirp.sync(dir)
+
+  const author = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .use(require('../about-self'))
+    .call(null, {
+      keys: author,
+      path: dir,
+    })
+
+  const msg1 = await pify(sbot.db.publish)({
+    type: 'about',
+    about: author.id,
+    name: 'Alice',
+  })
+  t.pass('published name about')
+  const msg2 = await pify(sbot.db.publish)({
+    type: 'about',
+    about: author.id,
+    description: 'In Wonderland',
+  })
+  t.pass('published description about')
+
+  await pify(sbot.db.onDrain)('aboutSelf')
+
+  const profileBefore = sbot.db.getIndex('aboutSelf').getProfile(author.id)
+  t.equal(profileBefore.name, 'Alice')
+  t.equal(profileBefore.description, 'In Wonderland')
+
+  await pify(sbot.db.del)(msg2.key)
+  t.pass('deleted description about')
+
+  await pify(sbot.db.compact)()
+  t.pass('compacted the log')
+
+  await pify(setTimeout)(1000)
+
+  const profileAfter = sbot.db.getIndex('aboutSelf').getProfile(author.id)
+  t.equal(profileAfter.name, 'Alice')
+  t.notOk(profileAfter.description)
+
+  await pify(sbot.close)(true)
+  t.end()
+})
