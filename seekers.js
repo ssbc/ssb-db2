@@ -2,110 +2,110 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-only
 
-const { seekKey } = require('bipf')
+const { allocAndEncode, seekKey2 } = require('bipf')
 
-const B_KEY = Buffer.from('key')
-const B_AUTHOR = Buffer.from('author')
-const B_CONTENT = Buffer.from('content')
-const B_TYPE = Buffer.from('type')
-const B_ROOT = Buffer.from('root')
-const B_FORK = Buffer.from('fork')
-const B_ABOUT = Buffer.from('about')
-const B_BRANCH = Buffer.from('branch')
-const B_VOTE = Buffer.from('vote')
-const B_CONTACT = Buffer.from('contact')
-const B_LINK = Buffer.from('link')
-const B_META = Buffer.from('meta')
-const B_PRIVATE = Buffer.from('private')
-const B_CHANNEL = Buffer.from('channel')
-const B_MENTIONS = Buffer.from('mentions')
+const BIPF_KEY = allocAndEncode('key')
+const BIPF_AUTHOR = allocAndEncode('author')
+const BIPF_CONTENT = allocAndEncode('content')
+const BIPF_TYPE = allocAndEncode('type')
+const BIPF_ROOT = allocAndEncode('root')
+const BIPF_FORK = allocAndEncode('fork')
+const BIPF_ABOUT = allocAndEncode('about')
+const BIPF_BRANCH = allocAndEncode('branch')
+const BIPF_VOTE = allocAndEncode('vote')
+const BIPF_CONTACT = allocAndEncode('contact')
+const BIPF_LINK = allocAndEncode('link')
+const BIPF_META = allocAndEncode('meta')
+const BIPF_PRIVATE = allocAndEncode('private')
+const BIPF_CHANNEL = allocAndEncode('channel')
+const BIPF_MENTIONS = allocAndEncode('mentions')
 
 module.exports = {
   seekAuthor(buffer, start, pValue) {
     if (pValue < 0) return -1
-    return seekKey(buffer, pValue, B_AUTHOR)
+    return seekKey2(buffer, pValue, BIPF_AUTHOR, 0)
   },
 
   seekType(buffer, start, pValue) {
     if (pValue < 0) return -1
-    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    const pValueContent = seekKey2(buffer, pValue, BIPF_CONTENT, 0)
     if (pValueContent < 0) return -1
-    return seekKey(buffer, pValueContent, B_TYPE)
+    return seekKey2(buffer, pValueContent, BIPF_TYPE, 0)
   },
 
   seekRoot(buffer, start, pValue) {
     if (pValue < 0) return -1
-    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    const pValueContent = seekKey2(buffer, pValue, BIPF_CONTENT, 0)
     if (pValueContent < 0) return -1
-    return seekKey(buffer, pValueContent, B_ROOT)
+    return seekKey2(buffer, pValueContent, BIPF_ROOT, 0)
   },
 
   seekFork(buffer, start, pValue) {
     if (pValue < 0) return -1
-    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    const pValueContent = seekKey2(buffer, pValue, BIPF_CONTENT, 0)
     if (pValueContent < 0) return -1
-    return seekKey(buffer, pValueContent, B_FORK)
+    return seekKey2(buffer, pValueContent, BIPF_FORK, 0)
   },
 
   seekBranch(buffer, start, pValue) {
     if (pValue < 0) return -1
-    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    const pValueContent = seekKey2(buffer, pValue, BIPF_CONTENT, 0)
     if (pValueContent < 0) return -1
-    return seekKey(buffer, pValueContent, B_BRANCH)
+    return seekKey2(buffer, pValueContent, BIPF_BRANCH, 0)
   },
 
   seekVoteLink(buffer, start, pValue) {
     if (pValue < 0) return -1
-    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    const pValueContent = seekKey2(buffer, pValue, BIPF_CONTENT, 0)
     if (pValueContent < 0) return -1
-    const pValueContentVote = seekKey(buffer, pValueContent, B_VOTE)
+    const pValueContentVote = seekKey2(buffer, pValueContent, BIPF_VOTE, 0)
     if (pValueContentVote < 0) return -1
-    return seekKey(buffer, pValueContentVote, B_LINK)
+    return seekKey2(buffer, pValueContentVote, BIPF_LINK, 0)
   },
 
   seekContact(buffer, start, pValue) {
     if (pValue < 0) return -1
-    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    const pValueContent = seekKey2(buffer, pValue, BIPF_CONTENT, 0)
     if (pValueContent < 0) return -1
-    return seekKey(buffer, pValueContent, B_CONTACT)
+    return seekKey2(buffer, pValueContent, BIPF_CONTACT, 0)
   },
 
   seekMentions(buffer, start, pValue) {
     if (pValue < 0) return -1
-    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    const pValueContent = seekKey2(buffer, pValue, BIPF_CONTENT, 0)
     if (pValueContent < 0) return -1
-    return seekKey(buffer, pValueContent, B_MENTIONS)
+    return seekKey2(buffer, pValueContent, BIPF_MENTIONS, 0)
   },
 
   seekAbout(buffer, start, pValue) {
     if (pValue < 0) return -1
-    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    const pValueContent = seekKey2(buffer, pValue, BIPF_CONTENT, 0)
     if (pValueContent < 0) return -1
-    return seekKey(buffer, pValueContent, B_ABOUT)
+    return seekKey2(buffer, pValueContent, BIPF_ABOUT, 0)
   },
 
   pluckLink(buffer, start) {
-    return seekKey(buffer, start, B_LINK)
+    return seekKey2(buffer, start, BIPF_LINK, 0)
   },
 
   seekPrivate(buffer, start, pValue) {
-    const pMeta = seekKey(buffer, 0, B_META)
+    const pMeta = seekKey2(buffer, 0, BIPF_META, 0)
     if (pMeta < 0) return -1
-    return seekKey(buffer, pMeta, B_PRIVATE)
+    return seekKey2(buffer, pMeta, BIPF_PRIVATE, 0)
   },
 
   seekMeta(buffer, start, pValue) {
-    return seekKey(buffer, 0, B_META)
+    return seekKey2(buffer, 0, BIPF_META, 0)
   },
 
   seekChannel(buffer, start, pValue) {
     if (pValue < 0) return -1
-    const pValueContent = seekKey(buffer, pValue, B_CONTENT)
+    const pValueContent = seekKey2(buffer, pValue, BIPF_CONTENT, 0)
     if (pValueContent < 0) return -1
-    return seekKey(buffer, pValueContent, B_CHANNEL)
+    return seekKey2(buffer, pValueContent, BIPF_CHANNEL, 0)
   },
 
   seekKey(buffer, start, pValue) {
-    return seekKey(buffer, 0, B_KEY)
+    return seekKey2(buffer, 0, BIPF_KEY, 0)
   },
 }

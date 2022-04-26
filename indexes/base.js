@@ -8,8 +8,8 @@ const pull = require('pull-stream')
 const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 
-const B_AUTHOR = Buffer.from('author')
-const B_SEQUENCE = Buffer.from('sequence')
+const BIPF_AUTHOR = bipf.allocAndEncode('author')
+const BIPF_SEQUENCE = bipf.allocAndEncode('sequence')
 
 // authorId => latestMsg { offset, sequence }
 //
@@ -40,8 +40,8 @@ module.exports = function makeBaseIndex(privateIndex) {
 
     processRecord(record, seq, pValue) {
       const buf = record.value
-      const author = bipf.decode(buf, bipf.seekKey(buf, pValue, B_AUTHOR))
-      const sequence = bipf.decode(buf, bipf.seekKey(buf, pValue, B_SEQUENCE))
+      const author = bipf.decode(buf, bipf.seekKey2(buf, pValue, BIPF_AUTHOR, 0))
+      const sequence = bipf.decode(buf, bipf.seekKey2(buf, pValue, BIPF_SEQUENCE, 0))
       const latestSequence = this.authorLatest.has(author)
         ? this.authorLatest.get(author).sequence
         : 0

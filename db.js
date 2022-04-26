@@ -39,10 +39,10 @@ const makeBaseIndex = require('./indexes/base')
 const KeysIndex = require('./indexes/keys')
 const PrivateIndex = require('./indexes/private')
 
-const B_VALUE = Buffer.from('value')
-const B_KEY = Buffer.from('key')
-const B_META = Buffer.from('meta')
-const B_PRIVATE = Buffer.from('private')
+const BIPF_VALUE = bipf.allocAndEncode('value')
+const BIPF_KEY = bipf.allocAndEncode('key')
+const BIPF_META = bipf.allocAndEncode('meta')
+const BIPF_PRIVATE = bipf.allocAndEncode('private')
 
 const { where, fromDB, author, deferred, asOffsets, toCallback } = operators
 
@@ -555,7 +555,7 @@ exports.init = function (sbot, config) {
       paused: false,
       write(record) {
         const buf = record.value
-        const pValue = buf ? bipf.seekKey(buf, 0, B_VALUE) : -1
+        const pValue = buf ? bipf.seekKey2(buf, 0, BIPF_VALUE, 0) : -1
         for (const idx of indexesArr) idx.onRecord(record, false, pValue)
       },
       end() {
@@ -570,7 +570,7 @@ exports.init = function (sbot, config) {
             paused: false,
             write(record) {
               const buf = record.value
-              const pValue = buf ? bipf.seekKey(buf, 0, B_VALUE) : -1
+              const pValue = buf ? bipf.seekKey2(buf, 0, BIPF_VALUE, 0) : -1
               for (const idx of indexesArr) idx.onRecord(record, true, pValue)
             },
           })
@@ -698,19 +698,19 @@ exports.init = function (sbot, config) {
             if (err) return cb(clarify(err, 'reindexEncrypted() failed when getting messages'))
             const record = { offset, value: buf }
 
-            const pMeta = bipf.seekKey(buf, 0, B_META)
+            const pMeta = bipf.seekKey2(buf, 0, BIPF_META, 0)
             if (pMeta < 0) return cb()
-            const pPrivate = bipf.seekKey(buf, pMeta, B_PRIVATE)
+            const pPrivate = bipf.seekKey2(buf, pMeta, BIPF_PRIVATE, 0)
             if (pPrivate < 0) return cb()
 
             // check if we can decrypt the record
             if (!bipf.decode(buf, pPrivate)) return cb()
 
-            const pKey = bipf.seekKey(buf, 0, B_KEY)
+            const pKey = bipf.seekKey2(buf, 0, BIPF_KEY, 0)
             if (pKey < 0) return cb()
             const key = bipf.decode(buf, pKey)
 
-            const pValue = bipf.seekKey(buf, 0, B_VALUE)
+            const pValue = bipf.seekKey2(buf, 0, BIPF_VALUE, 0)
 
             onDrain('keys', () => {
               keysIndex.getSeq(key, (err, seq) => {
