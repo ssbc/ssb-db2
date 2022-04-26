@@ -9,9 +9,9 @@ const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 const { or, seqs, liveSeqs } = require('../operators')
 
-const B_KEY = Buffer.from('key')
-const B_CONTENT = Buffer.from('content')
-const B_MENTIONS = Buffer.from('mentions')
+const BIPF_KEY = bipf.allocAndEncode('key')
+const BIPF_CONTENT = bipf.allocAndEncode('content')
+const BIPF_MENTIONS = bipf.allocAndEncode('mentions')
 
 function parseInt10(x) {
   return parseInt(x, 10)
@@ -25,11 +25,11 @@ module.exports = class FullMentions extends Plugin {
 
   processRecord(record, seq, pValue) {
     const buf = record.value
-    const pKey = bipf.seekKey(buf, 0, B_KEY)
+    const pKey = bipf.seekKey2(buf, 0, BIPF_KEY, 0)
     let p = 0 // note you pass in p!
-    p = bipf.seekKey(buf, pValue, B_CONTENT)
+    p = bipf.seekKey2(buf, pValue, BIPF_CONTENT, 0)
     if (p < 0) return
-    p = bipf.seekKey(buf, p, B_MENTIONS)
+    p = bipf.seekKey2(buf, p, BIPF_MENTIONS, 0)
     if (p < 0) return
     const mentionsData = bipf.decode(buf, p)
     if (!Array.isArray(mentionsData)) return
