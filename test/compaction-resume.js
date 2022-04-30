@@ -45,6 +45,7 @@ test('compaction resumes automatically after a crash', async (t) => {
   for (let i = 0; i < TOTAL; i += 2) {
     await pify(sbot.db.del)(msgKeys[i])
   }
+  await pify(sbot.db.getLog().onDeletesFlushed)()
   t.pass('deleted messages')
 
   await pify(sbot.close)(true)

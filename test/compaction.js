@@ -53,6 +53,7 @@ test('compaction fills holes and reindexes', async (t) => {
     await pify(sbot.db.del)(msgKeys[i])
   }
   console.timeEnd('delete')
+  await pify(sbot.db.getLog().onDeletesFlushed)()
   t.pass('deleted messages')
 
   let newLogSize = 0
