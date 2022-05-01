@@ -550,6 +550,14 @@ exports.init = function (sbot, config) {
     })
   }
 
+  function restartUpdateIndexes() {
+    if (abortLogStreamForIndexes) {
+      abortLogStreamForIndexes()
+      abortLogStreamForIndexes = null
+    }
+    indexesStateLoaded.onReady(updateIndexes)
+  }
+
   function registerIndex(Index) {
     const index = new Index(log, dir)
 
@@ -561,6 +569,7 @@ exports.init = function (sbot, config) {
   }
 
   function updateIndexes() {
+    if (!log.compactionProgress.value.done) return
     const start = Date.now()
 
     const indexesArr = Object.values(indexes)
@@ -828,6 +837,7 @@ exports.init = function (sbot, config) {
         rimraf.sync(resetLevelPath(dir))
         rimraf.sync(resetPrivatePath(dir))
         rimraf.sync(reindexJitPath(dir))
+        restartUpdateIndexes()
       }
     }
   })
