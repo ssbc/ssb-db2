@@ -224,16 +224,17 @@ sbot.db.getIndex('myindex').myOwnMethodToGetStuff()
 Or you can wrap that in a secret-stack plugin (in the example above,
 `exports.init` should return an object with the API functions).
 
-There are other special methods you can implement in order to add
-"hooks" in the `Plugin` subclass:
+There are other optional methods you can implement in the `Plugin` subclass:
 
-- `onLoaded(cb)`: called once, at startup, when the index is
-  successfully loaded from disk and is ready to receive queries
-- `onFlush(cb)`: called when the leveldb index is about to be saved to
+- `onLoaded(cb)`: a hook called once, at startup, when the index is successfully
+  loaded from disk and is ready to receive queries
+- `onFlush(cb)`: a hook called when the leveldb index is about to be saved to
   disk
-- `indexesContent()`: method used when reindexing private group
-  messages to determine if the leveldb index needs to be updated for
-  decrypted messages. The default method returns true.
+- `indexesContent()`: method used when reindexing private group messages to
+  determine if the leveldb index needs to be updated for decrypted messages. The
+  default method returns true.
+- `reset()`: a method that you can use to reset in-memory state that you might
+  have in your plugin, when the leveldb index is about to be rebuilt.
 
 ### Compatibility plugins
 
@@ -268,7 +269,7 @@ const sbot = SecretStack({ caps })
 The following is a list of modules that works well with ssb-db2:
 
  - [ssb-threads] for working with post messages as threads
- - [ssb-suggest-lite] for fetching profiles of authors 
+ - [ssb-suggest-lite] for fetching profiles of authors
  - [ssb-friends] for working with the social graph
  - [ssb-search2] for full-text searching
  - [ssb-crut] for working with records that can be modified
@@ -463,7 +464,7 @@ Use [JITDB's prepare](https://github.com/ssb-ngi-pointer/jitdb/#prepareoperation
 
 Waits for the index with name `indexName` to be in sync with the main
 log and then call `cb` with no arguments. If `indexName` is not
-provided, the base index will be used. 
+provided, the base index will be used.
 
 The reason we do it this way is that indexes are updated
 asynchronously in order to not block message writing.
