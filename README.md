@@ -469,6 +469,11 @@ provided, the base index will be used.
 The reason we do it this way is that indexes are updated
 asynchronously in order to not block message writing.
 
+### compact(cb)
+
+Compacts the log (filling in the blanks left by deleted messages and optimizing
+space) and then rebuilds indexes.
+
 ## Configuration
 
 You can use ssb-config parameters to configure some aspects of ssb-db2:
