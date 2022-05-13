@@ -6,7 +6,7 @@ const bipf = require('bipf')
 const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 
-const B_KEY = Buffer.from('key')
+const BIPF_KEY = bipf.allocAndEncode('key')
 
 // msgId => seq
 module.exports = class Keys extends Plugin {
@@ -16,7 +16,7 @@ module.exports = class Keys extends Plugin {
 
   processRecord(record, seq, pValue) {
     const buf = record.value
-    const pKey = bipf.seekKey(buf, 0, B_KEY)
+    const pKey = bipf.seekKey2(buf, 0, BIPF_KEY, 0)
     if (pKey < 0) return
     const key = bipf.decode(buf, pKey)
     this.batch.push({
