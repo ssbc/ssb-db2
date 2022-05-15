@@ -99,6 +99,7 @@ exports.init = function (sbot, config) {
   const status = Status(log, jitdb)
   const debug = Debug('ssb:db2')
   const post = Obv()
+  const buttPost = Obv()
   const indexingProgress = Notify()
   const indexingActive = Obv().set(0)
   let abortLogStreamForIndexes = null
@@ -442,30 +443,29 @@ exports.init = function (sbot, config) {
 
         const author = bfe.decode(butt2.extractAuthor(buffer))
         const parent = bfe.decode(butt2.extractParent(buffer))
+        const authorParent = author + (parent === null ? '' : parent)
 
-        const previous = state[author + parent === null ? '' : parent] || {
-          value: null,
-        }
+        const previous = state[authorParent] || { value: null }
         const err = butt2.validateSingle(
           data,
           previous.value,
           previous.key,
           hmacKey
         )
+
         if (err)
           return cb(
             clarify(err, 'butt2 message validation in addButt2() failed')
           )
-        state[author + parent === null ? '' : parent] = {
+
+        state[authorParent] = {
           key: msgKeyBFE,
           value: data,
         }
         log.append(msgBIPF, (err) => {
           if (err) return cb(clarify(err, 'addButt2() failed in the log'))
 
-          // FIXME: we should use our own post for butt2
-          // used by ebt
-          //post.set(kvt)
+          buttPost.set(buffer)
 
           cb(null)
         })
@@ -910,6 +910,7 @@ exports.init = function (sbot, config) {
     reindexEncrypted,
     indexingProgress: () => indexingProgress.listen(),
 
+    buttPost,
     addButt2,
 
     // used for partial replication in browser, will be removed soon!
