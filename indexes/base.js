@@ -6,9 +6,11 @@ const bipf = require('bipf')
 const pl = require('pull-level')
 const pull = require('pull-stream')
 const clarify = require('clarify-error')
+const SSBURI = require('ssb-uri2')
 const Plugin = require('./plugin')
 
 const BIPF_AUTHOR = bipf.allocAndEncode('author')
+const BIPF_PARENT = bipf.allocAndEncode('parent')
 const BIPF_SEQUENCE = bipf.allocAndEncode('sequence')
 
 // authorId => latestMsg { offset, sequence }
@@ -43,6 +45,13 @@ module.exports = function makeBaseIndex(privateIndex) {
       const pValueAuthor = bipf.seekKey2(buf, pValue, BIPF_AUTHOR, 0)
       const pValueSequence = bipf.seekKey2(buf, pValue, BIPF_SEQUENCE, 0)
       const author = bipf.decode(buf, pValueAuthor)
+
+      if (SSBURI.isButt2V1FeedSSBURI(author)) {
+        const pValueParent = bipf.seekKey2(buf, pValue, BIPF_PARENT, 0)
+        const parent = bipf.decode(buf, pValueParent)
+        author += parent
+      }
+
       const sequence = bipf.decode(buf, pValueSequence)
       const latestSequence = this.authorLatest.has(author)
         ? this.authorLatest.get(author).sequence

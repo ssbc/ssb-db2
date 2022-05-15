@@ -15,6 +15,11 @@ exports.init = function (sbot, config) {
       sbot.db.getIndex('ebt').getMessageFromAuthorSequence(key, cb)
     })
   }
+  sbot.getAtSequenceRaw = (key, cb) => {
+    sbot.db.onDrain('ebt', () => {
+      sbot.db.getIndex('ebt').getMessageFromAuthorSequenceRaw(key, cb)
+    })
+  }
   sbot.add = sbot.db.add
   sbot.getVectorClock = function getVectorClock(cb) {
     onceWhen(

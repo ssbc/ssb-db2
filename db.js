@@ -24,10 +24,12 @@ const Ref = require('ssb-ref')
 const Obv = require('obz')
 const jitdbOperators = require('jitdb/operators')
 const bendyButt = require('ssb-bendy-butt')
+const butt2 = require('ssb-bendy-butt-2')
 const JITDB = require('jitdb')
 const Debug = require('debug')
 const multicb = require('multicb')
 const mutexify = require('mutexify')
+const bfe = require('ssb-bfe')
 
 const operators = require('./operators')
 const {
@@ -422,6 +424,51 @@ exports.init = function (sbot, config) {
         } else {
           cb(new Error('Unknown feed format: ' + msgVal.author))
         }
+      }
+    )
+  }
+
+  function addButt2(buffer, cb) {
+    const guard = guardAgainstDuplicateLogs('addButt2()')
+    if (guard) return cb(guard)
+
+    onceWhen(
+      stateFeedsReady,
+      (ready) => ready === true,
+      () => {
+        const data = butt2.extractData(buffer)
+        const msgKeyBFE = butt2.hash(data)
+        const msgBIPF = butt2.butt2ToBipf(data, msgKeyBFE)
+
+        const author = bfe.decode(butt2.extractAuthor(buffer))
+        const parent = bfe.decode(butt2.extractParent(buffer))
+
+        const previous = state[author + parent === null ? '' : parent] || {
+          value: null,
+        }
+        const err = butt2.validateSingle(
+          data,
+          previous.value,
+          previous.key,
+          hmacKey
+        )
+        if (err)
+          return cb(
+            clarify(err, 'butt2 message validation in addButt2() failed')
+          )
+        state[author + parent === null ? '' : parent] = {
+          key: msgKeyBFE,
+          value: data,
+        }
+        log.append(msgBIPF, (err) => {
+          if (err) return cb(clarify(err, 'addButt2() failed in the log'))
+
+          // FIXME: we should use our own post for butt2
+          // used by ebt
+          //post.set(kvt)
+
+          cb(null)
+        })
       }
     )
   }
@@ -862,6 +909,8 @@ exports.init = function (sbot, config) {
     compact,
     reindexEncrypted,
     indexingProgress: () => indexingProgress.listen(),
+
+    addButt2,
 
     // used for partial replication in browser, will be removed soon!
     setPost: post.set,

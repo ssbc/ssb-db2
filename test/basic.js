@@ -12,6 +12,7 @@ const pull = require('pull-stream')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const bendyButt = require('ssb-bendy-butt')
+const butt2 = require('ssb-bendy-butt-2')
 const SSBURI = require('ssb-uri2')
 
 const {
@@ -435,6 +436,40 @@ test('add some bendybutt-v1 messages', (t) => {
       t.end()
     })
   )
+})
+
+test('add some bendybutt-v2 messages', (t) => {
+  const keys = ssbKeys.generate()
+
+  const content = { type: 'post', text: 'Hello world!' }
+  const timestamp = 1652037377204
+  const hmac = null
+
+  // FIXME: another way of doing this
+  const [msgKeyBFE, butt2Msg] = butt2.encodeNew(content, keys, null, 1, null, timestamp,
+                                                butt2.tags.SSB_FEED, hmac)
+
+  const content2 = { type: 'post', text: 'Hello world 2' }
+  const [msgKeyBFE2, butt2Msg2] = butt2.encodeNew(content2, keys, null, 2, msgKeyBFE, timestamp+1,
+                                                  butt2.tags.SSB_FEED, hmac)
+
+  db.addButt2(butt2Msg, async (err) => {
+    t.error(err, 'no error adding butt2')
+
+    db.addButt2(butt2Msg2, async (err) => {
+      t.error(err, 'no error adding butt2 second')
+
+      const classicUri = SSBURI.fromFeedSigil(keys.id)
+      const { type, /* format, */ data } = SSBURI.decompose(classicUri)
+      const butt2Uri = SSBURI.compose({ type, format: 'butt2-v1', data })
+
+      const results = await db.query(where(author(butt2Uri)), toPromise())
+      t.equals(results.length, 2)
+      t.equal(results[0].value.content.type, 'post')
+
+      t.end()
+    })
+  })
 })
 
 test('cannot add() gabbygrove-v1 messages (yet)', (t) => {
