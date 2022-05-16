@@ -454,9 +454,7 @@ exports.init = function (sbot, config) {
         )
 
         if (err)
-          return cb(
-            clarify(err, 'butt2 message validation in addButt2() failed')
-          )
+          return cb(clarify(err, 'message validation in addButt2() failed'))
 
         state[authorParent] = {
           key: msgKeyBFE,

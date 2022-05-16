@@ -49,7 +49,7 @@ module.exports = function makeBaseIndex(privateIndex) {
       if (SSBURI.isButt2V1FeedSSBURI(author)) {
         const pValueParent = bipf.seekKey2(buf, pValue, BIPF_PARENT, 0)
         const parent = bipf.decode(buf, pValueParent)
-        author += parent
+        author += parent === null ? '' : parent
       }
 
       const sequence = bipf.decode(buf, pValueSequence)

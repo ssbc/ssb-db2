@@ -4,10 +4,13 @@
 
 const bipf = require('bipf')
 const clarify = require('clarify-error')
+
 const Plugin = require('./plugin')
 const { reEncrypt } = require('./private')
+const SSBURI = require('ssb-uri2')
 
 const BIPF_AUTHOR = bipf.allocAndEncode('author')
+const BIPF_PARENT = bipf.allocAndEncode('parent')
 const BIPF_SEQUENCE = bipf.allocAndEncode('sequence')
 
 // [author, sequence] => offset
@@ -18,7 +21,11 @@ module.exports = class EBT extends Plugin {
 
   processRecord(record, seq, pValue) {
     const buf = record.value
-    const author = bipf.decode(buf, bipf.seekKey2(buf, pValue, BIPF_AUTHOR, 0))
+    let author = bipf.decode(buf, bipf.seekKey2(buf, pValue, BIPF_AUTHOR, 0))
+    if (SSBURI.isButt2V1FeedSSBURI(author)) {
+      const parent = bipf.decode(buf, bipf.seekKey2(buf, pValue, BIPF_PARENT, 0))
+      author += parent === null ? '' : parent
+    }
     const sequence = bipf.decode(buf, bipf.seekKey2(buf, pValue, BIPF_SEQUENCE, 0))
     this.batch.push({
       type: 'put',
