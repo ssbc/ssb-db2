@@ -144,7 +144,7 @@ test('getMsg', (t) => {
   })
 })
 
-test('delete single', (t) => {
+test('delete single msg', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 
   db.publish(post, (err, postMsg) => {
@@ -167,7 +167,7 @@ test('delete single', (t) => {
   })
 })
 
-test('delete all', (t) => {
+test('deleteFeed', (t) => {
   const post = { type: 'post', text: 'Testing!' }
   const post2 = { type: 'post', text: 'Testing 2!' }
 
@@ -206,6 +206,13 @@ test('delete all', (t) => {
         }
       )
     })
+  })
+})
+
+test('deleteFeed unknown', (t) => {
+  db.deleteFeed(ssbKeys.generate().id, (err) => {
+    t.error(err, 'no err')
+    t.end()
   })
 })
 

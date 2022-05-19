@@ -40,8 +40,10 @@ module.exports = function makeBaseIndex(privateIndex) {
 
     processRecord(record, seq, pValue) {
       const buf = record.value
-      const author = bipf.decode(buf, bipf.seekKey2(buf, pValue, BIPF_AUTHOR, 0))
-      const sequence = bipf.decode(buf, bipf.seekKey2(buf, pValue, BIPF_SEQUENCE, 0))
+      const pValueAuthor = bipf.seekKey2(buf, pValue, BIPF_AUTHOR, 0)
+      const pValueSequence = bipf.seekKey2(buf, pValue, BIPF_SEQUENCE, 0)
+      const author = bipf.decode(buf, pValueAuthor)
+      const sequence = bipf.decode(buf, pValueSequence)
       const latestSequence = this.authorLatest.has(author)
         ? this.authorLatest.get(author).sequence
         : 0
@@ -84,16 +86,24 @@ module.exports = function makeBaseIndex(privateIndex) {
     }
 
     removeFeedFromLatest(feedId, cb) {
-      this.flush((err) => {
-        // prettier-ignore
-        if (err) cb(clarify(err, 'BaseIndex.removeFeedFromLatest() failed when waiting for flush'))
-        else {
-          this.level.del(feedId, (err2) => {
-            // prettier-ignore
-            if (err2) cb(clarify(err2, 'BaseIndex.removeFeedFromLatest() failed when deleting'))
-            else cb()
-          })
+      this.getLatest(feedId, (err) => {
+        if (err) {
+          if (err.name === 'NotFoundError') cb()
+          else cb(clarify(err, 'BaseIndex.removeFeedFromLatest() failed'))
+          return
         }
+
+        this.flush((err) => {
+          // prettier-ignore
+          if (err) cb(clarify(err, 'BaseIndex.removeFeedFromLatest() failed when waiting for flush'))
+          else {
+            this.level.del(feedId, (err2) => {
+              // prettier-ignore
+              if (err2) cb(clarify(err2, 'BaseIndex.removeFeedFromLatest() failed when deleting'))
+              else cb()
+            })
+          }
+        })
       })
     }
   }
