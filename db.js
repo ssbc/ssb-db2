@@ -24,7 +24,7 @@ const Ref = require('ssb-ref')
 const Obv = require('obz')
 const jitdbOperators = require('jitdb/operators')
 const bendyButt = require('ssb-bendy-butt')
-const butt2 = require('ssb-bendy-butt-2')
+const butt2 = require('ssb-buttwoo')
 const JITDB = require('jitdb')
 const Debug = require('debug')
 const multicb = require('multicb')
@@ -429,8 +429,8 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function addButt2(buffer, cb) {
-    const guard = guardAgainstDuplicateLogs('addButt2()')
+  function addButtwoo(buffer, cb) {
+    const guard = guardAgainstDuplicateLogs('addButtwoo()')
     if (guard) return cb(guard)
 
     onceWhen(
@@ -441,6 +441,7 @@ exports.init = function (sbot, config) {
         const msgKeyBFE = butt2.hash(data)
         const msgBIPF = butt2.butt2ToBipf(data, msgKeyBFE)
 
+        // FIXME: get from data
         const author = bfe.decode(butt2.extractAuthor(buffer))
         const parent = bfe.decode(butt2.extractParent(buffer))
         const authorParent = author + (parent === null ? '' : parent)
@@ -454,14 +455,14 @@ exports.init = function (sbot, config) {
         )
 
         if (err)
-          return cb(clarify(err, 'message validation in addButt2() failed'))
+          return cb(clarify(err, 'message validation in addButtwoo() failed'))
 
         state[authorParent] = {
           key: msgKeyBFE,
           value: data,
         }
         log.append(msgBIPF, (err) => {
-          if (err) return cb(clarify(err, 'addButt2() failed in the log'))
+          if (err) return cb(clarify(err, 'addButtwoo() failed in the log'))
 
           buttPost.set(buffer)
 
@@ -909,7 +910,7 @@ exports.init = function (sbot, config) {
     indexingProgress: () => indexingProgress.listen(),
 
     buttPost,
-    addButt2,
+    addButtwoo,
 
     // used for partial replication in browser, will be removed soon!
     setPost: post.set,

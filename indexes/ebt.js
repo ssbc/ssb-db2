@@ -22,7 +22,7 @@ module.exports = class EBT extends Plugin {
   processRecord(record, seq, pValue) {
     const buf = record.value
     let author = bipf.decode(buf, bipf.seekKey2(buf, pValue, BIPF_AUTHOR, 0))
-    if (SSBURI.isButt2V1FeedSSBURI(author)) {
+    if (SSBURI.isButtwooV1FeedSSBURI(author)) {
       const parent = bipf.decode(buf, bipf.seekKey2(buf, pValue, BIPF_PARENT, 0))
       author += parent === null ? '' : parent
     }
@@ -43,7 +43,7 @@ module.exports = class EBT extends Plugin {
       // prettier-ignore
       if (err) return cb(clarify(err, 'EBT.levelKeyToMessage() failed when getting leveldb item'))
       else
-        this.log.get(parseInt(offset, 10), (err, record) => {
+        this.log.getRaw(parseInt(offset, 10), (err, record) => {
           // prettier-ignore
           if (err) return cb(clarify(err, 'EBT.levelKeyToMessage() failed when getting log record'))
           cb(null, record)
@@ -55,14 +55,13 @@ module.exports = class EBT extends Plugin {
   getMessageFromAuthorSequence(key, cb) {
     this.levelKeyToMessage(JSON.stringify(key), (err, record) => {
       if (err) cb(clarify(err, 'EBT.getMessageFromAuthorSequence() failed'))
-      else cb(null, reEncrypt(bipf.decode(record, 0)))
+      else cb(null, bipf.decode(record, 0))
     })
   }
 
   getMessageFromAuthorSequenceRaw(key, cb) {
     this.levelKeyToMessage(JSON.stringify(key), (err, record) => {
       if (err) cb(clarify(err, 'EBT.getMessageFromAuthorSequence() failed'))
-      // FIXME: reencrypt?
       else cb(null, record)
     })
   }

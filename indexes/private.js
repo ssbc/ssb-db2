@@ -122,6 +122,10 @@ module.exports = function (dir, sbot, config) {
     ) {
       msg.value.content = unboxedContent[0]
       msg.value.contentSignature = unboxedContent[1]
+    } else if (
+      SSBURI.isButtwooV1FeedSSBURI(msg.value.author)
+    ) {
+      msg.value.content = bipf.decode(unboxedContent, 0)
     } else msg.value.content = unboxedContent
 
     msg.meta = {

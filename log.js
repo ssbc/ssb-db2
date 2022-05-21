@@ -71,6 +71,10 @@ module.exports = function (dir, config, privateIndex) {
     })
   }
 
+  log.getRaw = function (offset, cb) {
+    originalGet(offset, cb)
+  }
+
   // monkey-patch log.stream to temporarily pause when the CPU is too busy,
   // and to decrypt the msg
   const originalStream = log.stream
