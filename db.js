@@ -438,12 +438,16 @@ exports.init = function (sbot, config) {
       (ready) => ready === true,
       () => {
         const data = butt2.extractData(buffer)
+        if (data.length !== 2)
+          return cb('incorrect buttwoo format, addButtwoo() failed')
+        if (data[0].length !== 3 || data[1].length !== 8)
+          return cb('incorrect buttwoo format, addButtwoo() failed')
+
         const msgKeyBFE = butt2.hash(data)
         const msgBIPF = butt2.butt2ToBipf(data, msgKeyBFE)
 
-        // FIXME: get from data
-        const author = bfe.decode(butt2.extractAuthor(buffer))
-        const parent = bfe.decode(butt2.extractParent(buffer))
+        const author = bfe.decode(data[1][0])
+        const parent = bfe.decode(data[1][1])
         const authorParent = author + (parent === null ? '' : parent)
 
         const previous = state[authorParent] || { value: null }
