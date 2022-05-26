@@ -71,6 +71,9 @@ module.exports = function (dir, config, privateIndex) {
     })
   }
 
+  // in case you want the encrypted msg
+  log.getRaw = originalGet
+
   // monkey-patch log.stream to temporarily pause when the CPU is too busy,
   // and to decrypt the msg
   const originalStream = log.stream

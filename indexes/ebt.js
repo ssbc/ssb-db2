@@ -5,7 +5,6 @@
 const bipf = require('bipf')
 const clarify = require('clarify-error')
 const Plugin = require('./plugin')
-const { reEncrypt } = require('./private')
 
 const BIPF_AUTHOR = bipf.allocAndEncode('author')
 const BIPF_SEQUENCE = bipf.allocAndEncode('sequence')
@@ -36,19 +35,19 @@ module.exports = class EBT extends Plugin {
       // prettier-ignore
       if (err) return cb(clarify(err, 'EBT.levelKeyToMessage() failed when getting leveldb item'))
       else
-        this.log.get(parseInt(offset, 10), (err, record) => {
+        this.log.getRaw(parseInt(offset, 10), (err, record) => {
           // prettier-ignore
           if (err) return cb(clarify(err, 'EBT.levelKeyToMessage() failed when getting log record'))
-          cb(null, bipf.decode(record, 0))
+          cb(null, record)
         })
     })
   }
 
   // this is for EBT so must be careful to not leak private messages
   getMessageFromAuthorSequence(key, cb) {
-    this.levelKeyToMessage(JSON.stringify(key), (err, msg) => {
+    this.levelKeyToMessage(JSON.stringify(key), (err, record) => {
       if (err) cb(clarify(err, 'EBT.getMessageFromAuthorSequence() failed'))
-      else cb(null, reEncrypt(msg))
+      else cb(null, bipf.decode(record, 0))
     })
   }
 }
