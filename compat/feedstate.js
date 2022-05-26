@@ -10,14 +10,14 @@ exports.init = function (sbot, config) {
       sbot.db.stateFeedsReady,
       (ready) => ready === true,
       () => {
-        const feedState = sbot.db.getState()[feedId]
+        const latest = sbot.db.getState().getAsKV(feedId)
 
         // this covers the case where you have a brand new feed
-        if (!feedState) return cb(null, { id: null, sequence: 0 })
+        if (!latest) return cb(null, { id: null, sequence: 0 })
 
         return cb(null, {
-          id: feedState.key,
-          sequence: feedState.value.sequence,
+          id: latest.key,
+          sequence: latest.value.sequence,
         })
       }
     )

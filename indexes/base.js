@@ -9,9 +9,10 @@ const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 
 const BIPF_AUTHOR = bipf.allocAndEncode('author')
+const BIPF_FEED = bipf.allocAndEncode('feed')
 const BIPF_SEQUENCE = bipf.allocAndEncode('sequence')
 
-// authorId => latestMsg { offset, sequence }
+// feedId => latestMsg { offset, sequence }
 //
 // Necessary for feed validation and for EBT
 module.exports = function makeBaseIndex(privateIndex) {
@@ -19,7 +20,7 @@ module.exports = function makeBaseIndex(privateIndex) {
     constructor(log, dir) {
       super(log, dir, 'base', 2, undefined, 'json')
       this.privateIndex = privateIndex
-      this.authorLatest = new Map()
+      this.feedLatest = new Map()
     }
 
     onLoaded(cb) {
@@ -27,7 +28,7 @@ module.exports = function makeBaseIndex(privateIndex) {
         this.getAllLatest(),
         pull.drain(
           ({ key, value }) => {
-            this.authorLatest.set(key, value)
+            this.feedLatest.set(key, value)
           },
           (err) => {
             // prettier-ignore
@@ -43,16 +44,18 @@ module.exports = function makeBaseIndex(privateIndex) {
       const pValueAuthor = bipf.seekKey2(buf, pValue, BIPF_AUTHOR, 0)
       const pValueSequence = bipf.seekKey2(buf, pValue, BIPF_SEQUENCE, 0)
       const author = bipf.decode(buf, pValueAuthor)
+      const pFeed = bipf.seekKey2(buf, 0, BIPF_FEED, 0)
+      const feedId = pFeed < 0 ? author : bipf.decode(buf, pFeed)
       const sequence = bipf.decode(buf, pValueSequence)
-      const latestSequence = this.authorLatest.has(author)
-        ? this.authorLatest.get(author).sequence
+      const latestSequence = this.feedLatest.has(feedId)
+        ? this.feedLatest.get(feedId).sequence
         : 0
       if (sequence > latestSequence) {
         const latest = { offset: record.offset, sequence }
-        this.authorLatest.set(author, latest)
+        this.feedLatest.set(feedId, latest)
         this.batch.push({
           type: 'put',
-          key: author,
+          key: feedId,
           value: latest,
         })
       }
@@ -67,11 +70,11 @@ module.exports = function makeBaseIndex(privateIndex) {
     }
 
     reset() {
-      this.authorLatest.clear()
+      this.feedLatest.clear()
     }
 
     // pull-stream where each item is { key, value }
-    // where key is the authorId and value is { offset, sequence }
+    // where key is the feedId and value is { offset, sequence }
     getAllLatest() {
       const META = '\x00'
       return pl.read(this.level, {

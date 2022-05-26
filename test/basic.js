@@ -12,7 +12,6 @@ const pull = require('pull-stream')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const bendyButt = require('ssb-bendy-butt')
-const SSBURI = require('ssb-uri2')
 
 const {
   where,
@@ -369,11 +368,7 @@ test('add transaction ooo', (t) => {
 })
 
 test('add some bendybutt-v1 messages', (t) => {
-  const mfKeys = ssbKeys.generate()
-  const classicUri = SSBURI.fromFeedSigil(mfKeys.id)
-  const { type, /* format, */ data } = SSBURI.decompose(classicUri)
-  const bendybuttUri = SSBURI.compose({ type, format: 'bendybutt-v1', data })
-  mfKeys.id = bendybuttUri
+  const mfKeys = ssbKeys.generate(null, null, 'bendybutt-v1')
   const mainKeys = ssbKeys.generate()
 
   const bbmsg1 = bendyButt.encodeNew(
@@ -416,11 +411,10 @@ test('add some bendybutt-v1 messages', (t) => {
     msgKey1, // previous
     Date.now() // timestamp
   )
-  const msgVal2 = bendyButt.decode(bbmsg2)
 
   pull(
-    pull.values([msgVal1, msgVal2]),
-    pull.asyncMap((msgVal, cb) => db.add(msgVal, cb)),
+    pull.values([bbmsg1, bbmsg2]),
+    pull.asyncMap((nativeMsg, cb) => db.add(nativeMsg, cb)),
     pull.collect(async (err) => {
       t.error(err)
 
@@ -438,16 +432,16 @@ test('add some bendybutt-v1 messages', (t) => {
 })
 
 test('cannot add() gabbygrove-v1 messages (yet)', (t) => {
-  const ggKeys = ssbKeys.generate()
-  const classicUri = SSBURI.fromFeedSigil(ggKeys.id)
-  const { type, /* format, */ data } = SSBURI.decompose(classicUri)
-  const ggUri = SSBURI.compose({ type, format: 'gabbygrove-v1', data })
-  ggKeys.id = ggUri
+  const ggKeys = ssbKeys.generate(null, null, 'gabbygrove-v1')
 
-  const msgVal = { author: ggUri, the: 1, rest: 2, does: 3, not: 4, matter: 5 }
+  const msgVal = { author: ggKeys.id, the: 1, rest: 2, doesnt: 3, matter: 5 }
 
   db.add(msgVal, (err, x) => {
-    t.match(err.message, /Unknown feed format/, 'expected error')
+    t.match(
+      err.message,
+      /failed because feed format is unknown/,
+      'expected error'
+    )
     t.notOk(x, 'expected no result')
     t.end()
   })

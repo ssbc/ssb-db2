@@ -5,6 +5,8 @@
 const test = require('tape')
 const ssbKeys = require('ssb-keys')
 const path = require('path')
+const bipf = require('bipf')
+const bfe = require('ssb-bfe')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const validate = require('ssb-validate')
@@ -51,16 +53,11 @@ test('author sequence', (t) => {
     db.publish(post2, (err, postMsg2) => {
       t.error(err, 'no err')
 
-      db.onDrain('ebt', () => {
-        db.getIndex('ebt').getMessageFromAuthorSequence(
-          [keys.id, postMsg2.value.sequence],
-          (err, msg) => {
-            t.error(err, 'no err')
-            t.equal(msg.value.content.text, post2.text, 'correct msg')
+      sbot.getAtSequence([keys.id, postMsg2.value.sequence], (err, msg) => {
+        t.error(err, 'no err')
+        t.equal(msg.value.content.text, post2.text, 'correct msg')
 
-            t.end()
-          }
-        )
+        t.end()
       })
     })
   })
@@ -132,6 +129,40 @@ test('add', (t) => {
   })
 })
 
+test('buttwoo sequenceNativeMsg', (t) => {
+  const buttwooKeys = ssbKeys.generate(null, null, 'buttwoo-v1')
+
+  db.create(
+    {
+      content: {
+        type: 'post',
+        text: 'I am buttwoo',
+      },
+      parent: null,
+      keys: buttwooKeys,
+      feedFormat: 'buttwoo',
+    },
+    (err, msg1) => {
+      t.error(err, 'no err')
+
+      sbot.getAtSequenceNativeMsg(
+        [buttwooKeys.id, msg1.value.sequence],
+        (err, nativeMsg) => {
+          const layer1 = bipf.decode(nativeMsg)
+          t.true(Array.isArray(layer1), 'layer1 is array')
+          t.equal(layer1.length, 3, 'layer1 has 3 items')
+          const [encodedValue, signature, contentBuf] = layer1
+          const [authorBFE] = bipf.decode(encodedValue)
+          t.true(bfe.isEncodedFeedButtwooV1(authorBFE), 'authorBFE is good')
+          const content = bipf.decode(contentBuf)
+          t.equal(content.text, 'I am buttwoo', 'correct msg')
+          t.end()
+        }
+      )
+    }
+  )
+})
+
 test('teardown sbot', (t) => {
-  sbot.close(t.end)
+  sbot.close(true, t.end)
 })

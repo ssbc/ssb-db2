@@ -9,18 +9,16 @@ const bsb = require('binary-search-bounds')
 const clarify = require('clarify-error')
 const { readFile, writeFile } = require('atomic-file-rw')
 const toBuffer = require('typedarray-to-buffer')
-const ssbKeys = require('ssb-keys')
 const DeferredPromise = require('p-defer')
 const path = require('path')
 const Debug = require('debug')
-const SSBURI = require('ssb-uri2')
 
 const { indexesPath } = require('../defaults')
 
 module.exports = function (dir, sbot, config) {
   const latestOffset = Obv()
   const stateLoaded = DeferredPromise()
-  let encrypted = []
+  let encrypted = [] // FIXME: BAD NAME!!! actually means "encrypted messages that I cant decrypt NOW but maybe one day I can"
   let canDecrypt = []
 
   const startDecryptBox1 = config.db2.startDecryptBox1
@@ -65,8 +63,10 @@ module.exports = function (dir, sbot, config) {
       if (err) {
         debug('failed to load encrypted')
         latestOffset.set(-1)
-        if (sbot.box2) sbot.box2.isReady(stateLoaded.resolve)
-        else stateLoaded.resolve()
+        // FIXME: wait for all encryptionFormats ready
+        // if (sbot.box2) sbot.box2.isReady(stateLoaded.resolve)
+        //else
+        stateLoaded.resolve()
         if (err.code === 'ENOENT') cb()
         else if (err.message === 'empty file') cb()
         // prettier-ignore
@@ -88,8 +88,10 @@ module.exports = function (dir, sbot, config) {
         }
 
         latestOffset.set(Math.min(offset, canDecryptOffset))
-        if (sbot.box2) sbot.box2.isReady(stateLoaded.resolve)
-        else stateLoaded.resolve()
+        // FIXME:
+        // if (sbot.box2) sbot.box2.isReady(stateLoaded.resolve)
+        //else
+        stateLoaded.resolve()
         debug('loaded offset', latestOffset.value)
 
         cb()
@@ -113,55 +115,62 @@ module.exports = function (dir, sbot, config) {
     cb()
   }
 
-  function reconstructMessage(record, unboxedContent) {
-    const msg = bipf.decode(record.value, 0)
-    const originalContent = msg.value.content
-    if (
-      SSBURI.isBendyButtV1FeedSSBURI(msg.value.author) &&
-      Array.isArray(unboxedContent)
-    ) {
-      msg.value.content = unboxedContent[0]
-      msg.value.contentSignature = unboxedContent[1]
-    } else msg.value.content = unboxedContent
-
-    msg.meta = {
-      private: true,
-      originalContent,
-    }
-
-    const len = bipf.encodingLength(msg)
-    const buf = Buffer.alloc(len)
-    bipf.encode(msg, buf, 0)
-
-    return { offset: record.offset, value: buf }
-  }
-
   const BIPF_VALUE = bipf.allocAndEncode('value')
   const BIPF_CONTENT = bipf.allocAndEncode('content')
   const BIPF_AUTHOR = bipf.allocAndEncode('author')
   const BIPF_PREVIOUS = bipf.allocAndEncode('previous')
   const BIPF_TIMESTAMP = bipf.allocAndEncode('timestamp')
 
-  function decryptBox1(ciphertext, keys) {
-    return ssbKeys.unbox(ciphertext, keys)
+  function ciphertextStrToBuffer(str) {
+    const dot = str.indexOf('.')
+    return Buffer.from(str.slice(0, dot), 'base64')
   }
 
-  function tryDecryptContent(ciphertext, recBuffer, pValue) {
-    let content = ''
-    if (ciphertext.endsWith('.box')) {
-      content = decryptBox1(ciphertext, config.keys)
-    } else if (sbot.box2 && ciphertext.endsWith('.box2')) {
-      const pAuthor = bipf.seekKey2(recBuffer, pValue, BIPF_AUTHOR, 0)
-      if (pAuthor >= 0) {
-        const author = bipf.decode(recBuffer, pAuthor)
-        const pPrevious = bipf.seekKey2(recBuffer, pValue, BIPF_PREVIOUS, 0)
-        if (pPrevious >= 0) {
-          const previousMsg = bipf.decode(recBuffer, pPrevious)
-          content = sbot.box2.decryptBox2(ciphertext, author, previousMsg)
-        }
-      }
+  function decryptAndReconstruct(ciphertext, record, pValue) {
+    const recBuffer = record.value
+
+    // Get encryption format
+    const encryptionFormat = sbot.db.findEncryptionFormatFor(ciphertext)
+    if (!encryptionFormat) return null
+
+    // Get previous
+    const pPrevious = bipf.seekKey2(recBuffer, pValue, BIPF_PREVIOUS, 0)
+    if (pPrevious < 0) return null
+    const previous = bipf.decode(recBuffer, pPrevious)
+
+    // Get author
+    const pAuthor = bipf.seekKey2(recBuffer, pValue, BIPF_AUTHOR, 0)
+    if (pAuthor < 0) return null
+    const author = bipf.decode(recBuffer, pAuthor)
+
+    // Get feed format
+    const feedFormat = sbot.db.findFeedFormatForAuthor(author)
+    if (!feedFormat) return null
+
+    // Decrypt
+    const ciphertextBuf = ciphertextStrToBuffer(ciphertext)
+    const opts = { keys: config.keys, author, previous }
+    const plaintextBuf = encryptionFormat.decrypt(ciphertextBuf, opts)
+    if (!plaintextBuf) return null
+
+    // Reconstruct KVT in JS encoding
+    const kvt = bipf.decode(recBuffer, 0)
+    const originalContent = kvt.value.content
+    const nativeMsg = feedFormat.toNativeMsg(kvt.value, 'js')
+    const msgVal = feedFormat.fromDecryptedNativeMsg(
+      plaintextBuf,
+      nativeMsg,
+      'js'
+    )
+    kvt.value = msgVal
+    kvt.meta = {
+      private: true,
+      originalContent,
     }
-    return content
+
+    // Encode it back to BIPF
+    const newRecBuffer = bipf.allocAndEncode(kvt)
+    return { offset: record.offset, value: newRecBuffer }
   }
 
   function decrypt(record, streaming) {
@@ -176,10 +185,9 @@ module.exports = function (dir, sbot, config) {
       if (pContent < 0) return record
 
       const ciphertext = bipf.decode(recBuffer, pContent)
-      const content = tryDecryptContent(ciphertext, recBuffer, pValue)
-      if (!content) return record
+      const originalMsg = decryptAndReconstruct(ciphertext, record, pValue)
+      if (!originalMsg) return record
 
-      const originalMsg = reconstructMessage(record, content)
       return originalMsg
     } else if (recOffset > latestOffset.value || !streaming) {
       if (streaming) latestOffset.set(recOffset)
@@ -194,15 +202,18 @@ module.exports = function (dir, sbot, config) {
 
       const ciphertext = bipf.decode(recBuffer, pContent)
 
+      // FIXME: This block, doing box1 and box2 things, is "SPECIAL" logic
+      // WHERE DO WE PUT IT?
       if (ciphertext.endsWith('.box') && startDecryptBox1) {
+        // FIXME: should this be a special config coming from encryptionFormat?
         const pTimestamp = bipf.seekKey2(recBuffer, pValue, BIPF_TIMESTAMP, 0)
         const declaredTimestamp = bipf.decode(recBuffer, pTimestamp)
         if (declaredTimestamp < startDecryptBox1) return record
       }
       if (streaming && ciphertext.endsWith('.box2')) encrypted.push(recOffset)
 
-      const content = tryDecryptContent(ciphertext, recBuffer, pValue)
-      if (!content) return record
+      const originalMsg = decryptAndReconstruct(ciphertext, record, pValue)
+      if (!originalMsg) return record
 
       if (!streaming) {
         // since we use bsb for canDecrypt we need to ensure recOffset
@@ -212,7 +223,7 @@ module.exports = function (dir, sbot, config) {
       } else canDecrypt.push(recOffset)
 
       if (!streaming) saveIndexes(() => {})
-      return reconstructMessage(record, content)
+      return originalMsg
     } else {
       return record
     }
