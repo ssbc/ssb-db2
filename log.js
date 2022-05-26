@@ -7,7 +7,10 @@ const bipf = require('bipf')
 const TooHot = require('too-hot')
 const { BLOCK_SIZE, newLogPath, tooHotOpts } = require('./defaults')
 
-module.exports = function (dir, config, privateIndex) {
+const BIPF_AUTHOR = bipf.allocAndEncode('author')
+const BIPF_VALUE = bipf.allocAndEncode('value')
+
+module.exports = function (dir, config, privateIndex, db) {
   config = config || {}
   config.db2 = config.db2 || {}
 
@@ -23,22 +26,42 @@ module.exports = function (dir, config, privateIndex) {
     },
   })
 
-  log.add = function (key, value, cb) {
+  log.add = function (key, value, feedId, encoding, cb) {
+    if (encoding !== 'js' && encoding !== 'bipf') {
+      // prettier-ignore
+      throw new Error('Cannot add msg to the log for unsupported encoding: ' + encoding)
+    }
+
+    if (encoding === 'bipf') {
+      bipf.markIdempotent(value)
+    }
+
     const kvt = {
       key,
       value,
       timestamp: Date.now(),
     }
-    const buf = Buffer.alloc(bipf.encodingLength(kvt))
-    bipf.encode(kvt, buf, 0)
-    log.append(buf, (err) => {
+    if (feedId !== value.author) kvt.feed = feedId
+    const recBuffer = bipf.allocAndEncode(kvt)
+
+    log.append(recBuffer, (err) => {
       if (err) cb(err)
       else cb(null, kvt)
     })
   }
 
-  log.addTransaction = function (keys, values, cb) {
-    let buffers = []
+  log.addTransaction = function (keys, values, encoding, cb) {
+    if (encoding !== 'js' && encoding !== 'bipf') {
+      // prettier-ignore
+      throw new Error('Cannot addTransaction to the log for unsupported encoding: ' + encoding)
+    }
+    if (encoding === 'bipf') {
+      for (const value of values) {
+        bipf.markIdempotent(value)
+      }
+    }
+
+    let recBuffers = []
     let kvts = []
 
     for (let i = 0; i < keys.length; ++i) {
@@ -47,13 +70,12 @@ module.exports = function (dir, config, privateIndex) {
         value: values[i],
         timestamp: Date.now(),
       }
-      const buf = Buffer.alloc(bipf.encodingLength(kvt))
-      bipf.encode(kvt, buf, 0)
-      buffers.push(buf)
+      const recBuffer = bipf.allocAndEncode(kvt)
+      recBuffers.push(recBuffer)
       kvts.push(kvt)
     }
 
-    log.appendTransaction(buffers, (err) => {
+    log.appendTransaction(recBuffers, (err) => {
       if (err) cb(err)
       else cb(null, kvts)
     })
@@ -73,6 +95,31 @@ module.exports = function (dir, config, privateIndex) {
 
   // in case you want the encrypted msg
   log.getRaw = originalGet
+
+  log.getNativeMsg = function getNativeMsg(offset, cb) {
+    originalGet(offset, (err, buffer) => {
+      if (err) return cb(err)
+
+      const pValue = bipf.seekKey2(buffer, 0, BIPF_VALUE, 0)
+      const pValueAuthor = bipf.seekKey2(buffer, pValue, BIPF_AUTHOR, 0)
+      const author = bipf.decode(buffer, pValueAuthor)
+      const feedFormat = db.findFeedFormatForAuthor(author)
+      if (!feedFormat) {
+        // prettier-ignore
+        return cb(new Error('getNativeMsg() failed because this author is for an unknown feed format: ' + author))
+      }
+
+      let nativeMsg
+      if (feedFormat.encodings.includes('bipf')) {
+        const valueBuf = bipf.pluck(buffer, pValue)
+        nativeMsg = feedFormat.toNativeMsg(valueBuf, 'bipf')
+      } else {
+        const msgVal = bipf.decode(buffer, pValue)
+        nativeMsg = feedFormat.toNativeMsg(msgVal, 'js')
+      }
+      cb(null, nativeMsg)
+    })
+  }
 
   // monkey-patch log.stream to temporarily pause when the CPU is too busy,
   // and to decrypt the msg

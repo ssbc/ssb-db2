@@ -19,21 +19,21 @@ module.exports = class DebouncingBatchAdd {
     this.queueByAuthor.delete(authorId)
     this.timestampsByAuthor.delete(authorId)
     // Add the messages in the queue
-    this.addBatch(msgVals, (err, kvts) => {
+    this.addBatch(msgVals, queue[0][1], (err, kvts) => {
       if (err) {
         for (let i = 0; i < n; ++i) {
-          const cb = queue[i][1]
+          const cb = queue[i][2]
           cb(err)
         }
       } else if (kvts.length !== n) {
         for (let i = 0; i < n; ++i) {
-          const cb = queue[i][1]
+          const cb = queue[i][2]
           cb(new Error(`unexpected addBatch mismatch: ${kvts.length}} != ${n}`))
         }
       } else {
         for (let i = 0; i < n; ++i) {
           const kvt = kvts[i]
-          const cb = queue[i][1]
+          const cb = queue[i][2]
           cb(null, kvt)
         }
       }
@@ -63,10 +63,10 @@ module.exports = class DebouncingBatchAdd {
     }, this.period * 0.5)
   }
 
-  add(msgVal, cb) {
+  add(msgVal, opts, cb) {
     const authorId = msgVal.author
     const queue = this.queueByAuthor.get(authorId) || []
-    queue.push([msgVal, cb])
+    queue.push([msgVal, opts, cb])
     this.queueByAuthor.set(authorId, queue)
     this.timestampsByAuthor.set(authorId, Date.now())
     this.scheduleFlush()

@@ -10,20 +10,11 @@ const mkdirp = require('mkdirp')
 const clarify = require('clarify-error')
 const push = require('push-stream')
 const Notify = require('pull-notify')
-const ssbKeys = require('ssb-keys')
-const validate = require('ssb-validate') // TODO: remove this eventually
-const validate2 =
-  typeof localStorage === 'undefined' || localStorage === null
-    ? require('ssb-validate2-rsjs-node')
-    : require('ssb-validate2')
-const SSBURI = require('ssb-uri2')
 const bipf = require('bipf')
 const pull = require('pull-stream')
 const paramap = require('pull-paramap')
-const Ref = require('ssb-ref')
 const Obv = require('obz')
 const jitdbOperators = require('jitdb/operators')
-const bendyButt = require('ssb-bendy-butt')
 const JITDB = require('jitdb')
 const Debug = require('debug')
 const multicb = require('multicb')
@@ -58,8 +49,9 @@ exports.version = '1.9.1'
 exports.manifest = {
   get: 'async',
   add: 'async',
-  publish: 'async',
-  publishAs: 'async',
+  create: 'async',
+  publish: 'async', // FIXME: move out of here?
+  publishAs: 'async', // FIXME: move out of here?
   del: 'async',
   deleteFeed: 'async',
   addTransaction: 'async',
@@ -79,7 +71,7 @@ exports.manifest = {
 }
 
 exports.init = function (sbot, config) {
-  let self
+  const self = {}
   let closed = false
   config = config || {}
   config.db2 = config.db2 || {}
@@ -89,21 +81,23 @@ exports.init = function (sbot, config) {
     rimraf.sync(config.path)
     mkdirp.sync(config.path)
   }
+  const feedFormats = []
+  const encryptionFormats = []
   const indexes = {}
   const dir = config.path
   const privateIndex = PrivateIndex(dir, sbot, config)
-  const log = Log(dir, config, privateIndex)
+  const log = Log(dir, config, privateIndex, self)
   const jitdb = JITDB(log, jitIndexesPath(dir))
   const status = Status(log, jitdb)
   const debug = Debug('ssb:db2')
-  const post = Obv()
+  const post = Obv() // FIXME: move to compat?
+  const onMsgAdded = Obv()
   const indexingProgress = Notify()
   const indexingActive = Obv().set(0)
   let abortLogStreamForIndexes = null
   const compacting = Obv().set(false)
   const hmacKey = null
   const stateFeedsReady = Obv().set(false)
-  const state = {}
   const secretStackLoaded = new ReadyGate()
   const indexesStateLoaded = new ReadyGate()
 
@@ -134,40 +128,68 @@ exports.init = function (sbot, config) {
     })
   })
 
+  // FIXME: we need to wait for box1 and box2 async "ready" to load
+
   indexesStateLoaded.onReady(updateIndexes)
 
   function setStateFeedsReady(x) {
     stateFeedsReady.set(x)
   }
 
-  function loadStateFeeds(cb) {
-    // restore current state
-    validate2.ready(() => {
-      onDrain('base', () => {
-        pull(
-          indexes.base.getAllLatest(),
-          paramap((latest, cb) => {
-            getMsgByOffset(latest.value.offset, (err, kvt) => {
-              if (err) cb(err)
-              else cb(null, kvt)
-            })
-          }, 8),
-          pull.collect((err, kvts) => {
-            if (err) return console.error(clarify(err, 'loadStateFeeds failed'))
-            for (const kvt of kvts) {
-              updateState(kvt)
-            }
-            debug('getAllLatest is done setting up initial validate state')
-            if (!stateFeedsReady.value) stateFeedsReady.set(true)
-            if (cb) cb()
-          })
-        )
-      })
-    })
+  const state = {
+    _map: new Map(), // feedId => nativeMsg
+    updateFromKVT(kvtf) {
+      const feedId = kvtf.feed || kvtf.value.author
+      const feedFormat = findFeedFormatForAuthor(feedId)
+      if (!feedFormat) {
+        throw new Error('No feed format installed understands ' + feedId)
+      }
+      const nativeMsg = feedFormat.toNativeMsg(kvtf.value, 'js')
+      this._map.set(feedId, nativeMsg)
+    },
+    update(feedId, nativeMsg) {
+      this._map.set(feedId, nativeMsg)
+    },
+    get(feedId) {
+      return this._map.get(feedId) || null
+    },
+    getAsKV(feedId) {
+      const nativeMsg = this._map.get(feedId)
+      if (!nativeMsg) return null
+      const feedFormat = findFeedFormatForAuthor(feedId)
+      if (!feedFormat) {
+        throw new Error('No feed format installed understands ' + feedId)
+      }
+      const key = feedFormat.getMsgId(nativeMsg, 'js')
+      const value = feedFormat.fromNativeMsg(nativeMsg, 'js')
+      return { key, value }
+    },
+    delete(feedId) {
+      this._map.delete(feedId)
+    },
   }
 
-  function updateState(kvt) {
-    state[kvt.value.author] = PrivateIndex.reEncrypt(kvt)
+  function loadStateFeeds(cb) {
+    onDrain('base', () => {
+      pull(
+        indexes.base.getAllLatest(),
+        paramap((latest, cb) => {
+          getMsgByOffset(latest.value.offset, (err, kvt) => {
+            if (err) cb(err)
+            else cb(null, kvt)
+          })
+        }, 8),
+        pull.collect((err, kvts) => {
+          if (err) return console.error(clarify(err, 'loadStateFeeds failed'))
+          for (const kvt of kvts) {
+            state.updateFromKVT(PrivateIndex.reEncrypt(kvt))
+          }
+          debug('getAllLatest is done setting up initial validate state')
+          if (!stateFeedsReady.value) stateFeedsReady.set(true)
+          if (cb) cb()
+        })
+      )
+    })
   }
 
   status.obv((stats) => {
@@ -230,138 +252,156 @@ exports.init = function (sbot, config) {
     })
   }
 
+  function findFeedFormatForNativeMsg(nativeMsg) {
+    for (const feedFormat of feedFormats) {
+      if (feedFormat.isNativeMsg(nativeMsg)) return feedFormat
+    }
+    return null
+  }
+
+  function findFeedFormatForAuthor(author) {
+    for (const feedFormat of feedFormats) {
+      if (feedFormat.isAuthor(author)) return feedFormat
+    }
+    return null
+  }
+
+  function findFeedFormatByName(formatName) {
+    for (const feedFormat of feedFormats) {
+      if (feedFormat.name === formatName) return feedFormat
+    }
+    return null
+  }
+
+  function findFeedFormatByNameOrNativeMsg(formatName, nativeMsg) {
+    if (formatName) {
+      const feedFormat = findFeedFormatByName(formatName)
+      if (feedFormat) return feedFormat
+    }
+    return findFeedFormatForNativeMsg(nativeMsg)
+  }
+
+  function addFeedFormat(feedFormat) {
+    if (!feedFormat.encodings.includes('js')) {
+      // prettier-ignore
+      throw new Error('ssb-db2: feed format ' + feedFormat.name + ' must have js encoding')
+    }
+    feedFormats.push(feedFormat)
+  }
+
+  function addEncryptionFormat(encryptionFormat) {
+    encryptionFormats.push(encryptionFormat)
+  }
+
+  function findEncryptionFormatFor(ciphertextJS) {
+    if (!ciphertextJS) return null
+    if (typeof ciphertextJS !== 'string') return null
+    for (const encryptionFormat of encryptionFormats) {
+      if (ciphertextJS.endsWith(`.${encryptionFormat.suffix}`)) {
+        return encryptionFormat
+      }
+    }
+    return null
+  }
+
+  function findEncryptionFormatByName(formatName) {
+    for (const encryptionFormat of encryptionFormats) {
+      if (encryptionFormat.name === formatName) return encryptionFormat
+    }
+    return null
+  }
+
   const debouncePeriod = config.db2.addDebounce || 250
   const debouncer = new DebouncingBatchAdd(addBatch, debouncePeriod)
 
-  function addOOOBatch(msgVals, cb) {
-    const guard = guardAgainstDuplicateLogs('addOOOBatch()')
-    if (guard) return cb(guard)
-
-    onceWhen(
-      stateFeedsReady,
-      (ready) => ready === true,
-      () => {
-        validate2.validateOOOBatch(hmacKey, msgVals, (err, keys) => {
-          if (err) return cb(clarify(err, 'validation in addOOOBatch() failed'))
-
-          const done = multicb({ pluck: 1 })
-          for (var i = 0; i < msgVals.length; ++i)
-            log.add(keys[i], msgVals[i], done())
-
-          done(cb)
-        })
-      }
-    )
-  }
-
-  function addTransaction(msgVals, oooMsgVals, cb) {
-    const guard = guardAgainstDuplicateLogs('addTransaction()')
-    if (guard) return cb(guard)
-
-    oooMsgVals = oooMsgVals || []
-    msgVals = msgVals || []
-
-    onceWhen(
-      stateFeedsReady,
-      (ready) => ready === true,
-      () => {
-        const done = multicb({ pluck: 1 })
-
-        if (msgVals.length > 0) {
-          const author = msgVals[0].author
-          if (!Ref.isFeedId(author))
-            return cb(
-              new Error('addTransaction() does not support feed ID ' + author)
-            )
-
-          const latestMsgVal = state[author] ? state[author].value : null
-          validate2.validateBatch(hmacKey, msgVals, latestMsgVal, done())
-        } else {
-          done()(null, [])
-        }
-
-        validate2.validateOOOBatch(hmacKey, oooMsgVals, done())
-
-        done((err, keys) => {
-          // prettier-ignore
-          if (err) return cb(clarify(err, 'validation in addTransaction() failed'))
-
-          const [msgKeys, oooKeys] = keys
-
-          if (msgKeys.length > 0) {
-            const lastIndex = msgKeys.length - 1
-            updateState({
-              key: msgKeys[lastIndex],
-              value: msgVals[lastIndex],
-            })
-          }
-
-          log.addTransaction(
-            msgKeys.concat(oooKeys),
-            msgVals.concat(oooMsgVals),
-            (err, kvts) => {
-              // prettier-ignore
-              if (err) return cb(clarify(err, 'addTransaction() failed in the log'))
-
-              for (const kvt of kvts) post.set(kvt)
-              cb(null, kvts)
-            }
-          )
-        })
-      }
-    )
-  }
-
-  function add(msgVal, cb) {
+  function add(nativeMsg, opts, cb) {
     const guard = guardAgainstDuplicateLogs('add()')
     if (guard) return cb(guard)
+    if (typeof opts === 'function') {
+      cb = opts
+      opts = { encoding: 'js' }
+    } else if (!opts) {
+      opts = { encoding: 'js' }
+    }
 
     onceWhen(
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        if (Ref.isFeedId(msgVal.author)) {
-          debouncer.add(msgVal, cb)
-        } else if (SSBURI.isBendyButtV1FeedSSBURI(msgVal.author)) {
-          addImmediately(msgVal, cb)
-        } else {
-          cb(new Error('Unknown feed format: ' + msgVal.author))
+        const feedFormat = findFeedFormatByNameOrNativeMsg(
+          opts.feedFormat,
+          nativeMsg
+        )
+        if (!feedFormat) {
+          // prettier-ignore
+          return cb(new Error('add() failed because feed format is unknown for: ' + nativeMsg))
         }
+        opts.feedFormat = feedFormat.name
+        if (feedFormat.validateBatch) debouncer.add(nativeMsg, opts, cb)
+        else addImmediately(nativeMsg, opts, cb)
       }
     )
   }
 
-  function addBatch(msgVals, cb) {
+  function addBatch(nativeMsgs, opts, cb) {
     const guard = guardAgainstDuplicateLogs('addBatch()')
     if (guard) return cb(guard)
-
-    if (msgVals.length === 0) {
+    if (typeof opts === 'function') {
+      cb = opts
+      opts = { encoding: 'js' }
+    } else if (!opts) {
+      opts = { encoding: 'js' }
+    }
+    if (nativeMsgs.length === 0) {
       return cb(null, [])
     }
-    const author = msgVals[0].author
-    if (!Ref.isFeedId(author)) {
-      return cb(new Error('addBatch() does not support feed ID ' + author))
+    const feedFormat = findFeedFormatByNameOrNativeMsg(
+      opts.feedFormat,
+      nativeMsgs[0]
+    )
+    if (!feedFormat) {
+      return cb(
+        new Error(
+          'addBatch() does not support feed format for ' + nativeMsgs[0]
+        )
+      )
+    }
+    if (!feedFormat.validateBatch) {
+      // prettier-ignore
+      return cb(new Error('addBatch() failed because feed format ' + feedFormat.name + ' does not support validateBatch'))
     }
 
     onceWhen(
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        const latestMsgVal = state[author] ? state[author].value : null
-        validate2.validateBatch(hmacKey, msgVals, latestMsgVal, (err, keys) => {
+        const feedId = feedFormat.getFeedId(nativeMsgs[0])
+        const prevNativeMsg = state.get(feedId)
+
+        feedFormat.validateBatch(hmacKey, nativeMsgs, prevNativeMsg, (err) => {
           if (err) return cb(clarify(err, 'validation in addBatch() failed'))
 
           const done = multicb({ pluck: 1 })
-          for (var i = 0; i < msgVals.length; ++i) {
-            const isLast = i === msgVals.length - 1
+          for (var i = 0; i < nativeMsgs.length; ++i) {
+            const nativeMsg = nativeMsgs[i]
+            const msgId = feedFormat.getMsgId(nativeMsg)
+            const msgVal = feedFormat.fromNativeMsg(nativeMsg, opts.encoding)
+            const isLast = i === nativeMsgs.length - 1
 
-            if (isLast) updateState({ key: keys[i], value: msgVals[i] })
+            if (isLast) {
+              state.update(feedId, nativeMsg)
+            }
 
-            log.add(keys[i], msgVals[i], (err, kvt) => {
+            log.add(msgId, msgVal, feedId, opts.encoding, (err, kvt) => {
               // prettier-ignore
               if (err) return done()(clarify(err, 'addBatch() failed in the log'))
 
               post.set(kvt)
+              onMsgAdded.set({
+                kvt,
+                nativeMsg,
+                feedFormat: feedFormat.name,
+              })
               done()(null, kvt)
             })
           }
@@ -372,70 +412,84 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function encryptContent(keys, content) {
-    if (sbot.box2 && content.recps.every(sbot.box2.supportsBox2)) {
-      const feedState = state[keys.id]
-      return sbot.box2.encryptClassic(
-        keys,
-        content,
-        feedState ? feedState.key : null
-      )
-    } else return ssbKeys.box(content, content.recps)
-  }
-
-  function addImmediately(msgVal, cb) {
+  function addImmediately(nativeMsg, opts, cb) {
     const guard = guardAgainstDuplicateLogs('addImmediately()')
     if (guard) return cb(guard)
+    if (typeof opts === 'function') {
+      cb = opts
+      opts = { encoding: 'js' }
+    } else if (!opts) {
+      opts = { encoding: 'js' }
+    }
+    const feedFormat = findFeedFormatByNameOrNativeMsg(
+      opts.feedFormat,
+      nativeMsg
+    )
+    if (!feedFormat) {
+      // prettier-ignore
+      return cb(new Error('addImmediately() failed because could not find feed format for: ' + nativeMsg))
+    }
 
     onceWhen(
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        if (Ref.isFeedId(msgVal.author)) {
-          const previous = (state[msgVal.author] || { value: null }).value
-          validate2.validateSingle(hmacKey, msgVal, previous, (err, key) => {
-            // prettier-ignore
-            if (err) return cb(clarify(err, 'classic message validation in addImmediately() failed'))
-            updateState({ key, value: msgVal })
-            log.add(key, msgVal, (err, kvt) => {
-              // prettier-ignore
-              if (err) return cb(clarify(err, 'addImmediately() of a classic message failed in the log'))
-
-              post.set(kvt)
-              cb(null, kvt)
-            })
-          })
-        } else if (SSBURI.isBendyButtV1FeedSSBURI(msgVal.author)) {
-          const previous = (state[msgVal.author] || { value: null }).value
-          const err = bendyButt.validateSingle(msgVal, previous, hmacKey)
+        const feedId = feedFormat.getFeedId(nativeMsg)
+        const prevNativeMsg = state.get(feedId)
+        feedFormat.validateSingle(hmacKey, nativeMsg, prevNativeMsg, (err) => {
           // prettier-ignore
-          if (err) return cb(clarify(err, 'bendy butt message validation in addImmediately() failed'))
-          const key = bendyButt.hash(msgVal)
-          updateState({ key, value: msgVal })
-          log.add(key, msgVal, (err, kvt) => {
+          if (err) return cb(clarify(err, 'addImmediately() failed validation for feed format ' + feedFormat.name))
+          const msgId = feedFormat.getMsgId(nativeMsg)
+          const msgVal = feedFormat.fromNativeMsg(nativeMsg, opts.encoding)
+          state.update(feedId, nativeMsg)
+          log.add(msgId, msgVal, feedId, opts.encoding, (err, kvt) => {
             // prettier-ignore
-            if (err) return cb(clarify(err, 'addImmediately() of a bendy butt message failed in the log'))
+            if (err) return cb(clarify(err, 'addImmediately() failed in the log'))
 
             post.set(kvt)
+            onMsgAdded.set({
+              kvt,
+              nativeMsg,
+              feedFormat: feedFormat.name,
+            })
             cb(null, kvt)
           })
-        } else {
-          cb(new Error('Unknown feed format: ' + msgVal.author))
-        }
+        })
       }
     )
   }
 
-  function addOOO(msgVal, cb) {
+  function addOOO(nativeMsg, opts, cb) {
     const guard = guardAgainstDuplicateLogs('addOOO()')
     if (guard) return cb(guard)
+    if (typeof opts === 'function') {
+      cb = opts
+      opts = { encoding: 'js' }
+    } else if (!opts) {
+      opts = { encoding: 'js' }
+    }
+    const feedFormat = findFeedFormatByNameOrNativeMsg(
+      opts.feedFormat,
+      nativeMsg
+    )
+    if (!feedFormat) {
+      // prettier-ignore
+      return cb(new Error('addOOO() failed because could not find feed format for: ' + nativeMsg))
+    }
+    if (!feedFormat.validateOOOBatch) {
+      // prettier-ignore
+      return cb(new Error('addOOO() failed because feed format ' + feedFormat.name + ' does not support validateOOOBatch'))
+    }
 
-    validate2.validateOOOBatch(hmacKey, [msgVal], (err, keys) => {
-      if (err) return cb(clarify(err, 'validation in addOOO() failed'))
-      const key = keys[0]
-      get(key, (err, data) => {
+    feedFormat.validateOOOBatch(hmacKey, [nativeMsg], (err) => {
+      // prettier-ignore
+      if (err) return cb(clarify(err, 'addOOO() failed validation for feed format ' + feedFormat.name))
+      const msgId = feedFormat.getMsgId(nativeMsg)
+      get(msgId, (err, data) => {
         if (data) return cb(null, data)
-        log.add(key, msgVal, (err, data) => {
+        const msgVal = feedFormat.fromNativeMsg(nativeMsg, opts.encoding)
+        const feedId = feedFormat.getFeedId(nativeMsg)
+        log.add(msgId, msgVal, feedId, opts.encoding, (err, data) => {
           if (err) return cb(clarify(err, 'addOOO() failed in the log'))
           cb(null, data)
         })
@@ -443,43 +497,239 @@ exports.init = function (sbot, config) {
     })
   }
 
-  function publish(content, cb) {
-    const guard = guardAgainstDuplicateLogs('publish()')
+  function addOOOBatch(nativeMsgs, opts, cb) {
+    const guard = guardAgainstDuplicateLogs('addOOOBatch()')
     if (guard) return cb(guard)
-
-    publishAs(config.keys, content, cb)
-  }
-
-  function publishAs(keys, content, cb) {
-    const guard = guardAgainstDuplicateLogs('publishAs()')
-    if (guard) return cb(guard)
-
-    if (!Ref.isFeedId(keys.id)) {
-      return cb(
-        new Error('publishAs() does not support feed format: ' + keys.id)
-      )
+    if (typeof opts === 'function') {
+      cb = opts
+      opts = { encoding: 'js' }
+    } else if (!opts) {
+      opts = { encoding: 'js' }
+    }
+    if (nativeMsgs.length === 0) {
+      return cb(null, [])
+    }
+    const feedFormat = findFeedFormatByNameOrNativeMsg(
+      opts.feedFormat,
+      nativeMsgs[0]
+    )
+    if (!feedFormat) {
+      // prettier-ignore
+      return cb(new Error('addOOOBatch() failed because could not find feed format for: ' + nativeMsgs[0]))
+    }
+    if (!feedFormat.validateOOOBatch) {
+      // prettier-ignore
+      return cb(new Error('addOOOBatch() failed because feed format ' + feedFormat.name + ' does not support validateOOOBatch'))
     }
 
     onceWhen(
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        if (content.recps) {
-          try {
-            content = encryptContent(keys, content)
-          } catch (ex) {
-            return cb(ex)
+        feedFormat.validateOOOBatch(hmacKey, nativeMsgs, (err) => {
+          if (err) return cb(clarify(err, 'validation in addOOOBatch() failed'))
+
+          const done = multicb({ pluck: 1 })
+          for (var i = 0; i < nativeMsgs.length; ++i) {
+            const msgId = feedFormat.getMsgId(nativeMsgs[i])
+            const msgVal = feedFormat.fromNativeMsg(
+              nativeMsgs[i],
+              opts.encoding
+            )
+            const feedId = feedFormat.getFeedId(nativeMsgs[i])
+            log.add(msgId, msgVal, feedId, opts.encoding, done())
+          }
+
+          done(cb)
+        })
+      }
+    )
+  }
+
+  function addTransaction(nativeMsgs, oooNativeMsgs, opts, cb) {
+    const guard = guardAgainstDuplicateLogs('addTransaction()')
+    if (guard) return cb(guard)
+    if (typeof opts === 'function') {
+      cb = opts
+      opts = { encoding: 'js' }
+    } else if (!opts) {
+      opts = { encoding: 'js' }
+    }
+    oooNativeMsgs = oooNativeMsgs || []
+    nativeMsgs = nativeMsgs || []
+    if (nativeMsgs.length === 0 && oooNativeMsgs.length === 0) {
+      return cb(null, [])
+    }
+    const exampleNativeMsg =
+      nativeMsgs.length > 0 ? nativeMsgs[0] : oooNativeMsgs[0]
+    const feedFormat = findFeedFormatByNameOrNativeMsg(
+      opts.feedFormat,
+      exampleNativeMsg
+    )
+    if (!feedFormat) {
+      // prettier-ignore
+      return cb(new Error('addTransaction() failed because could not find feed format for: ' + exampleNativeMsg))
+    }
+    if (!feedFormat.validateBatch) {
+      // prettier-ignore
+      return cb(new Error('addTransaction() failed because feed format ' + feedFormat.name + ' does not support validateBatch'))
+    }
+    if (!feedFormat.validateOOOBatch) {
+      // prettier-ignore
+      return cb(new Error('addTransaction() failed because feed format ' + feedFormat.name + ' does not support validateOOOBatch'))
+    }
+
+    onceWhen(
+      stateFeedsReady,
+      (ready) => ready === true,
+      () => {
+        const done = multicb({ pluck: 1 })
+
+        if (nativeMsgs.length > 0) {
+          const feedId = feedFormat.getFeedId(nativeMsgs[0])
+          const prevNativeMsg = state.get(feedId)
+          feedFormat.validateBatch(hmacKey, nativeMsgs, prevNativeMsg, done())
+        } else {
+          done()(null, [])
+        }
+
+        feedFormat.validateOOOBatch(hmacKey, oooNativeMsgs, done())
+
+        done((err) => {
+          // prettier-ignore
+          if (err) return cb(clarify(err, 'validation in addTransaction() failed'))
+
+          const msgIds = nativeMsgs.map((nMsg) => feedFormat.getMsgId(nMsg))
+          const oooMsgIds = oooNativeMsgs.map((nMsg) =>
+            feedFormat.getMsgId(nMsg)
+          )
+
+          if (nativeMsgs.length > 0) {
+            const lastIndex = nativeMsgs.length - 1
+            const nativeMsg = nativeMsgs[lastIndex]
+            const feedId = feedFormat.getFeedId(nativeMsg)
+            state.update(feedId, nativeMsg)
+          }
+
+          const allMsgIds = [].concat(msgIds, oooMsgIds)
+          const allMsgVals = []
+            .concat(nativeMsgs, oooNativeMsgs)
+            .map((nMsg) => feedFormat.fromNativeMsg(nMsg, opts.encoding))
+
+          log.addTransaction(
+            allMsgIds,
+            allMsgVals,
+            opts.encoding,
+            (err, kvts) => {
+              if (err)
+                return cb(clarify(err, 'addTransaction() failed in the log'))
+              if (kvts.length !== allMsgIds.length) {
+                // prettier-ignore
+                return cb(new Error('addTransaction() failed due to mismatched message count'))
+              }
+
+              for (let i = 0; i < kvts.length; ++i) {
+                post.set(kvts[i])
+                onMsgAdded.set({
+                  kvt: kvts[i],
+                  nativeMsg: allMsgVals[i],
+                  feedFormat: feedFormat.name,
+                })
+              }
+              cb(null, kvts)
+            }
+          )
+        })
+      }
+    )
+  }
+
+  function create(opts, cb) {
+    const guard = guardAgainstDuplicateLogs('create()')
+    if (guard) return cb(guard)
+
+    const keys = opts.keys || config.keys
+
+    const feedFormat = findFeedFormatByName(opts.feedFormat || 'classic')
+    const encoding = opts.encoding || 'js'
+    // prettier-ignore
+    if (!feedFormat) return cb(new Error('create() does not support feed format ' + opts.feedFormat))
+
+    if (!opts.content) return cb(new Error('create() requires a `content`'))
+
+    onceWhen(
+      stateFeedsReady,
+      (ready) => ready === true,
+      () => {
+        const provisionalNativeMsg = feedFormat.newNativeMsg({
+          timestamp: Date.now(),
+          ...opts,
+          previous: null,
+          keys,
+        })
+        const feedId = feedFormat.getFeedId(provisionalNativeMsg)
+        const previous = state.getAsKV(feedId)
+        const fullOpts = { timestamp: Date.now(), ...opts, previous, keys }
+
+        // If the inputs require encryption, try some encryption formats,
+        // and pick the best output.
+        if (opts.recps || opts.content.recps) {
+          const plaintext = feedFormat.toPlaintextBuffer(fullOpts)
+          function encryptWith(encryptionFormat) {
+            const recipients = encryptionFormat.getRecipients(fullOpts)
+            const ciphertextBuf = encryptionFormat.encrypt(
+              plaintext,
+              recipients,
+              fullOpts
+            )
+            return (
+              ciphertextBuf.toString('base64') + '.' + encryptionFormat.suffix
+            )
+          }
+          if (opts.encryptionFormat) {
+            const format = findEncryptionFormatByName(opts.encryptionFormat)
+            const ciphertext = encryptWith(format)
+            fullOpts.content = ciphertext
+          } else {
+            const outputs = encryptionFormats.map((format) => {
+              try {
+                const ciphertext = encryptWith(format)
+                return [null, { ciphertext, name: format.name }]
+              } catch (err) {
+                return [err]
+              }
+            })
+            const successes = outputs
+              .filter(([err]) => !err)
+              .map(([, success]) => success)
+            const errors = outputs
+              .filter(([err]) => err)
+              .map(([error]) => error.message)
+            if (successes.length === 0) {
+              // prettier-ignore
+              return cb(new Error('create() failed to encrypt content: ' + errors.join('; ')))
+            }
+            fullOpts.content = successes[0].ciphertext
           }
         }
-        const latestKVT = state[keys.id]
-        const msgVal = validate.create(
-          latestKVT ? { queue: [latestKVT] } : null,
-          keys,
-          hmacKey,
-          content,
-          Date.now()
-        )
-        addImmediately(msgVal, cb)
+
+        fullOpts.hmacKey = hmacKey
+        const nativeMsg = feedFormat.newNativeMsg(fullOpts)
+        const msgId = feedFormat.getMsgId(nativeMsg)
+
+        const encodedMsg = feedFormat.fromNativeMsg(nativeMsg, encoding)
+        state.update(feedId, nativeMsg)
+        log.add(msgId, encodedMsg, feedId, encoding, (err, encodedKVT) => {
+          if (err) return cb(clarify(err, 'create() failed in the log'))
+
+          post.set(encodedKVT)
+          onMsgAdded.set({
+            kvt: encodedKVT,
+            nativeMsg: nativeMsg,
+            feedFormat: feedFormat.name,
+          })
+          cb(null, encodedKVT)
+        })
       }
     )
   }
@@ -526,7 +776,7 @@ exports.init = function (sbot, config) {
           push.collect((err) => {
             if (err) cb(clarify(err, 'deleteFeed() failed for feed ' + feedId))
             else {
-              delete state[feedId]
+              state.delete(feedId)
               indexes.base.removeFeedFromLatest(feedId, cb)
             }
           })
@@ -847,8 +1097,10 @@ exports.init = function (sbot, config) {
     }
   })
 
-  return (self = {
+  const api = {
     // Public API:
+    addFeedFormat,
+    addEncryptionFormat,
     get,
     getMsg,
     query,
@@ -856,13 +1108,13 @@ exports.init = function (sbot, config) {
     del,
     deleteFeed,
     add,
-    publish,
-    publishAs,
+    create,
     addTransaction,
     addOOO,
     addOOOBatch,
     getStatus: () => status.obv,
     operators,
+    onMsgAdded,
     post,
     compact,
     reindexEncrypted,
@@ -872,6 +1124,9 @@ exports.init = function (sbot, config) {
     setPost: post.set,
 
     // needed primarily internally by other plugins in this project:
+    findFeedFormatByName,
+    findFeedFormatForAuthor,
+    findEncryptionFormatFor,
     addBatch,
     addImmediately,
     getLatest: indexes.base.getLatest.bind(indexes.base),
@@ -886,5 +1141,12 @@ exports.init = function (sbot, config) {
     getIndex: (index) => indexes[index],
     onDrain,
     getJITDB: () => jitdb,
-  })
+  }
+
+  // Copy api to self
+  for (const key in api) {
+    self[key] = api[key]
+  }
+
+  return self
 }

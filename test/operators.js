@@ -9,7 +9,6 @@ const fs = require('fs')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const bendyButt = require('ssb-bendy-butt')
-const SSBURI = require('ssb-uri2')
 const pull = require('pull-stream')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
@@ -161,11 +160,7 @@ test('execute and(type("post"), author(me))', (t) => {
 })
 
 test('author() supports bendy butt URIs', (t) => {
-  const mfKeys = ssbKeys.generate()
-  const classicUri = SSBURI.fromFeedSigil(mfKeys.id)
-  const { type, /* format, */ data } = SSBURI.decompose(classicUri)
-  const bendybuttUri = SSBURI.compose({ type, format: 'bendybutt-v1', data })
-  mfKeys.id = bendybuttUri
+  const mfKeys = ssbKeys.generate(null, null, 'bendybutt-v1')
   const mainKeys = keys
 
   const bbmsg1 = bendyButt.encodeNew(
@@ -190,16 +185,16 @@ test('author() supports bendy butt URIs', (t) => {
   const msgVal = bendyButt.decode(bbmsg1)
   const msgKey = bendyButt.hash(msgVal)
 
-  db.add(msgVal, (err, postMsg) => {
+  db.add(bbmsg1, (err, postMsg) => {
     t.error(err, 'no err')
 
     db.query(
-      where(author(bendybuttUri)),
+      where(author(mfKeys.id)),
       toCallback((err, msgs) => {
         t.error(err, 'no err')
         t.equals(msgs.length, 1, 'there is 1 message')
         t.equals(msgs[0].key, msgKey)
-        t.equals(msgs[0].value.author, bendybuttUri)
+        t.equals(msgs[0].value.author, mfKeys.id)
         t.end()
       })
     )
