@@ -5,9 +5,12 @@
 const sodium = require('chloride')
 const privateBox = require('private-box')
 const Ref = require('ssb-ref')
-const { isButtwooV1FeedSSBURI } = require('ssb-uri2')
-const { isBendyButtV1FeedSSBURI } = require('ssb-uri2')
-const { decompose, isFeedSSBURI } = require('ssb-uri2')
+const {
+  isButtwooV1FeedSSBURI,
+  isBendyButtV1FeedSSBURI,
+  decompose,
+  isFeedSSBURI,
+} = require('ssb-uri2')
 
 module.exports = function init(ssb) {
   const NAME = 'box1'
