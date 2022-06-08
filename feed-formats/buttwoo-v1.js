@@ -21,10 +21,17 @@ module.exports = function init(ssb) {
     encodings: ['js', 'bipf'],
 
     getFeedId(nativeMsg) {
-      const pAuthor = 6 // we can assume this because the feed format is fixed
-      const authorBFE = bipf.decode(nativeMsg, pAuthor)
-      const pParent = pAuthor + bipf.encodingLength(authorBFE)
-      const parentBFE = bipf.decode(nativeMsg, pParent)
+      const [encodedValue] = bipf.decode(nativeMsg)
+      let authorBFE
+      let parentBFE
+      bipf.iterate(encodedValue, 0, (b, pointer) => {
+        if (!authorBFE) {
+          authorBFE = bipf.decode(b, pointer)
+        } else if (!parentBFE) {
+          parentBFE = bipf.decode(b, pointer)
+          return true // abort the bipf.iterate
+        }
+      })
       const [author, parent] = bfe.decode([authorBFE, parentBFE])
       if (parent) {
         const { data } = SSBURI.decompose(parent)
