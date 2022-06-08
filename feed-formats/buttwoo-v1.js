@@ -186,9 +186,9 @@ module.exports = function init(ssb) {
         const sequence = msgVal.sequence
         const timestamp = msgVal.timestamp
         const previousBFE = bfe.encode(msgVal.previous)
-        const tag = Buffer.from([msgVal.tag])
+        const tag = msgVal.tag
         const contentBuffer = bipf.allocAndEncode(msgVal.content)
-        const contentHash = blake3.hash(contentBuffer)
+        const contentHash = msgVal.contentHash
         const value = [
           authorBFE,
           parentBFE,
@@ -324,6 +324,7 @@ module.exports = function init(ssb) {
       // FIXME: check length of content
 
       if (prevNativeMsg !== null) {
+        const prevMsgIdBFE = bfe.encode(feedFormat.getMsgId(prevNativeMsg))
         const [encodedValuePrev] = bipf.decode(prevNativeMsg)
         const [
           authorBFEPrev,
@@ -346,7 +347,7 @@ module.exports = function init(ssb) {
         if (timestamp <= timestampPrev)
           return cb(new Error('Timestamp must increase'))
 
-        if (Buffer.compare(previousBFE, previousKeyBFE) !== 0)
+        if (Buffer.compare(previousBFE, prevMsgIdBFE) !== 0)
           return cb(
             new Error('Previous does not match key of previous message')
           )
