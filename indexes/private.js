@@ -177,9 +177,8 @@ module.exports = function (dir, sbot, config) {
     const recOffset = record.offset
     const recBuffer = record.value
     if (!recBuffer) return record
-    let p = 0 // note you pass in p!
     if (bsb.eq(canDecrypt, recOffset) !== -1) {
-      const pValue = bipf.seekKey2(recBuffer, p, BIPF_VALUE, 0)
+      const pValue = bipf.seekKey2(recBuffer, 0, BIPF_VALUE, 0)
       if (pValue < 0) return record
       const pContent = bipf.seekKey2(recBuffer, pValue, BIPF_CONTENT, 0)
       if (pContent < 0) return record
@@ -192,7 +191,7 @@ module.exports = function (dir, sbot, config) {
     } else if (recOffset > latestOffset.value || !streaming) {
       if (streaming) latestOffset.set(recOffset)
 
-      const pValue = bipf.seekKey2(recBuffer, p, BIPF_VALUE, 0)
+      const pValue = bipf.seekKey2(recBuffer, 0, BIPF_VALUE, 0)
       if (pValue < 0) return record
       const pContent = bipf.seekKey2(recBuffer, pValue, BIPF_CONTENT, 0)
       if (pContent < 0) return record
