@@ -165,7 +165,7 @@ module.exports = function (dir, sbot, config) {
         }
       }
     }
-    contentCache.set(recBuffer, content)
+    if (content) contentCache.set(recBuffer, content)
     return content
   }
 
