@@ -4,22 +4,17 @@
 
 const Obv = require('obz')
 const bipf = require('bipf')
-const fic = require('fastintcompression')
-const bsb = require('binary-search-bounds')
 const clarify = require('clarify-error')
-const { readFile, writeFile } = require('atomic-file-rw')
-const toBuffer = require('typedarray-to-buffer')
 const DeferredPromise = require('p-defer')
 const path = require('path')
 const Debug = require('debug')
+const NumsFile = require('../nums-file')
 
 const { indexesPath } = require('../defaults')
 
 module.exports = function (dir, sbot, config) {
   const latestOffset = Obv()
   const stateLoaded = DeferredPromise()
-  let encrypted = [] // FIXME: BAD NAME!!! actually means "encrypted messages that I cant decrypt NOW but maybe one day I can"
-  let canDecrypt = []
 
   const startDecryptBox1 = config.db2.startDecryptBox1
     ? new Date(config.db2.startDecryptBox1)
@@ -27,39 +22,21 @@ module.exports = function (dir, sbot, config) {
 
   const debug = Debug('ssb:db2:private')
 
-  const encryptedFile = path.join(indexesPath(dir), 'encrypted.index')
+  // FIXME: BAD NAME!!! actually means "encrypted messages that I cant decrypt NOW but maybe one day I can"
+  const encryptedIdx = new NumsFile(
+    path.join(indexesPath(dir), 'encrypted.index')
+  )
   // an option is to cache the read keys instead of only where the
   // messages are, this has an overhead around storage.  The
   // performance of that is a decrease in unbox time to 50% of
   // original for box1 and around 75% box2
-  const canDecryptFile = path.join(indexesPath(dir), 'canDecrypt.index')
-
-  function save(filename, arr) {
-    const buf = toBuffer(fic.compress(arr))
-    const b = Buffer.alloc(4 + buf.length)
-    b.writeInt32LE(latestOffset.value, 0)
-    buf.copy(b, 4)
-
-    writeFile(filename, b, (err) => {
-      // prettier-ignore
-      if (err) console.error(clarify(err, 'private plugin failed to save file ' + filename))
-    })
-  }
-
-  function load(filename, cb) {
-    readFile(filename, (err, buf) => {
-      if (err) return cb(err)
-      else if (!buf) return cb(new Error('empty file'))
-
-      const offset = buf.readInt32LE(0)
-      const body = buf.slice(4)
-
-      cb(null, { offset, arr: fic.uncompress(body) })
-    })
-  }
+  // FIXME: rename to 'decrypted'?
+  const canDecryptIdx = new NumsFile(
+    path.join(indexesPath(dir), 'canDecrypt.index')
+  )
 
   function loadIndexes(cb) {
-    load(encryptedFile, (err, data) => {
+    encryptedIdx.loadFile((err) => {
       if (err) {
         debug('failed to load encrypted')
         latestOffset.set(-1)
@@ -68,26 +45,15 @@ module.exports = function (dir, sbot, config) {
         //else
         stateLoaded.resolve()
         if (err.code === 'ENOENT') cb()
-        else if (err.message === 'empty file') cb()
+        else if (err.message === 'Empty NumsFile') cb()
         // prettier-ignore
         else cb(clarify(err, 'private plugin failed to load "encrypted" index'))
         return
       }
+      debug('encrypted loaded', encryptedIdx.size())
 
-      const { offset, arr } = data
-      encrypted = arr
-
-      debug('encrypted loaded', encrypted.length)
-
-      load(canDecryptFile, (err, data) => {
-        let canDecryptOffset = -1
-        if (!err) {
-          canDecrypt = data.arr
-          canDecryptOffset = data.offset
-          debug('canDecrypt loaded', canDecrypt.length)
-        }
-
-        latestOffset.set(Math.min(offset, canDecryptOffset))
+      canDecryptIdx.loadFile((err) => {
+        latestOffset.set(Math.min(encryptedIdx.offset, canDecryptIdx.offset))
         // FIXME:
         // if (sbot.box2) sbot.box2.isReady(stateLoaded.resolve)
         //else
@@ -108,8 +74,8 @@ module.exports = function (dir, sbot, config) {
     if (!savedTimer) {
       savedTimer = setTimeout(() => {
         savedTimer = null
-        save(encryptedFile, encrypted)
-        save(canDecryptFile, canDecrypt)
+        encryptedIdx.saveFile(latestOffset.value)
+        canDecryptIdx.saveFile(latestOffset.value)
       }, 1000)
     }
     cb()
@@ -177,7 +143,7 @@ module.exports = function (dir, sbot, config) {
     const recOffset = record.offset
     const recBuffer = record.value
     if (!recBuffer) return record
-    if (bsb.eq(canDecrypt, recOffset) !== -1) {
+    if (canDecryptIdx.has(recOffset)) {
       const pValue = bipf.seekKey2(recBuffer, 0, BIPF_VALUE, 0)
       if (pValue < 0) return record
       const pContent = bipf.seekKey2(recBuffer, pValue, BIPF_CONTENT, 0)
@@ -209,17 +175,13 @@ module.exports = function (dir, sbot, config) {
         const declaredTimestamp = bipf.decode(recBuffer, pTimestamp)
         if (declaredTimestamp < startDecryptBox1) return record
       }
-      if (streaming && ciphertext.endsWith('.box2')) encrypted.push(recOffset)
+      if (streaming && ciphertext.endsWith('.box2'))
+        encryptedIdx.insert(recOffset)
 
       const originalMsg = decryptAndReconstruct(ciphertext, record, pValue)
       if (!originalMsg) return record
 
-      if (!streaming) {
-        // since we use bsb for canDecrypt we need to ensure recOffset
-        // is inserted at the correct place when reindexing
-        const insertLocation = bsb.gt(canDecrypt, recOffset)
-        canDecrypt.splice(insertLocation, 0, recOffset)
-      } else canDecrypt.push(recOffset)
+      canDecryptIdx.insert(recOffset)
 
       if (!streaming) saveIndexes(() => {})
       return originalMsg
@@ -229,14 +191,12 @@ module.exports = function (dir, sbot, config) {
   }
 
   function missingDecrypt() {
-    let canDecryptSet = new Set(canDecrypt)
-
-    return encrypted.filter((x) => !canDecryptSet.has(x))
+    return encryptedIdx.filterOut(canDecryptIdx)
   }
 
   function reset(cb) {
-    encrypted = []
-    canDecrypt = []
+    encryptedIdx.reset()
+    canDecryptIdx.reset()
     latestOffset.set(-1)
     saveIndexes(cb)
   }
