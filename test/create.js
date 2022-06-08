@@ -232,7 +232,7 @@ test('create() bendybutt-v1 box2', (t) => {
   )
 })
 
-test('create() buttwoo', (t) => {
+test('create() buttwoo-v1', (t) => {
   const buttwooKeys = ssbKeys.generate(null, null, 'buttwoo-v1')
 
   db.create(
@@ -244,7 +244,7 @@ test('create() buttwoo', (t) => {
       parent:
         'ssb:message/buttwoo-v1/Xnbc3Ihuslpx8peGO52c1-s59vufH9R5JnxT04vksnA=',
       keys: buttwooKeys,
-      feedFormat: 'buttwoo',
+      feedFormat: 'buttwoo-v1',
     },
     (err, msg1) => {
       t.error(err, 'no err')
@@ -262,7 +262,7 @@ test('create() buttwoo', (t) => {
           parent:
             'ssb:message/buttwoo-v1/Xnbc3Ihuslpx8peGO52c1-s59vufH9R5JnxT04vksnA=',
           keys: buttwooKeys,
-          feedFormat: 'buttwoo',
+          feedFormat: 'buttwoo-v1',
           encoding: 'bipf',
         },
         (err, msg2) => {
@@ -276,7 +276,7 @@ test('create() buttwoo', (t) => {
   )
 })
 
-test('create() buttwoo box1', (t) => {
+test('create() buttwoo-v1 box1', (t) => {
   const buttwooKeys = ssbKeys.generate(null, null, 'buttwoo-v1')
 
   db.create(
@@ -286,7 +286,7 @@ test('create() buttwoo box1', (t) => {
         text: 'I am the secret future of ssb',
       },
       keys: buttwooKeys,
-      feedFormat: 'buttwoo',
+      feedFormat: 'buttwoo-v1',
       recps: [buttwooKeys.id, keys.id],
       encryptionFormat: 'box1',
     },
@@ -303,7 +303,7 @@ test('create() buttwoo box1', (t) => {
   )
 })
 
-test('create() buttwoo box2', (t) => {
+test('create() buttwoo-v1 box2', (t) => {
   const buttwooKeys = ssbKeys.generate(null, null, 'buttwoo-v1')
 
   db.create(
@@ -313,7 +313,7 @@ test('create() buttwoo box2', (t) => {
         text: 'Heat death of the universe',
       },
       keys: buttwooKeys,
-      feedFormat: 'buttwoo',
+      feedFormat: 'buttwoo-v1',
       recps: [buttwooKeys.id, keys.id],
       encryptionFormat: 'box2',
     },
@@ -394,8 +394,8 @@ test('add() bendybutt-v1', (t) => {
   })
 })
 
-test('add buttwoo', (t) => {
-  const feedFormat = db.findFeedFormatByName('buttwoo')
+test('add buttwoo-v1', (t) => {
+  const feedFormat = db.findFeedFormatByName('buttwoo-v1')
 
   const nativeMsg = feedFormat.toNativeMsg(
     {

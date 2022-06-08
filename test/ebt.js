@@ -129,7 +129,7 @@ test('add', (t) => {
   })
 })
 
-test('buttwoo sequenceNativeMsg', (t) => {
+test('buttwoo-v1 sequenceNativeMsg', (t) => {
   const buttwooKeys = ssbKeys.generate(null, null, 'buttwoo-v1')
 
   db.create(
@@ -140,7 +140,7 @@ test('buttwoo sequenceNativeMsg', (t) => {
       },
       parent: null,
       keys: buttwooKeys,
-      feedFormat: 'buttwoo',
+      feedFormat: 'buttwoo-v1',
     },
     (err, msg1) => {
       t.error(err, 'no err')

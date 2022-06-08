@@ -17,7 +17,7 @@ const BUTTWOO_FEED_TF = bfe.toTF('feed', 'buttwoo-v1')
 
 module.exports = function init(ssb) {
   const feedFormat = {
-    name: 'buttwoo',
+    name: 'buttwoo-v1',
     encodings: ['js', 'bipf'],
 
     getFeedId(nativeMsg) {
@@ -164,7 +164,7 @@ module.exports = function init(ssb) {
 
     fromDecryptedNativeMsg(plaintextBuf, nativeMsg, encoding) {
       if (encoding !== 'js') {
-        throw new Error('buttwoo only supports js encoding')
+        throw new Error('buttwoo-v1 only supports js encoding when decrypting')
       }
       const msgVal = feedFormat.fromNativeMsg(nativeMsg, encoding)
       const content = bipf.decode(plaintextBuf)
@@ -238,12 +238,12 @@ module.exports = function init(ssb) {
           } else if (key === 'content') {
             contentBuffer = bipf.pluck(buf, valuePointer)
           } else {
-            throw new Error('Unknown field on buttwoo message: ' + key)
+            throw new Error('Unknown field on buttwoo-v1 message: ' + key)
           }
           remaining.delete(key)
         })
         if (remaining.size > 0) {
-          throw new Error('Missing fields on buttwoo message: ' + remaining)
+          throw new Error('Missing fields on buttwoo-v1 message: ' + remaining)
         }
         const value = [
           authorBFE,
