@@ -40,7 +40,8 @@ module.exports = function init(ssb) {
           return true // abort the bipf.iterate
         }
       })
-      const [author, parent] = bfe.decode([authorBFE, parentBFE])
+      const author = bfe.decode(authorBFE)
+      const parent = bfe.decode(parentBFE)
       if (parent) {
         const { data } = SSBURI.decompose(parent)
         const feedId = author + '/' + data
