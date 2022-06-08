@@ -554,8 +554,8 @@ exports.init = function (sbot, config) {
     if (abortLogStreamForIndexes) {
       abortLogStreamForIndexes()
       abortLogStreamForIndexes = null
+      updateIndexes()
     }
-    indexesStateLoaded.onReady(updateIndexes)
   }
 
   function registerIndex(Index) {
