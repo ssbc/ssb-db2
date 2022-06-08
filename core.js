@@ -985,7 +985,7 @@ exports.init = function (sbot, config) {
   function reindexEncrypted(cb) {
     indexingActive.set(indexingActive.value + 1)
     reindexingLock((unlock) => {
-      const offsets = privateIndex.missingDecrypt()
+      const offsets = privateIndex.getUnsolved('box2')
       const keysIndex = indexes['keys']
 
       push(
@@ -1124,6 +1124,7 @@ exports.init = function (sbot, config) {
     setPost: post.set,
 
     // needed primarily internally by other plugins in this project:
+    encryptionFormats,
     findFeedFormatByName,
     findFeedFormatForAuthor,
     findEncryptionFormatFor,

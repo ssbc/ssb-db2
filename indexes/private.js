@@ -8,8 +8,8 @@ const clarify = require('clarify-error')
 const DeferredPromise = require('p-defer')
 const path = require('path')
 const Debug = require('debug')
+const multicb = require('multicb')
 const NumsFile = require('../nums-file')
-
 const { indexesPath } = require('../defaults')
 
 module.exports = function (dir, sbot, config) {
@@ -22,23 +22,34 @@ module.exports = function (dir, sbot, config) {
 
   const debug = Debug('ssb:db2:private')
 
-  // FIXME: BAD NAME!!! actually means "encrypted messages that I cant decrypt NOW but maybe one day I can"
-  const encryptedIdx = new NumsFile(
-    path.join(indexesPath(dir), 'encrypted.index')
-  )
-  // an option is to cache the read keys instead of only where the
-  // messages are, this has an overhead around storage.  The
-  // performance of that is a decrease in unbox time to 50% of
-  // original for box1 and around 75% box2
-  // FIXME: rename to 'decrypted'?
-  const canDecryptIdx = new NumsFile(
-    path.join(indexesPath(dir), 'canDecrypt.index')
-  )
+  function pathFor(filename) {
+    return path.join(indexesPath(dir), filename)
+  }
+
+  let decryptedIdx
+  let encryptedIdxMap
 
   function loadIndexes(cb) {
-    encryptedIdx.loadFile((err) => {
+    decryptedIdx = new NumsFile(pathFor('decrypted.index'))
+
+    encryptedIdxMap = new Map()
+    for (const encryptionFormat of sbot.db.encryptionFormats) {
+      encryptedIdxMap.set(
+        encryptionFormat.name,
+        new NumsFile(pathFor(`encrypted-${encryptionFormat.name}.index`))
+      )
+    }
+
+    const done = multicb({ pluck: 1 })
+
+    decryptedIdx.loadFile(done())
+    for (const idx of encryptedIdxMap.values()) {
+      idx.loadFile(done())
+    }
+
+    done((err) => {
       if (err) {
-        debug('failed to load encrypted')
+        debug('failed to load encrypted or decrypted indexes')
         latestOffset.set(-1)
         // FIXME: wait for all encryptionFormats ready
         // if (sbot.box2) sbot.box2.isReady(stateLoaded.resolve)
@@ -47,26 +58,33 @@ module.exports = function (dir, sbot, config) {
         if (err.code === 'ENOENT') cb()
         else if (err.message === 'Empty NumsFile') cb()
         // prettier-ignore
-        else cb(clarify(err, 'private plugin failed to load "encrypted" index'))
+        else cb(clarify(err, 'private plugin failed to load index'))
         return
       }
-      debug('encrypted loaded', encryptedIdx.size())
 
-      canDecryptIdx.loadFile((err) => {
-        latestOffset.set(Math.min(encryptedIdx.offset, canDecryptIdx.offset))
-        // FIXME:
-        // if (sbot.box2) sbot.box2.isReady(stateLoaded.resolve)
-        //else
-        stateLoaded.resolve()
-        debug('loaded offset', latestOffset.value)
+      debug('decrypted loaded, size: ' + decryptedIdx.size())
+      for (const [name, idx] of encryptedIdxMap) {
+        debug(`encrypted-${name} loaded, size: ${idx.size()}`)
+      }
 
-        cb()
-      })
+      const encryptedIdxOffsets = [...encryptedIdxMap.values()].map(
+        (idx) => idx.offset
+      )
+      latestOffset.set(Math.min(decryptedIdx.offset, ...encryptedIdxOffsets))
+      // FIXME:
+      // if (sbot.box2) sbot.box2.isReady(stateLoaded.resolve)
+      //else
+      stateLoaded.resolve()
+      debug('loaded offset', latestOffset.value)
+      cb()
     })
   }
 
-  loadIndexes((err) => {
-    if (err) throw err
+  // Wait for secret-stack plugins (which may add encryption formats) to load
+  setTimeout(() => {
+    loadIndexes((err) => {
+      if (err) throw err
+    })
   })
 
   let savedTimer
@@ -74,8 +92,10 @@ module.exports = function (dir, sbot, config) {
     if (!savedTimer) {
       savedTimer = setTimeout(() => {
         savedTimer = null
-        encryptedIdx.saveFile(latestOffset.value)
-        canDecryptIdx.saveFile(latestOffset.value)
+        decryptedIdx.saveFile(latestOffset.value)
+        for (const idx of encryptedIdxMap.values()) {
+          idx.saveFile(latestOffset.value)
+        }
       }, 1000)
     }
     cb()
@@ -143,17 +163,17 @@ module.exports = function (dir, sbot, config) {
     const recOffset = record.offset
     const recBuffer = record.value
     if (!recBuffer) return record
-    if (canDecryptIdx.has(recOffset)) {
+    if (decryptedIdx.has(recOffset)) {
       const pValue = bipf.seekKey2(recBuffer, 0, BIPF_VALUE, 0)
       if (pValue < 0) return record
       const pContent = bipf.seekKey2(recBuffer, pValue, BIPF_CONTENT, 0)
       if (pContent < 0) return record
 
       const ciphertext = bipf.decode(recBuffer, pContent)
-      const originalMsg = decryptAndReconstruct(ciphertext, record, pValue)
-      if (!originalMsg) return record
+      const decryptedRecord = decryptAndReconstruct(ciphertext, record, pValue)
+      if (!decryptedRecord) return record
 
-      return originalMsg
+      return decryptedRecord
     } else if (recOffset > latestOffset.value || !streaming) {
       if (streaming) latestOffset.set(recOffset)
 
@@ -167,36 +187,48 @@ module.exports = function (dir, sbot, config) {
 
       const ciphertext = bipf.decode(recBuffer, pContent)
 
-      // FIXME: This block, doing box1 and box2 things, is "SPECIAL" logic
-      // WHERE DO WE PUT IT?
-      if (ciphertext.endsWith('.box') && startDecryptBox1) {
-        // FIXME: should this be a special config coming from encryptionFormat?
+      const encryptionFormat = sbot.db.findEncryptionFormatFor(ciphertext)
+      if (!encryptionFormat) return record
+
+      // Special optimization specific to box1
+      if (encryptionFormat.name === 'box1' && startDecryptBox1) {
         const pTimestamp = bipf.seekKey2(recBuffer, pValue, BIPF_TIMESTAMP, 0)
         const declaredTimestamp = bipf.decode(recBuffer, pTimestamp)
         if (declaredTimestamp < startDecryptBox1) return record
       }
-      if (streaming && ciphertext.endsWith('.box2'))
+
+      if (streaming) {
+        const encryptedIdx = encryptedIdxMap.get(encryptionFormat.name)
         encryptedIdx.insert(recOffset)
+      }
 
-      const originalMsg = decryptAndReconstruct(ciphertext, record, pValue)
-      if (!originalMsg) return record
+      const decryptedRecord = decryptAndReconstruct(ciphertext, record, pValue)
+      if (!decryptedRecord) return record
 
-      canDecryptIdx.insert(recOffset)
+      decryptedIdx.insert(recOffset)
 
       if (!streaming) saveIndexes(() => {})
-      return originalMsg
+      return decryptedRecord
     } else {
       return record
     }
   }
 
-  function missingDecrypt() {
-    return encryptedIdx.filterOut(canDecryptIdx)
+  /**
+   * Returns offsets of encrypted messages that have still not been decrypted
+   * under the `formatName` encryption format.
+   */
+  function getUnsolved(formatName) {
+    const idx = encryptedIdxMap.get(formatName)
+    if (!idx) return []
+    return idx.filterOut(decryptedIdx)
   }
 
   function reset(cb) {
-    encryptedIdx.reset()
-    canDecryptIdx.reset()
+    for (const idx of encryptedIdxMap.values()) {
+      idx.reset()
+    }
+    decryptedIdx.reset()
     latestOffset.set(-1)
     saveIndexes(cb)
   }
@@ -204,7 +236,7 @@ module.exports = function (dir, sbot, config) {
   return {
     latestOffset,
     decrypt,
-    missingDecrypt,
+    getUnsolved,
     saveIndexes,
     reset,
     stateLoaded: stateLoaded.promise,
