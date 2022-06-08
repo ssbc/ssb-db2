@@ -400,20 +400,20 @@ test('add buttwoo-v1', (t) => {
   const nativeMsg1 = feedFormat.toNativeMsg(
     {
       author:
-        'ssb:feed/buttwoo-v1/2u2sOdtRzFSnAMwXMSIGqMlJpkeU1Wzocpwol1oRwyo=',
+        'ssb:feed/buttwoo-v1/LDNR3UuGafiJ63LUNocw5ifmUbtakz7x4_LnBiazXU0=',
       parent: null,
       sequence: 1,
-      timestamp: 1654681336060,
+      timestamp: 1654703993976,
       previous: null,
       tag: Buffer.from([0]),
       content: { type: 'post', text: 'Hello world!' },
       contentHash: Buffer.from([
-        251, 214, 41, 18, 80, 206, 141, 111, 36, 238, 25, 174, 170, 24, 214,
+        0, 251, 214, 41, 18, 80, 206, 141, 111, 36, 238, 25, 174, 170, 24, 214,
         117, 232, 5, 114, 61, 21, 126, 176, 187, 182, 171, 62, 43, 192, 11, 225,
         132,
       ]),
       signature:
-        'FYFU7uYLsXyXsdZxUfuaXSnrkIQ/HNllDrnyjlDOzWR0SaEhfTkAdFqm77GRpvzeLajku+6RC0yUDohn2esLDA==.sig.ed25519',
+        'YvCfsIkYBiUSNhPTIIxSJImwJq/8I3ovWz6SpVsjfM6xMrvvBJ2xqon4jWVQah6+Fg/oisrCbqcV9toafilGDg==.sig.ed25519',
     },
     'js'
   )
@@ -425,21 +425,21 @@ test('add buttwoo-v1', (t) => {
     const nativeMsg2 = feedFormat.toNativeMsg(
       {
         author:
-          'ssb:feed/buttwoo-v1/2u2sOdtRzFSnAMwXMSIGqMlJpkeU1Wzocpwol1oRwyo=',
+          'ssb:feed/buttwoo-v1/LDNR3UuGafiJ63LUNocw5ifmUbtakz7x4_LnBiazXU0=',
         parent: null,
         sequence: 2,
-        timestamp: 1654681336068,
+        timestamp: 1654703993981,
         previous:
-          'ssb:message/buttwoo-v1/wzZBU4q8nNtcjpoaZktBeP_z7s_Z9DPQNah_aFy7JQs=',
+          'ssb:message/buttwoo-v1/FGWB6gHPUVmYQK9C3LOkz1I1_WyPuLStNYvtUPtqv5I=',
         tag: Buffer.from([0]),
         content: { type: 'post', text: 'Hi :)' },
         contentHash: Buffer.from([
-          58, 220, 84, 198, 242, 95, 238, 97, 52, 24, 105, 116, 210, 81, 9, 64,
-          204, 248, 200, 154, 239, 39, 105, 59, 185, 164, 167, 167, 216, 122,
-          252, 113,
+          0, 58, 220, 84, 198, 242, 95, 238, 97, 52, 24, 105, 116, 210, 81, 9,
+          64, 204, 248, 200, 154, 239, 39, 105, 59, 185, 164, 167, 167, 216,
+          122, 252, 113,
         ]),
         signature:
-          '51HaN7Ng8UeuVpLguRKRpXpF+OcOBdK9MNRtmL77EkJf5OoNukQSSXbUeWqP8jTbBjDM5DaXLLNl5592K4WDDw==.sig.ed25519',
+          'oC+888gl2rorYuG7CjKk4sGf9VasMrKZkPzJWWCLJ0s0TH2lhYNGQ5aYoqjhhBX2EjuervxveD7UaFTUeKOCAg==.sig.ed25519',
       },
       'js'
     )

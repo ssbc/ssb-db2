@@ -13,6 +13,10 @@ function base64ToBuffer(str) {
   return Buffer.from(str.substring(0, i), 'base64')
 }
 
+function makeContentHash(contentBuffer) {
+  return Buffer.concat([Buffer.from([0]), blake3.hash(contentBuffer)])
+}
+
 const BUTTWOO_FEED_TF = bfe.toTF('feed', 'buttwoo-v1')
 
 module.exports = function init(ssb) {
@@ -100,7 +104,7 @@ module.exports = function init(ssb) {
       const previous = opts.previous || { key: null, value: { sequence: 0 } }
       const previousBFE = bfe.encode(previous.key)
       const contentBuffer = bipf.allocAndEncode(opts.content)
-      const contentHash = blake3.hash(contentBuffer)
+      const contentHash = makeContentHash(contentBuffer)
       const parentBFE = bfe.encode(opts.parent || null)
       const tag = Buffer.from([opts.tag])
       const sequence = previous.value.sequence + 1
@@ -329,10 +333,7 @@ module.exports = function init(ssb) {
       if (contentBuffer.length !== contentSize)
         return cb(new Error('Content size does not match content'))
 
-      const testedContentHash = Buffer.concat([
-        Buffer.from([0]),
-        blake3.hash(contentBuffer)
-      ])
+      const testedContentHash = makeContentHash(contentBuffer)
 
       if (Buffer.compare(testedContentHash, contentHash) !== 0)
         return cb(new Error('Content hash does not match content'))
