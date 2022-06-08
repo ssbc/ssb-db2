@@ -20,7 +20,15 @@ module.exports = function init(ssb) {
     name: 'buttwoo-v1',
     encodings: ['js', 'bipf'],
 
+    _feedIdCache: new WeakMap(),
+    _msgIdCache: new WeakMap(),
+    _jsMsgValCache: new WeakMap(),
+    _bipfMsgValCache: new WeakMap(),
+
     getFeedId(nativeMsg) {
+      if (feedFormat._feedIdCache.has(nativeMsg)) {
+        return feedFormat._feedIdCache.get(nativeMsg)
+      }
       const [encodedValue] = bipf.decode(nativeMsg)
       let authorBFE
       let parentBFE
@@ -35,18 +43,30 @@ module.exports = function init(ssb) {
       const [author, parent] = bfe.decode([authorBFE, parentBFE])
       if (parent) {
         const { data } = SSBURI.decompose(parent)
+        const feedId = author + '/' + data
+        feedFormat._feedIdCache.set(nativeMsg, feedId)
         return author + '/' + data
       } else {
+        feedFormat._feedIdCache.set(nativeMsg, author)
         return author
       }
     },
 
     getMsgId(nativeMsg) {
+      if (feedFormat._msgIdCache.has(nativeMsg)) {
+        return feedFormat._msgIdCache.get(nativeMsg)
+      }
       const [encodedValue, signature] = bipf.decode(nativeMsg)
       const data = blake3
         .hash(Buffer.concat([encodedValue, signature]))
         .toString('base64')
-      return SSBURI.compose({ type: 'message', format: 'buttwoo-v1', data })
+      const msgId = SSBURI.compose({
+        type: 'message',
+        format: 'buttwoo-v1',
+        data,
+      })
+      feedFormat._msgIdCache.set(nativeMsg, msgId)
+      return msgId
     },
 
     isNativeMsg(x) {
@@ -106,6 +126,9 @@ module.exports = function init(ssb) {
 
     fromNativeMsg(nativeMsg, encoding) {
       if (encoding === 'js') {
+        if (feedFormat._jsMsgValCache.has(nativeMsg)) {
+          return feedFormat._jsMsgValCache.get(nativeMsg)
+        }
         const [encodedVal, sigBuf, contentBuffer] = bipf.decode(nativeMsg)
         const [
           authorBFE,
@@ -123,7 +146,7 @@ module.exports = function init(ssb) {
         const content = bipf.decode(contentBuffer)
         const contentHash = contentHashBuf
         const signature = sigBuf.toString('base64') + '.sig.ed25519'
-        return {
+        const msgVal = {
           author,
           parent,
           sequence,
@@ -134,7 +157,12 @@ module.exports = function init(ssb) {
           contentHash,
           signature,
         }
+        feedFormat._jsMsgValCache.set(nativeMsg, msgVal)
+        return msgVal
       } else if (encoding === 'bipf') {
+        if (feedFormat._bipfMsgValCache.has(nativeMsg)) {
+          return feedFormat._bipfMsgValCache.get(nativeMsg)
+        }
         const [encodedVal, sigBuf, contentBuffer] = bipf.decode(nativeMsg)
         const [
           authorBFE,
@@ -162,7 +190,9 @@ module.exports = function init(ssb) {
           signature,
           tag,
         }
-        return bipf.allocAndEncode(msgVal)
+        const bipfMsg = bipf.allocAndEncode(msgVal)
+        feedFormat._bipfMsgValCache.set(nativeMsg, bipfMsg)
+        return bipfMsg
       } else {
         // prettier-ignore
         throw new Error(`Feed format "${feedFormat.name}" does not support encoding "${encoding}"`)
