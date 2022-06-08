@@ -397,27 +397,59 @@ test('add() bendybutt-v1', (t) => {
 test('add buttwoo-v1', (t) => {
   const feedFormat = db.findFeedFormatByName('buttwoo-v1')
 
-  const nativeMsg = feedFormat.toNativeMsg(
+  const nativeMsg1 = feedFormat.toNativeMsg(
     {
       author:
-        'ssb:feed/buttwoo-v1/fpx9QBp1caTjZY9ddkqvcAzsrZbXN-cyiy5mczcnlYE=',
+        'ssb:feed/buttwoo-v1/2u2sOdtRzFSnAMwXMSIGqMlJpkeU1Wzocpwol1oRwyo=',
       parent: null,
       sequence: 1,
-      timestamp: 1654598012665,
+      timestamp: 1654681336060,
       previous: null,
-      tag: 0,
-      contentLength: 30,
+      tag: Buffer.from([0]),
       content: { type: 'post', text: 'Hello world!' },
+      contentHash: Buffer.from([
+        251, 214, 41, 18, 80, 206, 141, 111, 36, 238, 25, 174, 170, 24, 214,
+        117, 232, 5, 114, 61, 21, 126, 176, 187, 182, 171, 62, 43, 192, 11, 225,
+        132,
+      ]),
       signature:
-        '/6om9mnzQpx2uPuPrTKF5GTogvdV+MlFyUWmcJauVdfsfs+++TufXtYzHIWwTj6c+6H9/jcg6IQTU+qJpB6zAg==.sig.ed25519',
+        'FYFU7uYLsXyXsdZxUfuaXSnrkIQ/HNllDrnyjlDOzWR0SaEhfTkAdFqm77GRpvzeLajku+6RC0yUDohn2esLDA==.sig.ed25519',
     },
     'js'
   )
 
-  db.add(nativeMsg, (err, msg) => {
+  db.add(nativeMsg1, (err, msg) => {
     t.error(err, 'no err')
     t.equal(msg.value.content.text, 'Hello world!')
-    t.end()
+
+    const nativeMsg2 = feedFormat.toNativeMsg(
+      {
+        author:
+          'ssb:feed/buttwoo-v1/2u2sOdtRzFSnAMwXMSIGqMlJpkeU1Wzocpwol1oRwyo=',
+        parent: null,
+        sequence: 2,
+        timestamp: 1654681336068,
+        previous:
+          'ssb:message/buttwoo-v1/wzZBU4q8nNtcjpoaZktBeP_z7s_Z9DPQNah_aFy7JQs=',
+        tag: Buffer.from([0]),
+        content: { type: 'post', text: 'Hi :)' },
+        contentHash: Buffer.from([
+          58, 220, 84, 198, 242, 95, 238, 97, 52, 24, 105, 116, 210, 81, 9, 64,
+          204, 248, 200, 154, 239, 39, 105, 59, 185, 164, 167, 167, 216, 122,
+          252, 113,
+        ]),
+        signature:
+          '51HaN7Ng8UeuVpLguRKRpXpF+OcOBdK9MNRtmL77EkJf5OoNukQSSXbUeWqP8jTbBjDM5DaXLLNl5592K4WDDw==.sig.ed25519',
+      },
+      'js'
+    )
+
+    db.add(nativeMsg2, (err, msg) => {
+      t.error(err, 'no err')
+      t.equal(msg.value.content.text, 'Hi :)')
+
+      t.end()
+    })
   })
 })
 
