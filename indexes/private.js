@@ -146,7 +146,11 @@ module.exports = function (dir, sbot, config) {
     return ssbKeys.unbox(ciphertext, keys)
   }
 
+  const contentCache = new WeakMap()
   function tryDecryptContent(ciphertext, recBuffer, pValue) {
+    if (contentCache.has(recBuffer)) {
+      return contentCache.get(recBuffer)
+    }
     let content = ''
     if (ciphertext.endsWith('.box')) {
       content = decryptBox1(ciphertext, config.keys)
@@ -161,6 +165,7 @@ module.exports = function (dir, sbot, config) {
         }
       }
     }
+    contentCache.set(recBuffer, content)
     return content
   }
 
