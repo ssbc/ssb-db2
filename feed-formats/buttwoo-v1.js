@@ -15,13 +15,6 @@ function base64ToBuffer(str) {
 
 const BUTTWOO_FEED_TF = bfe.toTF('feed', 'buttwoo-v1')
 
-function hashToBFE(buffer) {
-  return Buffer.concat([
-    Buffer.from([0]),
-    buffer
-  ])
-}
-
 module.exports = function init(ssb) {
   const feedFormat = {
     name: 'buttwoo-v1',
@@ -305,7 +298,11 @@ module.exports = function init(ssb) {
       if (contentBuffer.length !== contentSize)
         return cb(new Error('Content size does not match content'))
 
-      const testedContentHash = hashToBFE(blake3.hash(contentBuffer))
+      const testedContentHash = Buffer.concat([
+        Buffer.from([0]),
+        blake3.hash(contentBuffer)
+      ])
+
       if (Buffer.compare(testedContentHash, contentHash) !== 0)
         return cb(new Error('Content hash does not match content'))
 
