@@ -10,7 +10,7 @@ const {
   seekChannel,
   seekRoot,
   seekFork,
-  seekPrivate,
+  seekMetaPrivate,
   seekMeta,
   seekVoteLink,
   seekMentions,
@@ -18,6 +18,7 @@ const {
   seekContact,
   seekBranch,
   seekAbout,
+  seekMetaEncryptionFormat,
 } = require('../seekers')
 const { and, seqs, equal, predicate, includes, deferred } = jitdbOperators
 
@@ -161,8 +162,14 @@ function isRoot() {
   })
 }
 
-function isPrivate() {
-  return equal(seekPrivate, true, { indexType: 'meta_private' })
+function isPrivate(encryptionFormat) {
+  if (!encryptionFormat) {
+    return equal(seekMetaPrivate, true, { indexType: 'meta_private' })
+  } else {
+    return equal(seekMetaEncryptionFormat, encryptionFormat, {
+      indexType: 'meta_encryptionFormat',
+    })
+  }
 }
 
 function isPublic() {
