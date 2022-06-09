@@ -24,16 +24,28 @@ module.exports = function init(ssb) {
     name: 'buttwoo-v1',
     encodings: ['js', 'bipf'],
 
+    // FIXME: do these weakmaps make a difference? Should we keep or delete?
+    // Which ones should we keep?
     _feedIdCache: new WeakMap(),
     _msgIdCache: new WeakMap(),
     _jsMsgValCache: new WeakMap(),
     _bipfMsgValCache: new WeakMap(),
+    _extractCache: new WeakMap(),
+
+    _extract(nativeMsg) {
+      if (feedFormat._extractCache.has(nativeMsg)) {
+        return feedFormat._extractCache.get(nativeMsg)
+      }
+      const arr = bipf.decode(nativeMsg)
+      feedFormat._extractCache.set(nativeMsg, arr)
+      return arr
+    },
 
     getFeedId(nativeMsg) {
       if (feedFormat._feedIdCache.has(nativeMsg)) {
         return feedFormat._feedIdCache.get(nativeMsg)
       }
-      const [encodedValue] = bipf.decode(nativeMsg)
+      const [encodedValue] = feedFormat._extract(nativeMsg)
       let authorBFE
       let parentBFE
       bipf.iterate(encodedValue, 0, (b, pointer) => {
@@ -61,7 +73,7 @@ module.exports = function init(ssb) {
       if (feedFormat._msgIdCache.has(nativeMsg)) {
         return feedFormat._msgIdCache.get(nativeMsg)
       }
-      const [encodedValue, signature] = bipf.decode(nativeMsg)
+      const [encodedValue, signature] = feedFormat._extract(nativeMsg)
       const data = blake3
         .hash(Buffer.concat([encodedValue, signature]))
         .toString('base64')
@@ -134,7 +146,7 @@ module.exports = function init(ssb) {
         if (feedFormat._jsMsgValCache.has(nativeMsg)) {
           return feedFormat._jsMsgValCache.get(nativeMsg)
         }
-        const [encodedVal, sigBuf, contentBuffer] = bipf.decode(nativeMsg)
+        const [encodedVal, sigBuf, contentBuf] = feedFormat._extract(nativeMsg)
         const [
           authorBFE,
           parentBFE,
@@ -148,7 +160,7 @@ module.exports = function init(ssb) {
         const author = bfe.decode(authorBFE)
         const parent = bfe.decode(parentBFE)
         const previous = bfe.decode(previousBFE)
-        const content = bipf.decode(contentBuffer)
+        const content = bipf.decode(contentBuf)
         const contentHash = contentHashBuf
         const signature = sigBuf.toString('base64') + '.sig.ed25519'
         const msgVal = {
@@ -168,7 +180,7 @@ module.exports = function init(ssb) {
         if (feedFormat._bipfMsgValCache.has(nativeMsg)) {
           return feedFormat._bipfMsgValCache.get(nativeMsg)
         }
-        const [encodedVal, sigBuf, contentBuffer] = bipf.decode(nativeMsg)
+        const [encodedVal, sigBuf, contentBuf] = feedFormat._extract(nativeMsg)
         const [
           authorBFE,
           parentBFE,
@@ -183,14 +195,14 @@ module.exports = function init(ssb) {
         const parent = bfe.decode(parentBFE)
         const previous = bfe.decode(previousBFE)
         const signature = sigBuf.toString('base64') + '.sig.ed25519'
-        bipf.markIdempotent(contentBuffer)
+        bipf.markIdempotent(contentBuf)
         const msgVal = {
           author,
           parent,
           sequence,
           timestamp,
           previous,
-          content: contentBuffer,
+          content: contentBuf,
           contentHash,
           signature,
           tag,
@@ -307,7 +319,7 @@ module.exports = function init(ssb) {
     },
 
     validateSingle: (hmacKey, nativeMsg, prevNativeMsg, cb) => {
-      const [encodedValue, signature, contentBuffer] = bipf.decode(nativeMsg)
+      const [encodedVal, sigBuf, contentBuf] = feedFormat._extract(nativeMsg)
       const [
         authorBFE,
         parentBFE,
@@ -317,7 +329,7 @@ module.exports = function init(ssb) {
         tag,
         contentSize,
         contentHash,
-      ] = bipf.decode(encodedValue)
+      ] = bipf.decode(encodedVal)
 
       if (contentHash.length !== 33)
         return cb(new Error('Content hash wrong size: ' + contentHash.length))
@@ -330,10 +342,10 @@ module.exports = function init(ssb) {
       if (byte < 0 || byte > 2)
         return cb(new Error('Tag is not valid: ' + byte))
 
-      if (contentBuffer.length !== contentSize)
+      if (contentBuf.length !== contentSize)
         return cb(new Error('Content size does not match content'))
 
-      const testedContentHash = makeContentHash(contentBuffer)
+      const testedContentHash = makeContentHash(contentBuf)
 
       if (Buffer.compare(testedContentHash, contentHash) !== 0)
         return cb(new Error('Content hash does not match content'))
@@ -353,7 +365,7 @@ module.exports = function init(ssb) {
       const { data: public } = SSBURI.decompose(author)
       const key = { public, curve: 'ed25519' }
 
-      if (!ssbKeys.verify(key, signature, hmacKey, encodedValue))
+      if (!ssbKeys.verify(key, sigBuf, hmacKey, encodedVal))
         return cb(new Error('Signature does not match encoded value'))
 
       // FIXME: check correct BFE types!
@@ -361,7 +373,7 @@ module.exports = function init(ssb) {
 
       if (prevNativeMsg !== null) {
         const prevMsgIdBFE = bfe.encode(feedFormat.getMsgId(prevNativeMsg))
-        const [encodedValuePrev] = bipf.decode(prevNativeMsg)
+        const [encodedValuePrev] = feedFormat._extract(prevNativeMsg)
         const [
           authorBFEPrev,
           parentBFEPrev,
