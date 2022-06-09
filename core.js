@@ -361,6 +361,7 @@ exports.init = function (sbot, config) {
     if (nativeMsgs.length === 0) {
       return cb(null, [])
     }
+    const encoding = opts.encoding
     const feedFormat = findFeedFormatByNameOrNativeMsg(
       opts.feedFormat,
       nativeMsgs[0]
@@ -383,22 +384,17 @@ exports.init = function (sbot, config) {
       () => {
         const feedId = feedFormat.getFeedId(nativeMsgs[0])
         const prevNativeMsg = state.get(feedId)
-
         feedFormat.validateBatch(hmacKey, nativeMsgs, prevNativeMsg, (err) => {
           if (err) return cb(clarify(err, 'validation in addBatch() failed'))
-
           const done = multicb({ pluck: 1 })
           for (var i = 0; i < nativeMsgs.length; ++i) {
             const nativeMsg = nativeMsgs[i]
             const msgId = feedFormat.getMsgId(nativeMsg)
-            const msgVal = feedFormat.fromNativeMsg(nativeMsg, opts.encoding)
+            const encodedMsg = feedFormat.fromNativeMsg(nativeMsg, encoding)
             const isLast = i === nativeMsgs.length - 1
+            if (isLast) state.update(feedId, nativeMsg)
 
-            if (isLast) {
-              state.update(feedId, nativeMsg)
-            }
-
-            log.add(msgId, msgVal, feedId, opts.encoding, (err, kvt) => {
+            log.add(msgId, encodedMsg, feedId, encoding, (err, kvt) => {
               // prettier-ignore
               if (err) return done()(clarify(err, 'addBatch() failed in the log'))
 
@@ -421,6 +417,7 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('addImmediately()')
     if (guard) return cb(guard)
     const [opts, cb] = normalizeAddArgs(...args)
+    const encoding = opts.encoding
     const feedFormat = findFeedFormatByNameOrNativeMsg(
       opts.feedFormat,
       nativeMsg
@@ -440,9 +437,10 @@ exports.init = function (sbot, config) {
           // prettier-ignore
           if (err) return cb(clarify(err, 'addImmediately() failed validation for feed format ' + feedFormat.name))
           const msgId = feedFormat.getMsgId(nativeMsg)
-          const msgVal = feedFormat.fromNativeMsg(nativeMsg, opts.encoding)
+          const encodedMsg = feedFormat.fromNativeMsg(nativeMsg, encoding)
           state.update(feedId, nativeMsg)
-          log.add(msgId, msgVal, feedId, opts.encoding, (err, kvt) => {
+
+          log.add(msgId, encodedMsg, feedId, encoding, (err, kvt) => {
             // prettier-ignore
             if (err) return cb(clarify(err, 'addImmediately() failed in the log'))
 
@@ -462,6 +460,7 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('addOOO()')
     if (guard) return cb(guard)
     const [opts, cb] = normalizeAddArgs(...args)
+    const encoding = opts.encoding
     const feedFormat = findFeedFormatByNameOrNativeMsg(
       opts.feedFormat,
       nativeMsg
@@ -481,9 +480,10 @@ exports.init = function (sbot, config) {
       const msgId = feedFormat.getMsgId(nativeMsg)
       get(msgId, (err, data) => {
         if (data) return cb(null, data)
-        const msgVal = feedFormat.fromNativeMsg(nativeMsg, opts.encoding)
+        const encodedMsg = feedFormat.fromNativeMsg(nativeMsg, encoding)
         const feedId = feedFormat.getFeedId(nativeMsg)
-        log.add(msgId, msgVal, feedId, opts.encoding, (err, data) => {
+
+        log.add(msgId, encodedMsg, feedId, encoding, (err, data) => {
           if (err) return cb(clarify(err, 'addOOO() failed in the log'))
           cb(null, data)
         })
@@ -498,6 +498,7 @@ exports.init = function (sbot, config) {
     if (nativeMsgs.length === 0) {
       return cb(null, [])
     }
+    const encoding = opts.encoding
     const feedFormat = findFeedFormatByNameOrNativeMsg(
       opts.feedFormat,
       nativeMsgs[0]
@@ -511,28 +512,18 @@ exports.init = function (sbot, config) {
       return cb(new Error('addOOOBatch() failed because feed format ' + feedFormat.name + ' does not support validateOOOBatch'))
     }
 
-    onceWhen(
-      stateFeedsReady,
-      (ready) => ready === true,
-      () => {
-        feedFormat.validateOOOBatch(hmacKey, nativeMsgs, (err) => {
-          if (err) return cb(clarify(err, 'validation in addOOOBatch() failed'))
-
-          const done = multicb({ pluck: 1 })
-          for (var i = 0; i < nativeMsgs.length; ++i) {
-            const msgId = feedFormat.getMsgId(nativeMsgs[i])
-            const msgVal = feedFormat.fromNativeMsg(
-              nativeMsgs[i],
-              opts.encoding
-            )
-            const feedId = feedFormat.getFeedId(nativeMsgs[i])
-            log.add(msgId, msgVal, feedId, opts.encoding, done())
-          }
-
-          done(cb)
-        })
+    feedFormat.validateOOOBatch(hmacKey, nativeMsgs, (err) => {
+      if (err) return cb(clarify(err, 'validation in addOOOBatch() failed'))
+      const done = multicb({ pluck: 1 })
+      for (var i = 0; i < nativeMsgs.length; ++i) {
+        const msgId = feedFormat.getMsgId(nativeMsgs[i])
+        const encodedMsg = feedFormat.fromNativeMsg(nativeMsgs[i], encoding)
+        const feedId = feedFormat.getFeedId(nativeMsgs[i])
+        log.add(msgId, encodedMsg, feedId, encoding, done())
       }
-    )
+
+      done(cb)
+    })
   }
 
   function addTransaction(nativeMsgs, oooNativeMsgs, ...args) {
@@ -544,6 +535,7 @@ exports.init = function (sbot, config) {
     if (nativeMsgs.length === 0 && oooNativeMsgs.length === 0) {
       return cb(null, [])
     }
+    const encoding = opts.encoding
     const exampleNativeMsg =
       nativeMsgs.length > 0 ? nativeMsgs[0] : oooNativeMsgs[0]
     const feedFormat = findFeedFormatByNameOrNativeMsg(
@@ -583,10 +575,8 @@ exports.init = function (sbot, config) {
           // prettier-ignore
           if (err) return cb(clarify(err, 'validation in addTransaction() failed'))
 
-          const msgIds = nativeMsgs.map((nMsg) => feedFormat.getMsgId(nMsg))
-          const oooMsgIds = oooNativeMsgs.map((nMsg) =>
-            feedFormat.getMsgId(nMsg)
-          )
+          const msgIds = nativeMsgs.map((m) => feedFormat.getMsgId(m))
+          const oooMsgIds = oooNativeMsgs.map((m) => feedFormat.getMsgId(m))
 
           if (nativeMsgs.length > 0) {
             const lastIndex = nativeMsgs.length - 1
@@ -596,14 +586,14 @@ exports.init = function (sbot, config) {
           }
 
           const allMsgIds = [].concat(msgIds, oooMsgIds)
-          const allMsgVals = []
+          const allEncodedMsgs = []
             .concat(nativeMsgs, oooNativeMsgs)
-            .map((nMsg) => feedFormat.fromNativeMsg(nMsg, opts.encoding))
+            .map((nMsg) => feedFormat.fromNativeMsg(nMsg, encoding))
 
           log.addTransaction(
             allMsgIds,
-            allMsgVals,
-            opts.encoding,
+            allEncodedMsgs,
+            encoding,
             (err, kvts) => {
               if (err)
                 return cb(clarify(err, 'addTransaction() failed in the log'))
@@ -615,7 +605,7 @@ exports.init = function (sbot, config) {
               for (let i = 0; i < kvts.length; ++i) {
                 onMsgAdded.set({
                   kvt: kvts[i],
-                  nativeMsg: allMsgVals[i],
+                  nativeMsg: allEncodedMsgs[i],
                   feedFormat: feedFormat.name,
                 })
               }
@@ -703,9 +693,9 @@ exports.init = function (sbot, config) {
         fullOpts.hmacKey = hmacKey
         const nativeMsg = feedFormat.newNativeMsg(fullOpts)
         const msgId = feedFormat.getMsgId(nativeMsg)
-
         const encodedMsg = feedFormat.fromNativeMsg(nativeMsg, encoding)
         state.update(feedId, nativeMsg)
+
         log.add(msgId, encodedMsg, feedId, encoding, (err, encodedKVT) => {
           if (err) return cb(clarify(err, 'create() failed in the log'))
 
