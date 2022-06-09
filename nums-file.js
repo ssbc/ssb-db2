@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-only
 
+const clarify = require('clarify-error')
 const fic = require('fastintcompression')
 const bsb = require('binary-search-bounds')
 const AtomicFileRW = require('atomic-file-rw')
