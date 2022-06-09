@@ -785,27 +785,24 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function resetAllIndexes(cb) {
-    const done = multicb({ pluck: 1 })
+  function stopUpdatingIndexes() {
     if (abortLogStreamForIndexes) {
       abortLogStreamForIndexes()
       abortLogStreamForIndexes = null
     }
+  }
+
+  function resumeUpdatingIndexes() {
+    if (abortLogStreamForIndexes) return
+    else indexesStateLoaded.onReady(updateIndexes)
+  }
+
+  function resetAllIndexes(cb) {
+    const done = multicb({ pluck: 1 })
     for (const indexName in indexes) {
       indexes[indexName].reset(done())
     }
-    done(function onResetAllIndexesDone() {
-      cb()
-      updateIndexes()
-    })
-  }
-
-  function restartUpdateIndexes() {
-    if (abortLogStreamForIndexes) {
-      abortLogStreamForIndexes()
-      abortLogStreamForIndexes = null
-    }
-    indexesStateLoaded.onReady(updateIndexes)
+    done(cb)
   }
 
   function registerIndex(Index) {
@@ -1070,14 +1067,20 @@ exports.init = function (sbot, config) {
 
     if (stats.done) {
       if (stats.sizeDiff > 0) {
+        let resettingLevelIndexes = false
         if (fs.existsSync(resetLevelPath(dir))) {
+          resettingLevelIndexes = true
+          stopUpdatingIndexes()
           resetAllIndexes(() => {
             rimraf.sync(resetLevelPath(dir))
+            resumeUpdatingIndexes()
           })
         }
         if (fs.existsSync(resetPrivatePath(dir))) {
+          if (!resettingLevelIndexes) stopUpdatingIndexes()
           privateIndex.reset(() => {
             rimraf.sync(resetPrivatePath(dir))
+            if (!resettingLevelIndexes) resumeUpdatingIndexes()
           })
         }
         if (fs.existsSync(reindexJitPath(dir))) {
@@ -1092,7 +1095,6 @@ exports.init = function (sbot, config) {
         rimraf.sync(resetLevelPath(dir))
         rimraf.sync(resetPrivatePath(dir))
         rimraf.sync(reindexJitPath(dir))
-        restartUpdateIndexes()
       }
     }
   })
