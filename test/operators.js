@@ -223,6 +223,29 @@ test('execute and(type("post"), isPrivate())', (t) => {
   })
 })
 
+test('execute isPrivate(box1))', (t) => {
+  db.query(
+    where(and(type('post'), isPrivate('box1'))),
+    toCallback((err2, msgs) => {
+      t.error(err2, 'no err2')
+      t.equal(msgs.length, 1)
+      t.equal(msgs[0].value.content.text, 'super secret')
+      t.end()
+    })
+  )
+})
+
+test('execute isPrivate(box2))', (t) => {
+  db.query(
+    where(and(type('post'), isPrivate('box2'))),
+    toCallback((err2, msgs) => {
+      t.error(err2, 'no err2')
+      t.equal(msgs.length, 0)
+      t.end()
+    })
+  )
+})
+
 test('execute and(type("post"), isPublic())', (t) => {
   let content = { type: 'posty', text: 'super secret', recps: [keys.id] }
   content = ssbKeys.box(

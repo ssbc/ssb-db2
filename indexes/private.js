@@ -152,6 +152,7 @@ module.exports = function (dir, sbot, config) {
     kvt.meta = {
       private: true,
       originalContent,
+      encryptionFormat: encryptionFormat.name,
     }
 
     // Encode it back to BIPF

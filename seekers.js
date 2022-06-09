@@ -17,6 +17,7 @@ const BIPF_CONTACT = allocAndEncode('contact')
 const BIPF_LINK = allocAndEncode('link')
 const BIPF_META = allocAndEncode('meta')
 const BIPF_PRIVATE = allocAndEncode('private')
+const BIPF_ENCRYPTION_FORMAT = allocAndEncode('encryptionFormat')
 const BIPF_CHANNEL = allocAndEncode('channel')
 const BIPF_MENTIONS = allocAndEncode('mentions')
 
@@ -88,10 +89,16 @@ module.exports = {
     return seekKey2(buffer, start, BIPF_LINK, 0)
   },
 
-  seekPrivate(buffer, start, pValue) {
+  seekMetaPrivate(buffer, start, pValue) {
     const pMeta = seekKey2(buffer, 0, BIPF_META, 0)
     if (pMeta < 0) return -1
     return seekKey2(buffer, pMeta, BIPF_PRIVATE, 0)
+  },
+
+  seekMetaEncryptionFormat(buffer, start, pValue) {
+    const pMeta = seekKey2(buffer, 0, BIPF_META, 0)
+    if (pMeta < 0) return -1
+    return seekKey2(buffer, pMeta, BIPF_ENCRYPTION_FORMAT, 0)
   },
 
   seekMeta(buffer, start, pValue) {

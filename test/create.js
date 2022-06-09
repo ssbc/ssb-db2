@@ -10,6 +10,7 @@ const bipf = require('bipf')
 const mkdirp = require('mkdirp')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
+const { where, isPrivate, toCallback } = require('../operators')
 
 const dir = '/tmp/ssb-db2-create'
 
@@ -451,6 +452,28 @@ test('add buttwoo-v1', (t) => {
       t.end()
     })
   })
+})
+
+test('query box1', (t) => {
+  db.query(
+    where(isPrivate('box1')),
+    toCallback((err, msgs) => {
+      t.error(err, 'no err')
+      t.equal(msgs.length, 4)
+      t.end()
+    })
+  )
+})
+
+test('query box2', (t) => {
+  db.query(
+    where(isPrivate('box2')),
+    toCallback((err, msgs) => {
+      t.error(err, 'no err')
+      t.equal(msgs.length, 3)
+      t.end()
+    })
+  )
 })
 
 test('teardown', (t) => {
