@@ -208,7 +208,7 @@ test('refuses to db2.add() while old log exists', (t) => {
         t.ok(err)
         t.notOk(posted)
         t.true(
-          err.message.includes('refusing to publish() because the old log'),
+          err.message.includes('refusing to create() because the old log'),
           'error message is about the old log'
         )
         sbot.close(t.end)
@@ -252,7 +252,7 @@ test('dangerouslyKillFlumeWhenMigrated and refusing db2.publish()', (t) => {
     t.ok(err)
     t.notOk(posted)
     t.true(
-      err.message.includes('refusing to publish()'),
+      err.message.includes('refusing to create()'),
       'error message is migration in progress'
     )
   })
