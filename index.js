@@ -10,5 +10,6 @@ module.exports = [
   require('./encryption-formats/box1'),
   require('./encryption-formats/box2'),
   require('./compat/publish'),
+  require('./compat/post'),
   require('./migrate'),
 ]
