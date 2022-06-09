@@ -314,15 +314,27 @@ exports.init = function (sbot, config) {
   const debouncePeriod = config.db2.addDebounce || 250
   const debouncer = new DebouncingBatchAdd(addBatch, debouncePeriod)
 
-  function add(nativeMsg, opts, cb) {
+  function normalizeAddArgs(...args) {
+    let cb, opts
+    if (typeof args[0] === 'function') {
+      opts = { encoding: 'js' }
+      cb = args[0]
+    } else if (!args[0] && typeof args[1] === 'function') {
+      opts = { encoding: 'js' }
+      cb = args[1]
+    } else if (typeof args[0] === 'object' && typeof args[1] === 'function') {
+      opts = args[0]
+      cb = args[1]
+    } else {
+      throw new Error('ssb-db2: invalid arguments to add')
+    }
+    return [opts, cb]
+  }
+
+  function add(nativeMsg, ...args) {
     const guard = guardAgainstDuplicateLogs('add()')
     if (guard) return cb(guard)
-    if (typeof opts === 'function') {
-      cb = opts
-      opts = { encoding: 'js' }
-    } else if (!opts) {
-      opts = { encoding: 'js' }
-    }
+    const [opts, cb] = normalizeAddArgs(...args)
 
     onceWhen(
       stateFeedsReady,
@@ -343,15 +355,10 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function addBatch(nativeMsgs, opts, cb) {
+  function addBatch(nativeMsgs, ...args) {
     const guard = guardAgainstDuplicateLogs('addBatch()')
     if (guard) return cb(guard)
-    if (typeof opts === 'function') {
-      cb = opts
-      opts = { encoding: 'js' }
-    } else if (!opts) {
-      opts = { encoding: 'js' }
-    }
+    const [opts, cb] = normalizeAddArgs(...args)
     if (nativeMsgs.length === 0) {
       return cb(null, [])
     }
@@ -412,15 +419,10 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function addImmediately(nativeMsg, opts, cb) {
+  function addImmediately(nativeMsg, ...args) {
     const guard = guardAgainstDuplicateLogs('addImmediately()')
     if (guard) return cb(guard)
-    if (typeof opts === 'function') {
-      cb = opts
-      opts = { encoding: 'js' }
-    } else if (!opts) {
-      opts = { encoding: 'js' }
-    }
+    const [opts, cb] = normalizeAddArgs(...args)
     const feedFormat = findFeedFormatByNameOrNativeMsg(
       opts.feedFormat,
       nativeMsg
@@ -459,15 +461,10 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function addOOO(nativeMsg, opts, cb) {
+  function addOOO(nativeMsg, ...args) {
     const guard = guardAgainstDuplicateLogs('addOOO()')
     if (guard) return cb(guard)
-    if (typeof opts === 'function') {
-      cb = opts
-      opts = { encoding: 'js' }
-    } else if (!opts) {
-      opts = { encoding: 'js' }
-    }
+    const [opts, cb] = normalizeAddArgs(...args)
     const feedFormat = findFeedFormatByNameOrNativeMsg(
       opts.feedFormat,
       nativeMsg
@@ -497,15 +494,10 @@ exports.init = function (sbot, config) {
     })
   }
 
-  function addOOOBatch(nativeMsgs, opts, cb) {
+  function addOOOBatch(nativeMsgs, ...args) {
     const guard = guardAgainstDuplicateLogs('addOOOBatch()')
     if (guard) return cb(guard)
-    if (typeof opts === 'function') {
-      cb = opts
-      opts = { encoding: 'js' }
-    } else if (!opts) {
-      opts = { encoding: 'js' }
-    }
+    const [opts, cb] = normalizeAddArgs(...args)
     if (nativeMsgs.length === 0) {
       return cb(null, [])
     }
@@ -546,15 +538,10 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function addTransaction(nativeMsgs, oooNativeMsgs, opts, cb) {
+  function addTransaction(nativeMsgs, oooNativeMsgs, ...args) {
     const guard = guardAgainstDuplicateLogs('addTransaction()')
     if (guard) return cb(guard)
-    if (typeof opts === 'function') {
-      cb = opts
-      opts = { encoding: 'js' }
-    } else if (!opts) {
-      opts = { encoding: 'js' }
-    }
+    const [opts, cb] = normalizeAddArgs(...args)
     oooNativeMsgs = oooNativeMsgs || []
     nativeMsgs = nativeMsgs || []
     if (nativeMsgs.length === 0 && oooNativeMsgs.length === 0) {
