@@ -641,6 +641,10 @@ exports.init = function (sbot, config) {
     const encoding = opts.encoding || 'js'
     // prettier-ignore
     if (!feedFormat) return cb(new Error('create() does not support feed format ' + opts.feedFormat))
+    if (!feedFormat.isAuthor(keys.id)) {
+      // prettier-ignore
+      return cb(new Error(`create() failed because keys.id ${keys.id} is not a valid author for feed format ${feedFormat.name}`))
+    }
 
     if (!opts.content) return cb(new Error('create() requires a `content`'))
 
