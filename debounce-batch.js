@@ -19,7 +19,8 @@ module.exports = class DebouncingBatchAdd {
     this.queueByAuthor.delete(authorId)
     this.timestampsByAuthor.delete(authorId)
     // Add the messages in the queue
-    this.addBatch(msgVals, queue[0][1], (err, kvts) => {
+    const [msgVal1, opts1, cb1] = queue[0]
+    this.addBatch(msgVals, opts1, (err, kvts) => {
       if (err) {
         for (let i = 0; i < n; ++i) {
           const cb = queue[i][2]
@@ -66,6 +67,7 @@ module.exports = class DebouncingBatchAdd {
   add(msgVal, opts, cb) {
     const authorId = msgVal.author
     const queue = this.queueByAuthor.get(authorId) || []
+    console.log('queue push', msgVal, opts, cb)
     queue.push([msgVal, opts, cb])
     this.queueByAuthor.set(authorId, queue)
     this.timestampsByAuthor.set(authorId, Date.now())
