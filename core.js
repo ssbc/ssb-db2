@@ -90,7 +90,6 @@ exports.init = function (sbot, config) {
   const jitdb = JITDB(log, jitIndexesPath(dir))
   const status = Status(log, jitdb)
   const debug = Debug('ssb:db2')
-  const post = Obv() // FIXME: move to compat?
   const onMsgAdded = Obv()
   const indexingProgress = Notify()
   const indexingActive = Obv().set(0)
@@ -403,7 +402,6 @@ exports.init = function (sbot, config) {
               // prettier-ignore
               if (err) return done()(clarify(err, 'addBatch() failed in the log'))
 
-              post.set(kvt)
               onMsgAdded.set({
                 kvt,
                 nativeMsg,
@@ -448,7 +446,6 @@ exports.init = function (sbot, config) {
             // prettier-ignore
             if (err) return cb(clarify(err, 'addImmediately() failed in the log'))
 
-            post.set(kvt)
             onMsgAdded.set({
               kvt,
               nativeMsg,
@@ -616,7 +613,6 @@ exports.init = function (sbot, config) {
               }
 
               for (let i = 0; i < kvts.length; ++i) {
-                post.set(kvts[i])
                 onMsgAdded.set({
                   kvt: kvts[i],
                   nativeMsg: allMsgVals[i],
@@ -713,7 +709,6 @@ exports.init = function (sbot, config) {
         log.add(msgId, encodedMsg, feedId, encoding, (err, encodedKVT) => {
           if (err) return cb(clarify(err, 'create() failed in the log'))
 
-          post.set(encodedKVT)
           onMsgAdded.set({
             kvt: encodedKVT,
             nativeMsg: nativeMsg,
@@ -1103,13 +1098,9 @@ exports.init = function (sbot, config) {
     getStatus: () => status.obv,
     operators,
     onMsgAdded,
-    post,
     compact,
     reindexEncrypted,
     indexingProgress: () => indexingProgress.listen(),
-
-    // used for partial replication in browser, will be removed soon!
-    setPost: post.set,
 
     // needed primarily internally by other plugins in this project:
     encryptionFormats,
