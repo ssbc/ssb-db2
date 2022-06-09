@@ -4,11 +4,10 @@
 
 const BFE = require('ssb-bfe')
 const Ref = require('ssb-ref')
-const { isFeedSSBURI } = require('ssb-uri2')
+const { isFeedSSBURI, isBendyButtV1FeedSSBURI } = require('ssb-uri2')
 const { keySchemes } = require('private-group-spec')
 const { box, unboxKey, unboxBody } = require('envelope-js')
 const { directMessageKey, SecretKey } = require('ssb-private-group-keys')
-const { isBendyButtV1FeedSSBURI } = require('ssb-uri2')
 
 function makeKeysManager(config) {
   const dmCache = {}
