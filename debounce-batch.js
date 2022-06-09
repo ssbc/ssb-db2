@@ -67,7 +67,6 @@ module.exports = class DebouncingBatchAdd {
   add(msgVal, opts, cb) {
     const authorId = msgVal.author
     const queue = this.queueByAuthor.get(authorId) || []
-    console.log('queue push', msgVal, opts, cb)
     queue.push([msgVal, opts, cb])
     this.queueByAuthor.set(authorId, queue)
     this.timestampsByAuthor.set(authorId, Date.now())
