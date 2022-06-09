@@ -128,5 +128,5 @@ module.exports = function init(ssb) {
     },
   }
 
-  ssb.db.addFeedFormat(feedFormat)
+  ssb.db.installFeedFormat(feedFormat)
 }

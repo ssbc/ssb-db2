@@ -280,15 +280,15 @@ exports.init = function (sbot, config) {
     return findFeedFormatForNativeMsg(nativeMsg)
   }
 
-  function addFeedFormat(feedFormat) {
+  function installFeedFormat(feedFormat) {
     if (!feedFormat.encodings.includes('js')) {
       // prettier-ignore
-      throw new Error('ssb-db2: feed format ' + feedFormat.name + ' must have js encoding')
+      throw new Error('ssb-db2: feed format ' + feedFormat.name + ' must support js encoding')
     }
     feedFormats.push(feedFormat)
   }
 
-  function addEncryptionFormat(encryptionFormat) {
+  function installEncryptionFormat(encryptionFormat) {
     encryptionFormats.push(encryptionFormat)
   }
 
@@ -1072,8 +1072,8 @@ exports.init = function (sbot, config) {
 
   const api = {
     // Public API:
-    addFeedFormat,
-    addEncryptionFormat,
+    installFeedFormat,
+    installEncryptionFormat,
     get,
     getMsg,
     query,

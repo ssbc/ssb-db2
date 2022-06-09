@@ -96,5 +96,5 @@ module.exports = function init(ssb) {
     validateSingle: validate2.validateSingle,
   }
 
-  ssb.db.addFeedFormat(feedFormat)
+  ssb.db.installFeedFormat(feedFormat)
 }

@@ -178,7 +178,7 @@ module.exports = {
       },
     }
 
-    ssb.db.addEncryptionFormat(encryptionFormat)
+    ssb.db.installEncryptionFormat(encryptionFormat)
 
     // FIXME: is this the nicest approach???
     return {
