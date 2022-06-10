@@ -220,10 +220,18 @@ test('buttwoo testing', async (t) => {
   console.time(`native to db format ${N} messages sbot`)
 
   for (let i = 0; i < N; ++i) {
-    const dbFormat = format.fromNativeMsg(sbotMessages[i], 'bipf')
-    // msgValue not msg value key?
-    //console.log(bipf.decode(dbFormat, 0))
-    bipfsSbot.push(dbFormat)
+    const value = format.fromNativeMsg(sbotMessages[i], 'bipf')
+    const key = format.getMsgId(sbotMessages[i])
+
+    bipf.markIdempotent(value)
+    const kvt = {
+      key,
+      value,
+      timestamp: Date.now(),
+    }
+    const recBuffer = bipf.allocAndEncode(kvt)
+
+    bipfsSbot.push(recBuffer)
   }
 
   console.timeEnd(`native to db format ${N} messages sbot`)
@@ -244,9 +252,7 @@ test('buttwoo testing', async (t) => {
   for (let i = 0; i < N; ++i) {
     const buffer = bipfsSbot[i]
 
-    // buffer is msgValue?
-    const pValue = 0
-    //const pValue = bipf.seekKey2(buffer, 0, BIPF_VALUE, 0)
+    const pValue = bipf.seekKey2(buffer, 0, BIPF_VALUE, 0)
     const pValueAuthor = bipf.seekKey2(buffer, pValue, BIPF_AUTHOR, 0)
     const author = bipf.decode(buffer, pValueAuthor)
     const feedFormat = sbot.db.findFeedFormatForAuthor(author)
