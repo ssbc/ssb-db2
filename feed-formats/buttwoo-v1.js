@@ -18,6 +18,7 @@ function makeContentHash(contentBuffer) {
 }
 
 const BUTTWOO_FEED_TF = bfe.toTF('feed', 'buttwoo-v1')
+const BUTTWOO_MSG_TF = bfe.toTF('message', 'buttwoo-v1')
 
 module.exports = function init(ssb) {
   const feedFormat = {
@@ -77,13 +78,24 @@ module.exports = function init(ssb) {
       const data = blake3
         .hash(Buffer.concat([encodedValue, signature]))
         .toString('base64')
-      const msgId = SSBURI.compose({
-        type: 'message',
-        format: 'buttwoo-v1',
-        data,
-      })
+      // Fast:
+      const msgId = `ssb:message/buttwoo-v1/${data
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')}`
+      // Proper:
+      // const msgId = SSBURI.compose({
+      //   type: 'message',
+      //   format: 'buttwoo-v1',
+      //   data,
+      // })
       feedFormat._msgIdCache.set(nativeMsg, msgId)
       return msgId
+    },
+
+    _getMsgIdBFE(nativeMsg) {
+      const [encodedValue, signature] = feedFormat._extract(nativeMsg)
+      const data = blake3.hash(Buffer.concat([encodedValue, signature]))
+      return Buffer.concat([BUTTWOO_MSG_TF, data])
     },
 
     isNativeMsg(x) {
@@ -361,18 +373,21 @@ module.exports = function init(ssb) {
           )
         )
 
-      const author = bfe.decode(authorBFE)
-      const { data: public } = SSBURI.decompose(author)
-      const key = { public, curve: 'ed25519' }
+      // Fast:
+      const public = authorBFE.slice(2).toString('base64')
+      // Proper:
+      // const { data: public } = SSBURI.decompose(bfe.decode(authorBFE))
 
-      if (!ssbKeys.verify(key, sigBuf, hmacKey, encodedVal))
+      const keys = { public, curve: 'ed25519' }
+
+      if (!ssbKeys.verify(keys, sigBuf, hmacKey, encodedVal))
         return cb(new Error('Signature does not match encoded value'))
 
       // FIXME: check correct BFE types!
       // FIXME: check length of content
 
       if (prevNativeMsg !== null) {
-        const prevMsgIdBFE = bfe.encode(feedFormat.getMsgId(prevNativeMsg))
+        const prevMsgIdBFE = feedFormat._getMsgIdBFE(prevNativeMsg)
         const [encodedValuePrev] = feedFormat._extract(prevNativeMsg)
         const [
           authorBFEPrev,
