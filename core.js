@@ -152,15 +152,15 @@ exports.init = function (sbot, config) {
     get(feedId) {
       return this._map.get(feedId) || null
     },
-    getAsKV(feedId) {
+    getAsKV(feedId, feedFormat) {
       const nativeMsg = this._map.get(feedId)
       if (!nativeMsg) return null
-      const feedFormat = findFeedFormatForAuthor(feedId)
-      if (!feedFormat) {
+      const feedFormat2 = feedFormat || findFeedFormatForAuthor(feedId)
+      if (!feedFormat2) {
         throw new Error('No feed format installed understands ' + feedId)
       }
-      const key = feedFormat.getMsgId(nativeMsg, 'js')
-      const value = feedFormat.fromNativeMsg(nativeMsg, 'js')
+      const key = feedFormat2.getMsgId(nativeMsg, 'js')
+      const value = feedFormat2.fromNativeMsg(nativeMsg, 'js')
       return { key, value }
     },
     delete(feedId) {
@@ -645,7 +645,7 @@ exports.init = function (sbot, config) {
           keys,
         })
         const feedId = feedFormat.getFeedId(provisionalNativeMsg)
-        const previous = state.getAsKV(feedId)
+        const previous = state.getAsKV(feedId, feedFormat)
         const fullOpts = { timestamp: Date.now(), ...opts, previous, keys }
 
         // If the inputs require encryption, try some encryption formats,
