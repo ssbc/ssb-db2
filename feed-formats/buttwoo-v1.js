@@ -6,6 +6,7 @@ const bipf = require('bipf')
 const bfe = require('ssb-bfe')
 const blake3 = require('blake3')
 const SSBURI = require('ssb-uri2')
+const varint = require('fast-varint')
 const ssbKeys = require('ssb-keys')
 
 function base64ToBuffer(str) {
@@ -19,6 +20,9 @@ function makeContentHash(contentBuffer) {
 
 const BUTTWOO_FEED_TF = bfe.toTF('feed', 'buttwoo-v1')
 const BUTTWOO_MSG_TF = bfe.toTF('message', 'buttwoo-v1')
+const BIPF_TAG_SIZE = 3
+const BIPF_TAG_MASK = 7
+const BIPF_STRING_TYPE = 0b000
 
 module.exports = function init(ssb) {
   const feedFormat = {
@@ -238,92 +242,93 @@ module.exports = function init(ssb) {
       return msgVal
     },
 
+    _toNativeMsgJS(msgVal) {
+      const authorBFE = bfe.encode(msgVal.author)
+      const parentBFE = bfe.encode(msgVal.parent)
+      const sequence = msgVal.sequence
+      const timestamp = msgVal.timestamp
+      const previousBFE = bfe.encode(msgVal.previous)
+      const tag = msgVal.tag
+      const contentBuffer = bipf.allocAndEncode(msgVal.content)
+      const contentHash = msgVal.contentHash
+      const value = [
+        authorBFE,
+        parentBFE,
+        sequence,
+        timestamp,
+        previousBFE,
+        tag,
+        contentBuffer.length,
+        contentHash,
+      ]
+      const encodedValue = bipf.allocAndEncode(value)
+      const signature = base64ToBuffer(msgVal.signature)
+      return bipf.allocAndEncode([encodedValue, signature, contentBuffer])
+    },
+
+    _toNativeMsgBIPF(buffer) {
+      let authorBFE, parentBFE, sequence, timestamp, previousBFE
+      let tagBuffer, contentBuffer, contentLen, contentHash, signature
+
+      const tag = varint.decode(buffer, 0)
+      const len = tag >> BIPF_TAG_SIZE
+
+      for (var c = varint.decode.bytes; c < len; ) {
+        const keyStart = c
+        var keyTag = varint.decode(buffer, keyStart)
+        c += varint.decode.bytes
+        c += keyTag >> BIPF_TAG_SIZE
+        const valueStart = c
+        const valueTag = varint.decode(buffer, valueStart)
+        const valueLen = varint.decode.bytes + (valueTag >> BIPF_TAG_SIZE)
+
+        const key = bipf.decode(buffer, keyStart)
+        if (key === 'author')
+          authorBFE = bfe.encode(bipf.decode(buffer, valueStart))
+        else if (key === 'parent')
+          parentBFE = bfe.encode(bipf.decode(buffer, valueStart))
+        else if (key === 'sequence') sequence = bipf.decode(buffer, valueStart)
+        else if (key === 'timestamp')
+          timestamp = bipf.decode(buffer, valueStart)
+        else if (key === 'previous')
+          previousBFE = bfe.encode(bipf.decode(buffer, valueStart))
+        else if (key === 'tag') tagBuffer = bipf.decode(buffer, valueStart)
+        else if (key === 'content') {
+          if ((valueTag & BIPF_TAG_MASK) === BIPF_STRING_TYPE) {
+            contentBuffer = bipf.decode(buffer, valueStart)
+            contentLen = base64ToBuffer(contentBuffer).length
+          } else {
+            contentBuffer = bipf.pluck(buffer, valueStart)
+            contentLen = contentBuffer.length
+          }
+        } else if (key === 'contentHash')
+          contentHash = bipf.decode(buffer, valueStart)
+        else if (key === 'signature')
+          signature = bipf.decode(buffer, valueStart)
+
+        c += valueLen
+      }
+
+      const value = [
+        authorBFE,
+        parentBFE,
+        sequence,
+        timestamp,
+        previousBFE,
+        tagBuffer,
+        contentLen,
+        contentHash,
+      ]
+      const sigBuf = base64ToBuffer(signature)
+      const encodedValue = bipf.allocAndEncode(value)
+      return bipf.allocAndEncode([encodedValue, sigBuf, contentBuffer])
+    },
+
     toNativeMsg(msgVal, encoding) {
       if (encoding === 'js') {
-        const authorBFE = bfe.encode(msgVal.author)
-        const parentBFE = bfe.encode(msgVal.parent)
-        const sequence = msgVal.sequence
-        const timestamp = msgVal.timestamp
-        const previousBFE = bfe.encode(msgVal.previous)
-        const tag = msgVal.tag
-        const contentBuffer = bipf.allocAndEncode(msgVal.content)
-        const contentHash = msgVal.contentHash
-        const value = [
-          authorBFE,
-          parentBFE,
-          sequence,
-          timestamp,
-          previousBFE,
-          tag,
-          contentBuffer.length,
-          contentHash,
-        ]
-        const encodedValue = bipf.allocAndEncode(value)
-        const signature = base64ToBuffer(msgVal.signature)
-        return bipf.allocAndEncode([encodedValue, signature, contentBuffer])
+        return feedFormat._toNativeMsgJS(msgVal)
       } else if (encoding === 'bipf') {
-        const remaining = new Set([
-          'author',
-          'parent',
-          'sequence',
-          'timestamp',
-          'previous',
-          'tag',
-          'contentHash',
-          'signature',
-          'content',
-        ])
-        let authorBFE
-        let parentBFE
-        let sequence
-        let timestamp
-        let previousBFE
-        let tag
-        let contentHash
-        let contentBuffer
-        let signature
-        bipf.iterate(msgVal, 0, (buf, valuePointer, keyPointer) => {
-          const key = bipf.decode(buf, keyPointer)
-          const val = key === 'content' ? null : bipf.decode(buf, valuePointer)
-          if (key === 'author') {
-            authorBFE = bfe.encode(val)
-          } else if (key === 'parent') {
-            parentBFE = bfe.encode(val)
-          } else if (key === 'sequence') {
-            sequence = val
-          } else if (key === 'timestamp') {
-            timestamp = val
-          } else if (key === 'previous') {
-            previousBFE = bfe.encode(val)
-          } else if (key === 'tag') {
-            tag = val
-          } else if (key === 'contentHash') {
-            contentHash = val
-          } else if (key === 'signature') {
-            signature = val
-          } else if (key === 'content') {
-            contentBuffer = bipf.pluck(buf, valuePointer)
-          } else {
-            throw new Error('Unknown field on buttwoo-v1 message: ' + key)
-          }
-          remaining.delete(key)
-        })
-        if (remaining.size > 0) {
-          throw new Error('Missing fields on buttwoo-v1 message: ' + remaining)
-        }
-        const value = [
-          authorBFE,
-          parentBFE,
-          sequence,
-          timestamp,
-          previousBFE,
-          tag,
-          contentBuffer.length,
-          contentHash,
-        ]
-        const encodedValue = bipf.allocAndEncode(value)
-        const sigBuf = base64ToBuffer(signature)
-        return bipf.allocAndEncode([encodedValue, sigBuf, contentBuffer])
+        return feedFormat._toNativeMsgBIPF(msgVal)
       } else {
         // prettier-ignore
         throw new Error(`Feed format "${feedFormat.name}" does not support encoding "${encoding}"`)
