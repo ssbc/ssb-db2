@@ -14,6 +14,11 @@ const ssbKeys = require('ssb-keys')
 const multicb = require('multicb')
 const pull = require('pull-stream')
 const validate = require('ssb-validate')
+const butt2 = require('ssb-buttwoo')
+const pify = require('promisify-4loc')
+const SSBURI = require('ssb-uri2')
+const bfe = require('ssb-bfe')
+const bipf = require('bipf')
 const DeferredPromise = require('p-defer')
 const trammel = require('trammel')
 const sleep = require('util').promisify(setTimeout)
@@ -103,6 +108,163 @@ test('setup', (t) => {
   keys4 = ssbKeys.loadOrCreateSync(path.join(dirBox2, 'secret'))
   t.end()
 })
+
+test('buttwoo testing', async (t) => {
+  rimraf.sync(db2Path)
+  t.pass('delete db2 folder to start clean')
+
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .call(null, { keys, path: dirAdd })
+
+  const butt2Key = ssbKeys.generate(null, null, 'buttwoo-v1')
+  const format = sbot.db.findFeedFormatByName('buttwoo-v1')
+
+  const N = 5 * 1000
+  const content = { text: 'hello world', type: 'post' }
+
+  console.time(`create ${N} new messages`)
+
+  let messages = []
+  let sbotMessages = []
+  const hmac = null
+  let previousBFE = null
+  let previousBFESbot = null
+  let startDate = +new Date()
+  for (let i = 0; i < N; ++i) {
+    const [msgKeyBFE, butt2Msg] = butt2.encodeNew(
+      content,
+      butt2Key,
+      null,
+      messages.length + 1,
+      previousBFE,
+      startDate++,
+      butt2.tags.SSB_FEED,
+      hmac
+    )
+    messages.push(butt2Msg)
+    previousBFE = msgKeyBFE
+
+    const sbotButt2Msg = format.newNativeMsg({
+      keys: butt2Key,
+      previous: {
+        key: previousBFESbot,
+        value: { sequence: sbotMessages.length }
+      },
+      content,
+      tag: butt2.tags.SSB_FEED,
+      timestamp: startDate++
+    })
+    previousBFESbot = format.getMsgId(sbotButt2Msg)
+    sbotMessages.push(sbotButt2Msg)
+  }
+  console.timeEnd(`create ${N} new messages`)
+
+  console.time(`validate ${N} messages ssb-buttwoo`)
+
+  const hmacKey = null
+  const msgKeys = []
+  const extractedData = []
+
+  for (let i = 0; i < N; ++i) {
+    const msg = messages[i]
+    const e = butt2.extractData(msg)
+    extractedData.push(e)
+    const msgKeyBFE = butt2.hash(e)
+    msgKeys.push(msgKeyBFE)
+  }
+
+  let isOk = true
+
+  for (let i = 0; i < N; ++i) {
+    const prevData = i === 0 ? null : extractedData[i-1]
+    const prevMsgKey = i === 0 ? null : msgKeys[i-1]
+
+    const validate = butt2.validateSingle(extractedData[i],
+                                          prevData, prevMsgKey, hmacKey)
+    if (typeof validate === 'string') {
+      isOk = false
+      break
+    }
+  }
+
+  console.timeEnd(`validate ${N} messages ssb-buttwoo`)
+
+  if (!isOk)
+    console.log('failed validation')
+
+  console.time(`validate ${N} messages sbot`)
+
+  for (let i = 0; i < N; ++i) {
+    const prev = i === 0 ? null : sbotMessages[i-1]
+    format.validateSingle(hmacKey, sbotMessages[i], prev, (err) => {
+      if (err)
+        console.log(err)
+    })
+  }
+
+  console.timeEnd(`validate ${N} messages sbot`)
+
+  const bipfs = []
+  const bipfsSbot = []
+
+  console.time(`native to db format ${N} messages ssb-buttwoo`)
+
+  for (let i = 0; i < N; ++i) {
+    const dbFormat = butt2.butt2ToBipf(extractedData[i], msgKeys[i])
+    bipfs.push(dbFormat)
+  }
+
+  console.timeEnd(`native to db format ${N} messages ssb-buttwoo`)
+
+  console.time(`native to db format ${N} messages sbot`)
+
+  for (let i = 0; i < N; ++i) {
+    const dbFormat = format.fromNativeMsg(sbotMessages[i], 'bipf')
+    // msgValue not msg value key?
+    //console.log(bipf.decode(dbFormat, 0))
+    bipfsSbot.push(dbFormat)
+  }
+
+  console.timeEnd(`native to db format ${N} messages sbot`)
+
+  console.time(`db to native format ${N} messages ssb-buttwoo`)
+
+  for (let i = 0; i < N; ++i) {
+    const dbFormat = butt2.bipfToButt2(bipfs[i])
+  }
+
+  console.timeEnd(`db to native format ${N} messages ssb-buttwoo`)
+
+  const BIPF_AUTHOR = bipf.allocAndEncode('author')
+  const BIPF_VALUE = bipf.allocAndEncode('value')
+
+  console.time(`db to native format ${N} messages sbot`)
+
+  for (let i = 0; i < N; ++i) {
+    const buffer = bipfsSbot[i]
+
+    // buffer is msgValue?
+    const pValue = 0
+    //const pValue = bipf.seekKey2(buffer, 0, BIPF_VALUE, 0)
+    const pValueAuthor = bipf.seekKey2(buffer, pValue, BIPF_AUTHOR, 0)
+    const author = bipf.decode(buffer, pValueAuthor)
+    const feedFormat = sbot.db.findFeedFormatForAuthor(author)
+    if (!feedFormat) {
+      console.log('getNativeMsg() failed because this author is for an unknown feed format: ' + author)
+    }
+
+    const valueBuf = bipf.pluck(buffer, pValue)
+    // feedFormat
+    nativeMsg = format.toNativeMsg(valueBuf, 'bipf')
+  }
+
+  console.timeEnd(`db to native format ${N} messages sbot`)
+
+  t.end()
+})
+
+return
 
 test('add a bunch of messages', async (t) => {
   rimraf.sync(db2Path)
