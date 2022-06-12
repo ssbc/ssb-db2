@@ -349,7 +349,7 @@ exports.init = function (sbot, config) {
         }
         opts.feedFormat = feedFormat.name
         if (feedFormat.validateBatch) debouncer.add(nativeMsg, opts, cb)
-        else addImmediately(nativeMsg, opts, cb)
+        else addSingleMessageHelper(nativeMsg, feedFormat, opts, cb)
       }
     )
   }
@@ -413,11 +413,35 @@ exports.init = function (sbot, config) {
     )
   }
 
+  function addSingleMessageHelper(nativeMsg, feedFormat, opts, cb) {
+    const encoding = opts.encoding
+    const feedId = feedFormat.getFeedId(nativeMsg)
+    const prevNativeMsg = state.get(feedId)
+    feedFormat.validateSingle(hmacKey, nativeMsg, prevNativeMsg, (err) => {
+      // prettier-ignore
+      if (err) return cb(clarify(err, 'addImmediately() failed validation for feed format ' + feedFormat.name))
+      const msgId = feedFormat.getMsgId(nativeMsg)
+      const encodedMsg = feedFormat.fromNativeMsg(nativeMsg, encoding)
+      state.update(feedId, nativeMsg)
+
+      log.add(msgId, encodedMsg, feedId, encoding, (err, kvt) => {
+        // prettier-ignore
+        if (err) return cb(clarify(err, 'addImmediately() failed in the log'))
+
+        onMsgAdded.set({
+          kvt,
+          nativeMsg,
+          feedFormat: feedFormat.name,
+        })
+        cb(null, kvt)
+      })
+    })
+  }
+
   function addImmediately(nativeMsg, ...args) {
     const guard = guardAgainstDuplicateLogs('addImmediately()')
     if (guard) return cb(guard)
     const [opts, cb] = normalizeAddArgs(...args)
-    const encoding = opts.encoding
     const feedFormat = findFeedFormatByNameOrNativeMsg(
       opts.feedFormat,
       nativeMsg
@@ -431,27 +455,7 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        const feedId = feedFormat.getFeedId(nativeMsg)
-        const prevNativeMsg = state.get(feedId)
-        feedFormat.validateSingle(hmacKey, nativeMsg, prevNativeMsg, (err) => {
-          // prettier-ignore
-          if (err) return cb(clarify(err, 'addImmediately() failed validation for feed format ' + feedFormat.name))
-          const msgId = feedFormat.getMsgId(nativeMsg)
-          const encodedMsg = feedFormat.fromNativeMsg(nativeMsg, encoding)
-          state.update(feedId, nativeMsg)
-
-          log.add(msgId, encodedMsg, feedId, encoding, (err, kvt) => {
-            // prettier-ignore
-            if (err) return cb(clarify(err, 'addImmediately() failed in the log'))
-
-            onMsgAdded.set({
-              kvt,
-              nativeMsg,
-              feedFormat: feedFormat.name,
-            })
-            cb(null, kvt)
-          })
-        })
+        addSingleMessageHelper(nativeMsg, feedFormat, opts, cb)
       }
     )
   }
