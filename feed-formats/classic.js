@@ -20,6 +20,10 @@ module.exports = function init(ssb) {
       return '%' + ssbKeys.hash(JSON.stringify(nativeMsg, null, 2))
     },
 
+    getSequence(nativeMsg) {
+      return nativeMsg.sequence
+    },
+
     isNativeMsg(x) {
       return typeof x === 'object' && !!x && Ref.isFeedId(x.author)
     },
