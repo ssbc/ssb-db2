@@ -149,6 +149,7 @@ test('buttwoo-v1 sequenceNativeMsg', (t) => {
 
       sbot.getAtSequenceNativeMsg(
         [buttwooKeys.id, msg1.value.sequence],
+        'buttwoo-v1',
         (err, nativeMsg) => {
           const layer1 = bipf.decode(nativeMsg)
           t.true(Array.isArray(layer1), 'layer1 is array')
