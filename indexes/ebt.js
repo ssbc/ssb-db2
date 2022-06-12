@@ -36,7 +36,8 @@ module.exports = class EBT extends Plugin {
   }
 
   levelKeyToRecord(key, cb) {
-    this.level.get(key, (err, offset) => {
+    const levelKey = JSON.stringify(key)
+    this.level.get(levelKey, (err, offset) => {
       // prettier-ignore
       if (err) return cb(clarify(err, 'EBT.levelKeyToRecord() failed when getting leveldb item'))
       else
@@ -48,32 +49,35 @@ module.exports = class EBT extends Plugin {
     })
   }
 
-  levelKeyToNativeMsg(key, cb) {
-    this.level.get(key, (err, offset) => {
+  levelKeyToNativeMsg(key, feedFormat, cb) {
+    const levelKey = JSON.stringify(key)
+    this.level.get(levelKey, (err, offsetStr) => {
       // prettier-ignore
       if (err) return cb(clarify(err, 'EBT.levelKeyToNativeMsg() failed when getting leveldb item'))
-      else
-        this.log.getNativeMsg(parseInt(offset, 10), (err, nativeMsg) => {
+      else {
+
+        const offset = parseInt(offsetStr, 10)
+        this.log.getNativeMsg(offset, feedFormat, (err, nativeMsg) => {
           // prettier-ignore
           if (err) return cb(clarify(err, 'EBT.levelKeyToNativeMsg() failed when getting log record'))
           cb(null, nativeMsg)
         })
+      }
     })
   }
 
-  // this is for EBT so must be careful to not leak private messages
+  // this is for EBT so must be careful to not leak decrypted messages
   getMessageFromAuthorSequence(key, cb) {
-    this.levelKeyToRecord(JSON.stringify(key), (err, buffer) => {
+    this.levelKeyToRecord(key, (err, buffer) => {
       if (err) cb(clarify(err, 'EBT.getMessageFromAuthorSequence() failed'))
       else cb(null, bipf.decode(buffer, 0))
     })
   }
 
-  // this is for EBT so must be careful to not leak private messages
-  getMessageFromAuthorSequenceNativeMsg(key, cb) {
-    this.levelKeyToNativeMsg(JSON.stringify(key), (err, nativeMsg) => {
-      // prettier-ignore
-      if (err) cb(clarify(err, 'EBT.getMessageFromAuthorSequenceNativeMsg() failed'))
+  // this is for EBT so must be careful to not leak decrypted messages
+  getNativeMsgFromAuthorSequence(key, feedFormat, cb) {
+    this.levelKeyToNativeMsg(key, feedFormat, (err, nativeMsg) => {
+      if (err) cb(clarify(err, 'EBT.getNativeMsgFromAuthorSequence() failed'))
       else cb(null, nativeMsg)
     })
   }

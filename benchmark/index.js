@@ -253,16 +253,17 @@ test('buttwoo testing', async (t) => {
     const buffer = bipfsSbot[i]
 
     const pValue = bipf.seekKey2(buffer, 0, BIPF_VALUE, 0)
-    const pValueAuthor = bipf.seekKey2(buffer, pValue, BIPF_AUTHOR, 0)
-    const author = bipf.decode(buffer, pValueAuthor)
-    const feedFormat = sbot.db.findFeedFormatForAuthor(author)
-    if (!feedFormat) {
-      console.log('getNativeMsg() failed because this author is for an unknown feed format: ' + author)
-    }
 
-    const valueBuf = bipf.pluck(buffer, pValue)
-    // feedFormat
-    nativeMsg = format.toNativeMsg(valueBuf, 'bipf')
+    const feedFormat = sbot.db.findFeedFormatByName('buttwoo-v1')
+
+    let nativeMsg
+    if (feedFormat.encodings.includes('bipf')) {
+      const valueBuf = bipf.pluck(buffer, pValue)
+      nativeMsg = feedFormat.toNativeMsg(valueBuf, 'bipf')
+    } else {
+      const msgVal = bipf.decode(buffer, pValue)
+      nativeMsg = feedFormat.toNativeMsg(msgVal, 'js')
+    }
   }
 
   console.timeEnd(`db to native format ${N} messages sbot`)
