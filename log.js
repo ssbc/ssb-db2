@@ -32,9 +32,7 @@ module.exports = function (dir, config, privateIndex, db) {
       throw new Error('Cannot add msg to the log for unsupported encoding: ' + encoding)
     }
 
-    if (encoding === 'bipf') {
-      bipf.markIdempotent(value)
-    }
+    if (encoding === 'bipf') bipf.markIdempotent(value)
 
     const kvt = {
       key,

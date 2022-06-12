@@ -390,7 +390,7 @@ module.exports = function init(ssb) {
         )
 
       // Fast:
-      const public = authorBFE.slice(2).toString('base64')
+      const public = authorBFE.slice(2)
       // Proper:
       // const { data: public } = SSBURI.decompose(bfe.decode(authorBFE))
 
