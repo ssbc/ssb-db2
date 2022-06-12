@@ -152,7 +152,7 @@ test('buttwoo testing', async (t) => {
         value: { sequence: sbotMessages.length }
       },
       content,
-      tag: butt2.tags.SSB_FEED,
+      tag: 0,
       timestamp: startDate++
     })
     previousBFESbot = format.getMsgId(sbotButt2Msg)
