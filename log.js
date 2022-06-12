@@ -96,26 +96,39 @@ module.exports = function (dir, config, privateIndex, db) {
   // in case you want the encrypted msg
   log.getRaw = originalGet
 
-  log.getNativeMsg = function getNativeMsg(offset, cb) {
+  log.getNativeMsg = function getNativeMsg(offset, feedFormat, cb) {
     originalGet(offset, (err, buffer) => {
       if (err) return cb(err)
 
       const pValue = bipf.seekKey2(buffer, 0, BIPF_VALUE, 0)
-      const pValueAuthor = bipf.seekKey2(buffer, pValue, BIPF_AUTHOR, 0)
-      const author = bipf.decode(buffer, pValueAuthor)
-      const feedFormat = db.findFeedFormatForAuthor(author)
+
+      let format
       if (!feedFormat) {
+        const pValueAuthor = bipf.seekKey2(buffer, pValue, BIPF_AUTHOR, 0)
+        const author = bipf.decode(buffer, pValueAuthor)
+        format = db.findFeedFormatForAuthor(author)
+        if (!format) {
+          // prettier-ignore
+          return cb(new Error('getNativeMsg() failed because this author is for an unknown feed format: ' + author))
+        }
+      } else if (typeof format === 'string') {
+        format = db.findFeedFormatByName(feedFormat)
+        if (!format) {
+          // prettier-ignore
+          return cb(new Error('getNativeMsg() failed because this feed format is unknown: ' + feedFormat))
+        }
+      } else {
         // prettier-ignore
-        return cb(new Error('getNativeMsg() failed because this author is for an unknown feed format: ' + author))
+        return cb(new Error('getNativeMsg() failed because the feedFormat is not a string: ' + feedFormat))
       }
 
       let nativeMsg
-      if (feedFormat.encodings.includes('bipf')) {
+      if (format.encodings.includes('bipf')) {
         const valueBuf = bipf.pluck(buffer, pValue)
-        nativeMsg = feedFormat.toNativeMsg(valueBuf, 'bipf')
+        nativeMsg = format.toNativeMsg(valueBuf, 'bipf')
       } else {
         const msgVal = bipf.decode(buffer, pValue)
-        nativeMsg = feedFormat.toNativeMsg(msgVal, 'js')
+        nativeMsg = format.toNativeMsg(msgVal, 'js')
       }
       cb(null, nativeMsg)
     })

@@ -15,9 +15,11 @@ exports.init = function (sbot, config) {
       sbot.db.getIndex('ebt').getMessageFromAuthorSequence(key, cb)
     })
   }
-  sbot.getAtSequenceNativeMsg = (key, cb) => {
+  sbot.getAtSequenceNativeMsg = (key, feedFormat, cb) => {
     sbot.db.onDrain('ebt', () => {
-      sbot.db.getIndex('ebt').getMessageFromAuthorSequenceNativeMsg(key, cb)
+      sbot.db
+        .getIndex('ebt')
+        .getNativeMsgFromAuthorSequence(key, feedFormat, cb)
     })
   }
   sbot.add = sbot.db.add
