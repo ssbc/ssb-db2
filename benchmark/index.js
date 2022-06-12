@@ -100,6 +100,34 @@ function reportMem() {
   return `${rss} MB = ${heap} MB + etc`
 }
 
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+const measurements = new Map()
+function startMeasure(t, name) {
+  if (measurements.has(name)) {
+    t.fail(`Measurement ${name} already started`)
+  } else {
+    measurements.set(name, performance.now())
+  }
+}
+
+function endMeasure(t, name) {
+  if (measurements.has(name)) {
+    const start = measurements.get(name)
+    const duration = performance.now() - start
+    t.pass(`${name}: ${duration.toFixed(2)}ms`)
+    fs.appendFileSync(
+      reportPath,
+      `| ${capitalize(name)} | ${duration.toFixed(2)}ms |\n`
+    )
+    measurements.delete(name)
+  } else {
+    t.fail(`Measurement ${name} not started`)
+  }
+}
+
 let keys, keys2, keys3, keys4
 test('setup', (t) => {
   keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
@@ -109,7 +137,7 @@ test('setup', (t) => {
   t.end()
 })
 
-test('buttwoo testing', async (t) => {
+test('buttwoo testing', (t) => {
   rimraf.sync(db2Path)
   t.pass('delete db2 folder to start clean')
 
@@ -123,14 +151,14 @@ test('buttwoo testing', async (t) => {
   const N = 5 * 1000
   const content = { text: 'hello world', type: 'post' }
 
-  console.time(`create ${N} new messages`)
-
   let messages = []
   let sbotMessages = []
   const hmac = null
   let previousBFE = null
   let previousBFESbot = null
   let startDate = +new Date()
+
+  startMeasure(t, `create ${N} new messages`)
   for (let i = 0; i < N; ++i) {
     const [msgKeyBFE, butt2Msg] = butt2.encodeNew(
       content,
@@ -149,23 +177,22 @@ test('buttwoo testing', async (t) => {
       keys: butt2Key,
       previous: {
         key: previousBFESbot,
-        value: { sequence: sbotMessages.length }
+        value: { sequence: sbotMessages.length },
       },
       content,
       tag: 0,
-      timestamp: startDate++
+      timestamp: startDate++,
     })
     previousBFESbot = format.getMsgId(sbotButt2Msg)
     sbotMessages.push(sbotButt2Msg)
   }
-  console.timeEnd(`create ${N} new messages`)
-
-  console.time(`validate ${N} messages ssb-buttwoo`)
+  endMeasure(t, `create ${N} new messages`)
 
   const hmacKey = null
   const msgKeys = []
   const extractedData = []
 
+  startMeasure(t, `validate ${N} messages ssb-buttwoo`)
   for (let i = 0; i < N; ++i) {
     const msg = messages[i]
     const e = butt2.extractData(msg)
@@ -177,48 +204,44 @@ test('buttwoo testing', async (t) => {
   let isOk = true
 
   for (let i = 0; i < N; ++i) {
-    const prevData = i === 0 ? null : extractedData[i-1]
-    const prevMsgKey = i === 0 ? null : msgKeys[i-1]
+    const prevData = i === 0 ? null : extractedData[i - 1]
+    const prevMsgKey = i === 0 ? null : msgKeys[i - 1]
 
-    const validate = butt2.validateSingle(extractedData[i],
-                                          prevData, prevMsgKey, hmacKey)
+    const validate = butt2.validateSingle(
+      extractedData[i],
+      prevData,
+      prevMsgKey,
+      hmacKey
+    )
     if (typeof validate === 'string') {
       isOk = false
       break
     }
   }
+  endMeasure(t, `validate ${N} messages ssb-buttwoo`)
 
-  console.timeEnd(`validate ${N} messages ssb-buttwoo`)
+  if (!isOk) console.log('failed validation')
 
-  if (!isOk)
-    console.log('failed validation')
-
-  console.time(`validate ${N} messages sbot`)
-
+  startMeasure(t, `validate ${N} messages sbot`)
   for (let i = 0; i < N; ++i) {
-    const prev = i === 0 ? null : sbotMessages[i-1]
+    const prev = i === 0 ? null : sbotMessages[i - 1]
     format.validateSingle(hmacKey, sbotMessages[i], prev, (err) => {
-      if (err)
-        console.log(err)
+      if (err) console.log(err)
     })
   }
-
-  console.timeEnd(`validate ${N} messages sbot`)
+  endMeasure(t, `validate ${N} messages sbot`)
 
   const bipfs = []
   const bipfsSbot = []
 
-  console.time(`native to db format ${N} messages ssb-buttwoo`)
-
+  startMeasure(t, `native to db format ${N} messages ssb-buttwoo`)
   for (let i = 0; i < N; ++i) {
     const dbFormat = butt2.butt2ToBipf(extractedData[i], msgKeys[i])
     bipfs.push(dbFormat)
   }
+  endMeasure(t, `native to db format ${N} messages ssb-buttwoo`)
 
-  console.timeEnd(`native to db format ${N} messages ssb-buttwoo`)
-
-  console.time(`native to db format ${N} messages sbot`)
-
+  startMeasure(t, `native to db format ${N} messages sbot`)
   for (let i = 0; i < N; ++i) {
     const value = format.fromNativeMsg(sbotMessages[i], 'bipf')
     const key = format.getMsgId(sbotMessages[i])
@@ -233,22 +256,18 @@ test('buttwoo testing', async (t) => {
 
     bipfsSbot.push(recBuffer)
   }
+  endMeasure(t, `native to db format ${N} messages sbot`)
 
-  console.timeEnd(`native to db format ${N} messages sbot`)
-
-  console.time(`db to native format ${N} messages ssb-buttwoo`)
-
+  startMeasure(t, `db to native format ${N} messages ssb-buttwoo`)
   for (let i = 0; i < N; ++i) {
     const dbFormat = butt2.bipfToButt2(bipfs[i])
   }
-
-  console.timeEnd(`db to native format ${N} messages ssb-buttwoo`)
+  endMeasure(t, `db to native format ${N} messages ssb-buttwoo`)
 
   const BIPF_AUTHOR = bipf.allocAndEncode('author')
   const BIPF_VALUE = bipf.allocAndEncode('value')
 
-  console.time(`db to native format ${N} messages sbot`)
-
+  startMeasure(t, `db to native format ${N} messages sbot`)
   for (let i = 0; i < N; ++i) {
     const buffer = bipfsSbot[i]
 
@@ -265,15 +284,12 @@ test('buttwoo testing', async (t) => {
       nativeMsg = feedFormat.toNativeMsg(msgVal, 'js')
     }
   }
+  endMeasure(t, `db to native format ${N} messages sbot`)
 
-  console.timeEnd(`db to native format ${N} messages sbot`)
-
-  t.end()
+  sbot.close(true, t.end)
 })
 
-return
-
-test('add a bunch of messages', async (t) => {
+test('add a bunch of messages', (t) => {
   rimraf.sync(db2Path)
   t.pass('delete db2 folder to start clean')
 
@@ -294,25 +310,17 @@ test('add a bunch of messages', async (t) => {
 
   const msgVals = state.queue.map((x) => x.value)
 
-  const ended = DeferredPromise()
-  const start = Date.now()
-
   const done = multicb({ pluck: 1 })
+  startMeasure(t, 'add 1000 elements')
   for (const msgVal of msgVals) {
     sbot.db.add(msgVal, done())
   }
   done((err) => {
-    const duration = Date.now() - start
-
+    endMeasure(t, 'add 1000 elements')
     if (err) t.fail(err)
 
-    t.pass(`duration: ${duration}ms`)
-    fs.appendFileSync(reportPath, `| add 1000 elements | ${duration}ms |\n`)
-
-    sbot.close(() => ended.resolve())
+    sbot.close(true, t.end)
   })
-
-  await ended.promise
 })
 
 const randos = [
@@ -331,7 +339,7 @@ function shuffle(a) {
   return a
 }
 
-test('box1', async (t) => {
+test('box1', (t) => {
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .call(null, { keys: keys2, path: dirBox1 })
@@ -342,49 +350,29 @@ test('box1', async (t) => {
   for (var i = 0; i < 1000; ++i)
     contents.push({ type: 'tick', count: i, recps: shuffle(recps) })
 
-  const ended = DeferredPromise()
-  const start = Date.now()
-
+  startMeasure(t, 'add 1000 box1 msgs')
   pull(
     pull.values(contents),
     pull.asyncMap(sbot.db.publish),
     pull.collect((err, msgs) => {
-      const duration = Date.now() - start
-
+      endMeasure(t, 'add 1000 box1 msgs')
       if (err) t.fail(err)
 
-      t.pass(`box duration: ${duration}ms`)
-      fs.appendFileSync(
-        reportPath,
-        `| add 1000 private box1 elements | ${duration}ms |\n`
-      )
-
       sbot.db.onDrain('base', () => {
-        let startQuery = Date.now()
+        startMeasure(t, 'unbox 1000 box1 msgs first run')
 
         sbot.db.query(
           where(author(sbot.id)),
           toCallback((err, results) => {
-            const durationQuery = Date.now() - startQuery
-            t.pass(`unbox first run duration: ${durationQuery}ms`)
-            fs.appendFileSync(
-              reportPath,
-              `| unbox 1000 private box1 elements first run | ${durationQuery}ms |\n`
-            )
+            endMeasure(t, 'unbox 1000 box1 msgs first run')
 
-            startQuery = Date.now()
-
+            startMeasure(t, 'unbox 1000 box1 msgs second run')
             sbot.db.query(
               where(author(sbot.id)),
               toCallback((err, results) => {
-                const durationQuery2 = Date.now() - startQuery
-                t.pass(`unbox second run duration: ${durationQuery2}ms`)
-                fs.appendFileSync(
-                  reportPath,
-                  `| unbox 1000 private box1 elements second run | ${durationQuery2}ms |\n`
-                )
+                endMeasure(t, 'unbox 1000 box1 msgs second run')
 
-                sbot.close(() => ended.resolve())
+                sbot.close(true, t.end)
               })
             )
           })
@@ -392,18 +380,17 @@ test('box1', async (t) => {
       })
     })
   )
-
-  await ended.promise
 })
 
-test('private box1 no decrypt', async (t) => {
+test('private box1 no decrypt', (t) => {
   const startFrom = new Date()
   startFrom.setDate(startFrom.getDate() + 1)
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .call(null, {
-      keys: keys3, path: dirBox1NoDecrypt,
-      db2: { startDecryptBox1: startFrom.toISOString().split('T')[0] }
+      keys: keys3,
+      path: dirBox1NoDecrypt,
+      db2: { startDecryptBox1: startFrom.toISOString().split('T')[0] },
     })
 
   const recps = [...randos, keys.id]
@@ -412,49 +399,28 @@ test('private box1 no decrypt', async (t) => {
   for (var i = 0; i < 1000; ++i)
     contents.push({ type: 'tick', count: i, recps: shuffle(recps) })
 
-  const ended = DeferredPromise()
-  const start = Date.now()
-
+  startMeasure(t, 'add 1000 box1 msgs')
   pull(
     pull.values(contents),
     pull.asyncMap(sbot.db.publish),
     pull.collect((err, msgs) => {
-      const duration = Date.now() - start
-
+      endMeasure(t, 'add 1000 box1 msgs')
       if (err) t.fail(err)
 
-      t.pass(`box duration: ${duration}ms`)
-      fs.appendFileSync(
-        reportPath,
-        `| add 1000 private box1 elements | ${duration}ms |\n`
-      )
-
       sbot.db.onDrain('base', () => {
-        let startQuery = Date.now()
-
+        startMeasure(t, 'query 1000 msgs first run')
         sbot.db.query(
           where(author(sbot.id)),
           toCallback((err, results) => {
-            const durationQuery = Date.now() - startQuery
-            t.pass(`query first run duration: ${durationQuery}ms`)
-            fs.appendFileSync(
-              reportPath,
-              `| query 1000 elements first run | ${durationQuery}ms |\n`
-            )
+            endMeasure(t, 'query 1000 msgs first run')
 
-            startQuery = Date.now()
-
+            startMeasure(t, 'query 1000 msgs second run')
             sbot.db.query(
               where(author(sbot.id)),
               toCallback((err, results) => {
-                const durationQuery2 = Date.now() - startQuery
-                t.pass(`query second run duration: ${durationQuery2}ms`)
-                fs.appendFileSync(
-                  reportPath,
-                  `| query 1000 elements second run | ${durationQuery2}ms |\n`
-                )
+                endMeasure(t, 'query 1000 msgs second run')
 
-                sbot.close(() => ended.resolve())
+                sbot.close(true, t.end)
               })
             )
           })
@@ -462,14 +428,11 @@ test('private box1 no decrypt', async (t) => {
       })
     })
   )
-
-  await ended.promise
 })
 
-test('private box2', async (t) => {
+test('private box2', (t) => {
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
-    .use(require('ssb-db2-box2'))
     .call(null, {
       keys: keys4,
       path: dirBox2,
@@ -485,55 +448,33 @@ test('private box2', async (t) => {
     'hex'
   )
   sbot.box2.addOwnDMKey(testkey)
-  sbot.box2.setReady()
 
   let contents = []
   for (var i = 0; i < 1000; ++i)
     contents.push({ type: 'tick', count: i, recps: shuffle(recps) })
 
-  const ended = DeferredPromise()
-  const start = Date.now()
-
+  startMeasure(t, 'add 1000 box2 msgs')
   pull(
     pull.values(contents),
     pull.asyncMap(sbot.db.publish),
     pull.collect((err, msgs) => {
-      const duration = Date.now() - start
-
+      endMeasure(t, 'add 1000 box2 msgs')
       if (err) t.fail(err)
 
-      t.pass(`box duration: ${duration}ms`)
-      fs.appendFileSync(
-        reportPath,
-        `| add 1000 private box2 elements | ${duration}ms |\n`
-      )
-
       sbot.db.onDrain('base', () => {
-        let startQuery = Date.now()
-
+        startMeasure(t, 'unbox 1000 box2 msgs first run')
         sbot.db.query(
           where(author(sbot.id)),
           toCallback((err, results) => {
-            const durationQuery = Date.now() - startQuery
-            t.pass(`unbox duration first run: ${durationQuery}ms`)
-            fs.appendFileSync(
-              reportPath,
-              `| unbox 1000 private box2 elements first run | ${durationQuery}ms |\n`
-            )
+            endMeasure(t, 'unbox 1000 box2 msgs first run')
 
-            startQuery = Date.now()
-
+            startMeasure(t, 'unbox 1000 box2 msgs second run')
             sbot.db.query(
               where(author(sbot.id)),
               toCallback((err, results) => {
-                const durationQuery2 = Date.now() - startQuery
-                t.pass(`unbox duration second run: ${durationQuery2}ms`)
-                fs.appendFileSync(
-                  reportPath,
-                  `| unbox 1000 private box2 elements second run | ${durationQuery2}ms |\n`
-                )
+                endMeasure(t, 'unbox 1000 box2 msgs second run')
 
-                sbot.close(() => ended.resolve())
+                sbot.close(true, t.end)
               })
             )
           })
@@ -541,8 +482,6 @@ test('private box2', async (t) => {
       })
     })
   )
-
-  await ended.promise
 })
 
 test('migrate (+db1)', async (t) => {
@@ -564,19 +503,20 @@ test('migrate (+db1)', async (t) => {
   await sleep(500) // some silence to make it easier to read the CPU profiler
 
   const ended = DeferredPromise()
-  const start = Date.now()
+  startMeasure(t, 'migrate (+db1)')
   sbot.db2migrate.start()
 
   pull(
     sbot.db2migrate.progress(),
-    pull.filter((progress) => progress === 1),
+    pull.filter((progress) => {
+      console.log(progress);
+      return progress === 1
+    }),
     pull.take(1),
     pull.drain(async () => {
-      const duration = Date.now() - start
-      t.pass(`duration: ${duration}ms`)
-      fs.appendFileSync(reportPath, `| Migrate (+db1) | ${duration}ms |\n`)
+      endMeasure(t, 'migrate (+db1)')
       await sleep(2000) // wait for new log FS writes to finalize
-      sbot.close(() => ended.resolve())
+      sbot.close(true, () => ended.resolve())
     })
   )
 
@@ -594,7 +534,7 @@ test('migrate (alone)', async (t) => {
   await sleep(500) // some silence to make it easier to read the CPU profiler
 
   const ended = DeferredPromise()
-  const start = Date.now()
+  startMeasure(t, 'migrate (alone)')
   sbot.db2migrate.start()
 
   pull(
@@ -602,11 +542,9 @@ test('migrate (alone)', async (t) => {
     pull.filter((progress) => progress === 1),
     pull.take(1),
     pull.drain(async () => {
-      const duration = Date.now() - start
-      t.pass(`duration: ${duration}ms`)
-      fs.appendFileSync(reportPath, `| Migrate (alone) | ${duration}ms |\n`)
+      endMeasure(t, 'migrate (alone)')
       await sleep(2000) // wait for new log FS writes to finalize
-      sbot.close(() => ended.resolve())
+      sbot.close(true, () => ended.resolve())
     })
   )
 
@@ -625,7 +563,7 @@ test('migrate (+db1 +db2)', async (t) => {
   await sleep(500) // some silence to make it easier to read the CPU profiler
 
   const ended = DeferredPromise()
-  const start = Date.now()
+  startMeasure(t, 'migrate (+db1 +db2)')
   sbot.db2migrate.start()
 
   pull(
@@ -633,11 +571,9 @@ test('migrate (+db1 +db2)', async (t) => {
     pull.filter((progress) => progress === 1),
     pull.take(1),
     pull.drain(async () => {
-      const duration = Date.now() - start
-      t.pass(`duration: ${duration}ms`)
-      fs.appendFileSync(reportPath, `| Migrate (+db1 +db2) | ${duration}ms |\n`)
+      endMeasure(t, 'migrate (+db1 +db2)')
       await new Promise((resolve) => sbot.db.onDrain(resolve))
-      sbot.close(() => ended.resolve())
+      sbot.close(true, () => ended.resolve())
     })
   )
 
@@ -655,7 +591,7 @@ test('migrate (+db2)', async (t) => {
   await sleep(500) // some silence to make it easier to read the CPU profiler
 
   const ended = DeferredPromise()
-  const start = Date.now()
+  startMeasure(t, 'migrate (+db2)')
   sbot.db2migrate.start()
 
   pull(
@@ -663,11 +599,9 @@ test('migrate (+db2)', async (t) => {
     pull.filter((progress) => progress === 1),
     pull.take(1),
     pull.drain(async () => {
-      const duration = Date.now() - start
-      t.pass(`duration: ${duration}ms`)
-      fs.appendFileSync(reportPath, `| Migrate (+db2) | ${duration}ms |\n`)
+      endMeasure(t, 'migrate (+db2)')
       await new Promise((resolve) => sbot.db.onDrain(resolve))
-      sbot.close(() => ended.resolve())
+      sbot.close(true, () => ended.resolve())
     })
   )
 
@@ -694,7 +628,7 @@ test('migrate continuation (+db2)', async (t) => {
     pull.drain(async () => {
       sbot.db2migrate.stop()
       await new Promise((resolve) => sbot.db.onDrain(resolve))
-      await new Promise((resolve) => sbot.close(resolve))
+      await new Promise((resolve) => sbot.close(true, resolve))
       await sleep(500) // some silence
       t.pass('migrated 90%, will reset sbot')
 
@@ -706,7 +640,7 @@ test('migrate continuation (+db2)', async (t) => {
       await sleep(500)
       updateMaxRAM() // will report later, just to make the report order pretty
 
-      const start = Date.now()
+      startMeasure(t, 'migrate continuation (+db2)')
       sbot.db2migrate.start()
 
       pull(
@@ -714,14 +648,9 @@ test('migrate continuation (+db2)', async (t) => {
         pull.filter((progress) => progress === 1),
         pull.take(1),
         pull.drain(async () => {
-          const duration = Date.now() - start
-          t.pass(`duration: ${duration}ms`)
-          fs.appendFileSync(
-            reportPath,
-            `| Migrate continuation (+db2) | ${duration}ms |\n`
-          )
+          endMeasure(t, 'migrate continuation (+db2)')
           await new Promise((resolve) => sbot.db.onDrain(resolve))
-          sbot.close(() => ended.resolve())
+          sbot.close(true, () => ended.resolve())
         })
       )
     })
@@ -747,24 +676,23 @@ test('initial indexing', async (t) => {
   await sleep(500) // some silence to make it easier to read the CPU profiler
 
   const ended = DeferredPromise()
-  const start = Date.now()
 
+  startMeasure(t, 'initial indexing')
   sbot.db.query(
     where(type('post')),
     descending(),
     paginate(1),
     toCallback((err, { results, total }) => {
-      const duration = Date.now() - start
+      endMeasure(t, 'initial indexing')
+
       t.error(err)
       if (total === 0) t.fail('should respond with msgs')
       if (results.length !== 1) t.fail('should respond with 1 msg')
       if (!results[0].value.content.text.includes('LATESTMSG'))
         t.fail('should have LATESTMSG')
-      t.pass(`duration: ${duration}ms`)
-      fs.appendFileSync(reportPath, `| Initial indexing | ${duration}ms |\n`)
       updateMaxRAM()
       global.gc()
-      sbot.close(() => ended.resolve())
+      sbot.close(true, () => ended.resolve())
     })
   )
 
@@ -782,27 +710,23 @@ test('initial indexing maxcpu 86', async (t) => {
   await sleep(500) // some silence to make it easier to read the CPU profiler
 
   const ended = DeferredPromise()
-  const start = Date.now()
 
+  startMeasure(t, 'initial indexing maxcpu=86')
   sbot.db.query(
     where(type('post')),
     descending(),
     paginate(1),
     toCallback((err, { results, total }) => {
-      const duration = Date.now() - start
+      endMeasure(t, 'initial indexing maxcpu=86')
+
       t.error(err)
       if (total === 0) t.fail('should respond with msgs')
       if (results.length !== 1) t.fail('should respond with 1 msg')
       if (!results[0].value.content.text.includes('LATESTMSG'))
         t.fail('should have LATESTMSG')
-      t.pass(`duration: ${duration}ms`)
-      fs.appendFileSync(
-        reportPath,
-        `| Initial indexing maxCpu=86 | ${duration}ms |\n`
-      )
       updateMaxRAM()
       global.gc()
-      sbot.close(() => ended.resolve())
+      sbot.close(true, () => ended.resolve())
     })
   )
 
@@ -818,19 +742,15 @@ test('initial indexing compat', async (t) => {
   await sleep(500) // some silence to make it easier to read the CPU profiler
 
   const ended = DeferredPromise()
-  const start = Date.now()
 
+  startMeasure(t, 'initial indexing compat')
   sbot.db.onDrain('base', () => {
     sbot.db.onDrain('ebt', () => {
-      const duration = Date.now() - start
-      t.pass(`duration: ${duration}ms`)
-      fs.appendFileSync(
-        reportPath,
-        `| Initial indexing compat | ${duration}ms |\n`
-      )
+      endMeasure(t, 'initial indexing compat')
+
       updateMaxRAM()
       global.gc()
-      sbot.close(() => ended.resolve())
+      sbot.close(true, () => ended.resolve())
     })
   })
 
@@ -847,22 +767,17 @@ test('Two indexes updating concurrently', async (t) => {
 
   const ended = DeferredPromise()
   const done = multicb({ pluck: 1 })
-  const start = Date.now()
 
+  startMeasure(t, 'two indexes updating concurrently')
   sbot.db.query(where(type('about')), toCallback(done()))
   sbot.db.query(where(and(type('about'), isPublic())), toCallback(done()))
 
   done((err) => {
+    endMeasure(t, 'two indexes updating concurrently')
     if (err) t.fail(err)
-    const duration = Date.now() - start
-    t.pass(`duration: ${duration}ms`)
-    fs.appendFileSync(
-      reportPath,
-      `| Two indexes updating concurrently | ${duration}ms |\n`
-    )
     updateMaxRAM()
     global.gc()
-    sbot.close(() => ended.resolve())
+    sbot.close(true, () => ended.resolve())
   })
 
   await ended.promise
@@ -878,26 +793,19 @@ test.skip('ssb-threads and ssb-friends', async (t) => {
   await sleep(500) // some silence to make it easier to read the CPU profiler
 
   const ended = DeferredPromise()
-  const start = Date.now()
 
+  startMeasure(t, 'ssb-threads and ssb-friends')
   pull(
     sbot.threads.publicSummary({ allowlist: ['post', 'contact'] }),
     pull.take(1),
     pull.collect(async (err, threads) => {
-      const duration = Date.now() - start
+      endMeasure(t, 'ssb-threads and ssb-friends')
       if (err) t.fail(err)
       if (threads.length !== 1) t.fail('missing results')
-      t.pass(`duration: ${duration}ms`)
-      fs.appendFileSync(
-        reportPath,
-        `| ssb-threads and ssb-friends | ${duration}ms |\n`
-      )
       updateMaxRAM()
       global.gc()
       await sleep(2000) // wait for jitdb indexes to save to disk
-      sbot.close(() => {
-        ended.resolve()
-      })
+      sbot.close(true, () => ended.resolve())
     })
   )
 
@@ -914,26 +822,19 @@ test.skip('ssb-threads and ssb-friends again', async (t) => {
   await sleep(500) // some silence to make it easier to read the CPU profiler
 
   const ended = DeferredPromise()
-  const start = Date.now()
 
+  startMeasure(t, 'ssb-threads and ssb-friends again')
   pull(
     sbot.threads.publicSummary({ allowlist: ['post', 'contact'] }),
     pull.take(1),
     pull.collect(async (err, threads) => {
-      const duration = Date.now() - start
+      endMeasure(t, 'ssb-threads and ssb-friends again')
       if (err) t.fail(err)
       if (threads.length !== 1) t.fail('missing results')
-      t.pass(`duration: ${duration}ms`)
-      fs.appendFileSync(
-        reportPath,
-        `| ssb-threads and ssb-friends again | ${duration}ms |\n`
-      )
       updateMaxRAM()
       global.gc()
       await sleep(2000) // wait for jitdb indexes to save to disk
-      sbot.close(() => {
-        ended.resolve()
-      })
+      sbot.close(true, () => ended.resolve())
     })
   )
 
@@ -1020,7 +921,7 @@ test('setup', (t) => {
 for (const title in queries) {
   test(title, (t) => {
     if (title === REBOOT) {
-      sbot.close(() => {
+      sbot.close(true, () => {
         sbot = SecretStack({ appKey: caps.shs })
           .use(require('../'))
           .call(null, { keys, path: dir })
@@ -1029,15 +930,12 @@ for (const title in queries) {
       return
     }
 
-    const start = Date.now()
-
+    startMeasure(t, title)
     sbot.db.query(
       ...queries[title],
       toCallback((err) => {
+        endMeasure(t, title)
         if (err) t.fail(err)
-        const duration = Date.now() - start
-        t.pass(`duration: ${duration}ms`)
-        fs.appendFileSync(reportPath, `| ${title} | ${duration}ms |\n`)
         updateMaxRAM()
         t.end()
       })
@@ -1060,5 +958,5 @@ test('Indexes folder size', (t) => {
 })
 
 test('teardown', (t) => {
-  sbot.close(t.end)
+  sbot.close(true, t.end)
 })
