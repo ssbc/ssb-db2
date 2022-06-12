@@ -178,7 +178,7 @@ module.exports = function init(ssb) {
         const previous = bfe.decode(previousBFE)
         const content = bipf.decode(contentBuf)
         const contentHash = contentHashBuf
-        const signature = sigBuf.toString('base64') + '.sig.ed25519'
+        const signature = sigBuf
         const msgVal = {
           author,
           parent,
@@ -210,7 +210,7 @@ module.exports = function init(ssb) {
         const author = bfe.decode(authorBFE)
         const parent = bfe.decode(parentBFE)
         const previous = bfe.decode(previousBFE)
-        const signature = sigBuf.toString('base64') + '.sig.ed25519'
+        const signature = sigBuf
         bipf.markIdempotent(contentBuf)
         const msgVal = {
           author,
@@ -262,13 +262,13 @@ module.exports = function init(ssb) {
         contentHash,
       ]
       const encodedValue = bipf.allocAndEncode(value)
-      const signature = base64ToBuffer(msgVal.signature)
+      const signature = msgVal.signature
       return bipf.allocAndEncode([encodedValue, signature, contentBuffer])
     },
 
     _toNativeMsgBIPF(buffer) {
       let authorBFE, parentBFE, sequence, timestamp, previousBFE
-      let tagBuffer, contentBuffer, contentLen, contentHash, signature
+      let tagBuffer, contentBuffer, contentLen, contentHash, sigBuf
 
       const tag = varint.decode(buffer, 0)
       const len = tag >> BIPF_TAG_SIZE
@@ -304,7 +304,7 @@ module.exports = function init(ssb) {
         } else if (key === 'contentHash')
           contentHash = bipf.decode(buffer, valueStart)
         else if (key === 'signature')
-          signature = bipf.decode(buffer, valueStart)
+          sigBuf = bipf.decode(buffer, valueStart)
 
         c += valueLen
       }
@@ -319,7 +319,6 @@ module.exports = function init(ssb) {
         contentLen,
         contentHash,
       ]
-      const sigBuf = base64ToBuffer(signature)
       const encodedValue = bipf.allocAndEncode(value)
       return bipf.allocAndEncode([encodedValue, sigBuf, contentBuffer])
     },
