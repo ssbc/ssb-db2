@@ -102,6 +102,19 @@ module.exports = function init(ssb) {
       return Buffer.concat([BUTTWOO_MSG_TF, data])
     },
 
+    getSequence(nativeMsg) {
+      const [encodedVal] = feedFormat._extract(nativeMsg)
+      let sequence
+      let i = 0
+      bipf.iterate(encodedVal, 0, (b, pointer) => {
+        if (i++ === 2) {
+          sequence = bipf.decode(b, pointer)
+          return true // abort the bipf.iterate
+        }
+      })
+      return sequence
+    },
+
     isNativeMsg(x) {
       if (!Buffer.isBuffer(x)) return false
       if (x.length === 0) return false
@@ -303,8 +316,7 @@ module.exports = function init(ssb) {
           }
         } else if (key === 'contentHash')
           contentHash = bipf.decode(buffer, valueStart)
-        else if (key === 'signature')
-          sigBuf = bipf.decode(buffer, valueStart)
+        else if (key === 'signature') sigBuf = bipf.decode(buffer, valueStart)
 
         c += valueLen
       }

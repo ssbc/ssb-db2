@@ -15,18 +15,19 @@ module.exports = function init(ssb) {
     name: 'bendybutt-v1',
     encodings: ['js'],
 
-    // _nativeMsgToFeedIdCache: new
-
     getFeedId(nativeMsg) {
-      // FIXME: this can get cache results from isNativeMsg
       return BFE.decode(bencode.decode(nativeMsg, 2, 39))
     },
 
     getMsgId(nativeMsg) {
-      // FIXME: this can be cached
       let data = ssbKeys.hash(nativeMsg)
       if (data.endsWith('.sha256')) data = data.slice(0, -'.sha256'.length)
       return SSBURI.compose({ type: 'message', format: 'bendybutt-v1', data })
+    },
+
+    getSequence(nativeMsg) {
+      const msgVal = feedFormat.fromNativeMsg(nativeMsg, 'js')
+      return msgVal.sequence
     },
 
     isNativeMsg(x) {
