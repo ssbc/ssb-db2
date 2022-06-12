@@ -111,7 +111,7 @@ module.exports = function (dir, config, privateIndex, db) {
           // prettier-ignore
           return cb(new Error('getNativeMsg() failed because this author is for an unknown feed format: ' + author))
         }
-      } else if (typeof format === 'string') {
+      } else if (typeof feedFormat === 'string') {
         format = db.findFeedFormatByName(feedFormat)
         if (!format) {
           // prettier-ignore
