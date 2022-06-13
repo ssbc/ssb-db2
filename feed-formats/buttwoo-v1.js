@@ -76,11 +76,7 @@ module.exports = function init(ssb) {
       }
     },
 
-    getMsgId(nativeMsg) {
-      if (feedFormat._msgIdStringCache.has(nativeMsg)) {
-        return feedFormat._msgIdStringCache.get(nativeMsg)
-      }
-
+    getMsgIdHelper(nativeMsg) {
       let data = feedFormat._msgIdCache.get(nativeMsg)
       if (!data) {
         const [encodedValue, signature] = feedFormat._extract(nativeMsg)
@@ -88,6 +84,16 @@ module.exports = function init(ssb) {
           .hash(Buffer.concat([encodedValue, signature]))
         feedFormat._msgIdCache.set(nativeMsg, data)
       }
+      return data
+    },
+
+    getMsgId(nativeMsg) {
+      if (feedFormat._msgIdStringCache.has(nativeMsg)) {
+        return feedFormat._msgIdStringCache.get(nativeMsg)
+      }
+
+      let data = feedFormat.getMsgIdHelper(nativeMsg)
+
       // Fast:
       const msgId = `ssb:message/buttwoo-v1/${data.toString('base64')
         .replace(/\+/g, '-')
@@ -107,13 +113,7 @@ module.exports = function init(ssb) {
         return feedFormat._msgIdBFECache.get(nativeMsg)
       }
 
-      let data = feedFormat._msgIdCache.get(nativeMsg)
-      if (!data) {
-        const [encodedValue, signature] = feedFormat._extract(nativeMsg)
-        data = blake3.hash(Buffer.concat([encodedValue, signature]))
-        feedFormat._msgIdCache.set(nativeMsg, data)
-      }
-
+      let data = feedFormat.getMsgIdHelper(nativeMsg)
       const msgIdBFE = Buffer.concat([BUTTWOO_MSG_TF, data])
       feedFormat._msgIdBFECache.set(nativeMsg, msgIdBFE)
       return msgIdBFE
