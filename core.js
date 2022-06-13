@@ -349,7 +349,7 @@ exports.init = function (sbot, config) {
         }
         opts.feedFormat = feedFormat.name
         if (feedFormat.validateBatch) debouncer.add(nativeMsg, opts, cb)
-        else addSingleMessageHelper(nativeMsg, feedFormat, opts, cb)
+        else addImmediately(nativeMsg, feedFormat, opts, cb)
       }
     )
   }
@@ -413,7 +413,7 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function addSingleMessageHelper(nativeMsg, feedFormat, opts, cb) {
+  function addImmediately(nativeMsg, feedFormat, opts, cb) {
     const encoding = opts.encoding
     const feedId = feedFormat.getFeedId(nativeMsg)
     const prevNativeMsg = state.get(feedId)
@@ -436,28 +436,6 @@ exports.init = function (sbot, config) {
         cb(null, kvt)
       })
     })
-  }
-
-  function addImmediately(nativeMsg, ...args) {
-    const guard = guardAgainstDuplicateLogs('addImmediately()')
-    if (guard) return cb(guard)
-    const [opts, cb] = normalizeAddArgs(...args)
-    const feedFormat = findFeedFormatByNameOrNativeMsg(
-      opts.feedFormat,
-      nativeMsg
-    )
-    if (!feedFormat) {
-      // prettier-ignore
-      return cb(new Error('addImmediately() failed because could not find feed format for: ' + nativeMsg))
-    }
-
-    onceWhen(
-      stateFeedsReady,
-      (ready) => ready === true,
-      () => {
-        addSingleMessageHelper(nativeMsg, feedFormat, opts, cb)
-      }
-    )
   }
 
   function addOOO(nativeMsg, ...args) {
