@@ -207,6 +207,7 @@ module.exports = function (dir, sbot, config) {
       if (!decryptedRecord) return record
 
       decryptedIdx.insert(recOffset)
+      encryptedIdxMap.get(encryptionFormat.name).remove(recOffset)
 
       if (!streaming) saveIndexes(() => {})
       return decryptedRecord
@@ -215,14 +216,14 @@ module.exports = function (dir, sbot, config) {
     }
   }
 
-  /**
-   * Returns offsets of encrypted messages that have still not been decrypted
-   * under the `formatName` encryption format.
-   */
-  function getUnsolved(formatName) {
+  function getDecryptedOffsets() {
+    return decryptedIdx.all()
+  }
+
+  function getEncryptedOffsets(formatName) {
     const idx = encryptedIdxMap.get(formatName)
     if (!idx) return []
-    return idx.filterOut(decryptedIdx)
+    return idx.all()
   }
 
   function reset(cb) {
@@ -237,7 +238,8 @@ module.exports = function (dir, sbot, config) {
   return {
     latestOffset,
     decrypt,
-    getUnsolved,
+    getDecryptedOffsets,
+    getEncryptedOffsets,
     saveIndexes,
     reset,
     stateLoaded: stateLoaded.promise,

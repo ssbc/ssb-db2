@@ -557,8 +557,9 @@ all [JITDB operators]
 * hasBranch
 * authorIsBendyButtV1
 * isRoot
-* isPrivate
 * isPublic
+* isEncrypted
+* isDecrypted
 
 [ssb-db]: https://github.com/ssbc/ssb-db/
 [bipf]: https://github.com/ssbc/bipf/

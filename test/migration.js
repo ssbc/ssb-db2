@@ -12,7 +12,7 @@ const caps = require('ssb-caps')
 const generateFixture = require('ssb-fixtures')
 const fs = require('fs')
 const pull = require('pull-stream')
-const { toCallback, and, where, isPrivate, type } = require('../operators')
+const { toCallback, and, where, isDecrypted, type } = require('../operators')
 
 const dir = '/tmp/ssb-db2-migrate'
 
@@ -179,7 +179,7 @@ test('test migrate with encrypted messages', (t) => {
     t.error(err, 'publish suceeded')
     t.equals(typeof posted.value.content, 'string', 'private msg posted')
     sbot.db.query(
-      where(and(type('post'), isPrivate())),
+      where(and(type('post'), isDecrypted())),
       toCallback((err, msgs) => {
         t.error(err, 'no err')
         t.equal(msgs.length, 2)

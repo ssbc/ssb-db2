@@ -19,8 +19,10 @@ const {
   seekBranch,
   seekAbout,
   seekMetaEncryptionFormat,
+  seekContent,
 } = require('../seekers')
-const { and, seqs, equal, predicate, includes, deferred } = jitdbOperators
+const { and, seqs, equal, predicate, includes, offsets, deferred } =
+  jitdbOperators
 
 function key(msgId) {
   return deferred((meta, cb) => {
@@ -162,7 +164,11 @@ function isRoot() {
   })
 }
 
-function isPrivate(encryptionFormat) {
+function isPublic() {
+  return equal(seekMeta, undefined, { indexType: 'meta' })
+}
+
+function isDecrypted(encryptionFormat) {
   if (!encryptionFormat) {
     return equal(seekMetaPrivate, true, { indexType: 'meta_private' })
   } else {
@@ -172,8 +178,18 @@ function isPrivate(encryptionFormat) {
   }
 }
 
-function isPublic() {
-  return equal(seekMeta, undefined, { indexType: 'meta' })
+function isEncrypted(encryptionFormat) {
+  if (!encryptionFormat) {
+    return predicate(seekContent, (content) => typeof content === 'string', {
+      indexType: 'value_content',
+      name: 'encrypted',
+    })
+  } else {
+    return deferred((meta, cb) => {
+      const op = offsets(meta.db.getEncryptedOffsets(encryptionFormat))
+      cb(null, op)
+    })
+  }
 }
 
 module.exports = Object.assign({}, jitdbOperators, {
@@ -190,6 +206,7 @@ module.exports = Object.assign({}, jitdbOperators, {
   hasBranch,
   authorIsBendyButtV1,
   isRoot,
-  isPrivate,
   isPublic,
+  isDecrypted,
+  isEncrypted,
 })

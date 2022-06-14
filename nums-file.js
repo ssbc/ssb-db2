@@ -64,14 +64,20 @@ class NumsFile {
     }
   }
 
+  remove(num) {
+    const idx = bsb.eq(this._arr, num)
+    if (idx !== -1) {
+      this._arr.splice(idx, 1)
+    }
+  }
+
   reset() {
     this._arr.length = 0
     this.offset = -1
   }
 
-  filterOut(otherNumsFile) {
-    const otherSet = new Set(otherNumsFile._arr)
-    return this._arr.filter((num) => !otherSet.has(num))
+  all() {
+    return this._arr
   }
 }
 

@@ -55,6 +55,11 @@ module.exports = {
     return seekKey2(buffer, pValueContent, BIPF_BRANCH, 0)
   },
 
+  seekContent(buffer, start, pValue) {
+    if (pValue < 0) return -1
+    return seekKey2(buffer, pValue, BIPF_CONTENT, 0)
+  },
+
   seekVoteLink(buffer, start, pValue) {
     if (pValue < 0) return -1
     const pValueContent = seekKey2(buffer, pValue, BIPF_CONTENT, 0)

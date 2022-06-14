@@ -40,7 +40,16 @@ const BIPF_KEY = bipf.allocAndEncode('key')
 const BIPF_META = bipf.allocAndEncode('meta')
 const BIPF_PRIVATE = bipf.allocAndEncode('private')
 
-const { where, fromDB, author, deferred, asOffsets, toCallback } = operators
+const {
+  where,
+  fromDB,
+  author,
+  deferred,
+  asOffsets,
+  isEncrypted,
+  toCallback,
+  toPullStream,
+} = operators
 
 exports.name = 'db'
 
@@ -940,12 +949,9 @@ exports.init = function (sbot, config) {
   function reindexEncrypted(cb) {
     indexingActive.set(indexingActive.value + 1)
     reindexingLock((unlock) => {
-      const offsets = privateIndex.getUnsolved('box2')
-      const keysIndex = indexes['keys']
-
-      push(
-        push.values(offsets),
-        push.asyncMap((offset, cb) => {
+      pull(
+        self.query(where(isEncrypted('box2')), asOffsets(), toPullStream()),
+        pull.asyncMap((offset, cb) => {
           log.get(offset, (err, buf) => {
             // prettier-ignore
             if (err) return cb(clarify(err, 'reindexEncrypted() failed when getting messages'))
@@ -966,7 +972,7 @@ exports.init = function (sbot, config) {
             const pValue = bipf.seekKey2(buf, 0, BIPF_VALUE, 0)
 
             onDrain('keys', () => {
-              keysIndex.getSeq(key, (err, seq) => {
+              indexes['keys'].getSeq(key, (err, seq) => {
                 // prettier-ignore
                 if (err) return cb(clarify(err, 'reindexEncrypted() failed when getting seq'))
                 reindexOffset(record, seq, pValue, cb)
@@ -974,7 +980,7 @@ exports.init = function (sbot, config) {
             })
           })
         }),
-        push.collect((err) => {
+        pull.collect((err) => {
           if (err) return unlock(cb, err)
           const done = multicb({ pluck: 1 })
           for (const indexName in indexes) {
@@ -1084,10 +1090,13 @@ exports.init = function (sbot, config) {
     findFeedFormatByName,
     findFeedFormatForAuthor,
     findEncryptionFormatFor,
+    findEncryptionFormatByName,
     addBatch,
     addImmediately,
     getLatest: indexes.base.getLatest.bind(indexes.base),
     getAllLatest: indexes.base.getAllLatest.bind(indexes.base),
+    getEncryptedOffsets: privateIndex.getEncryptedOffsets,
+    getDecryptedOffsets: privateIndex.getDecryptedOffsets,
     getLog: () => log,
     registerIndex,
     setStateFeedsReady,

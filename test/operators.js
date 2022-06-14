@@ -16,7 +16,8 @@ const {
   and,
   where,
   type,
-  isPrivate,
+  isDecrypted,
+  isEncrypted,
   isPublic,
   toCallback,
   author,
@@ -201,7 +202,7 @@ test('author() supports bendy butt URIs', (t) => {
   })
 })
 
-test('execute and(type("post"), isPrivate())', (t) => {
+test('execute and(type("post"), isDecrypted())', (t) => {
   let content = { type: 'post', text: 'super secret', recps: [keys.id] }
   content = ssbKeys.box(
     content,
@@ -212,9 +213,9 @@ test('execute and(type("post"), isPrivate())', (t) => {
     t.error(err, 'no err')
 
     db.query(
-      where(and(type('post'), isPrivate())),
-      toCallback((err2, msgs) => {
-        t.error(err2, 'no err2')
+      where(and(type('post'), isDecrypted())),
+      toCallback((err, msgs) => {
+        t.error(err, 'no err')
         t.equal(msgs.length, 1)
         t.equal(msgs[0].value.content.text, 'super secret')
         t.end()
@@ -223,11 +224,11 @@ test('execute and(type("post"), isPrivate())', (t) => {
   })
 })
 
-test('execute isPrivate(box1))', (t) => {
+test('execute isDecrypted(box1))', (t) => {
   db.query(
-    where(and(type('post'), isPrivate('box1'))),
-    toCallback((err2, msgs) => {
-      t.error(err2, 'no err2')
+    where(and(type('post'), isDecrypted('box1'))),
+    toCallback((err, msgs) => {
+      t.error(err, 'no err')
       t.equal(msgs.length, 1)
       t.equal(msgs[0].value.content.text, 'super secret')
       t.end()
@@ -235,11 +236,63 @@ test('execute isPrivate(box1))', (t) => {
   )
 })
 
-test('execute isPrivate(box2))', (t) => {
+test('execute isDecrypted(box2))', (t) => {
   db.query(
-    where(and(type('post'), isPrivate('box2'))),
-    toCallback((err2, msgs) => {
-      t.error(err2, 'no err2')
+    where(and(type('post'), isDecrypted('box2'))),
+    toCallback((err, msgs) => {
+      t.error(err, 'no err')
+      t.equal(msgs.length, 0)
+      t.end()
+    })
+  )
+})
+
+test('execute isEncrypted()', (t) => {
+  // Some message copied from the protocol guide
+  const msgVal = {
+    previous: '%+7u6Fa0s1cE6tS9BtKUijDV3QBYQEINH7gLSIkDqRMM=.sha256',
+    author: '@FCX/tsDLpubCPKKfIrw4gc+SQkHcaD17s7GI6i/ziWY=.ed25519',
+    sequence: 15,
+    timestamp: 1516222868742,
+    hash: 'sha256',
+    content:
+      'ilDLCLIPRruIQPuqOq1uKnkMh0VNmxD8q+DXKCbgThoAR4XvotMSbMYnodhEkgUQuEEbxjR/MHTa77DQKY5QiGbFusUU564iDx1g/tP0qNqwir6eB0LGEna+K5QDj4CtNsHwnmDv7C0p/9n8lq/WtXlKptrO/A6riL+8EfhIWck1KCQGIZNxZz84DtpDXdN1z88rvslDNoPPzQoeGIgkt/RrGsoysuMZoJyN8LZb3XuczoSn+FhS0nWKIYnCy+CtmNiqw+9lATZgXM4+FOY8N3+L+j25hQQI191NNIdFVyMwoxkPL81byqLxABJDLpMDSOXnWjvyzCJ68UOUwciS16/QdXE647xJ4NSC7u6uMreFIdtHTkQcP556PlZyBFwArJXbwxTUq84f5rTUt3uoG3fOllxFjRs/PPLkIcD1ihxJoSmoTTbFePclRYAV5FptRTJVHg==.box',
+    signature:
+      '6EQTBQbBhAxeE3w7kyg/7xWHUR8tXP7jUl7bWnEQVz8RxbCYgbTRUnfX/2v68xfSG5xyLAqDJ1Dh3+d+pmRvAw==.sig.ed25519',
+  }
+
+  db.addOOO(msgVal, (err) => {
+    t.error(err, 'no err')
+
+    db.query(
+      where(isEncrypted()),
+      toCallback((err, msgs) => {
+        t.error(err, 'no err')
+        t.equal(msgs.length, 1)
+        t.equal(msgs[0].value.sequence, 15)
+        t.end()
+      })
+    )
+  })
+})
+
+test('execute isEncrypted(box1)', (t) => {
+  db.query(
+    where(isEncrypted('box1')),
+    toCallback((err, msgs) => {
+      t.error(err, 'no err')
+      t.equal(msgs.length, 1)
+      t.equal(msgs[0].value.sequence, 15)
+      t.end()
+    })
+  )
+})
+
+test('execute isEncrypted(box2)', (t) => {
+  db.query(
+    where(isEncrypted('box2')),
+    toCallback((err, msgs) => {
+      t.error(err, 'no err')
       t.equal(msgs.length, 0)
       t.end()
     })
