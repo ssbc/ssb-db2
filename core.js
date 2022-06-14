@@ -59,8 +59,8 @@ exports.manifest = {
   get: 'async',
   add: 'async',
   create: 'async',
-  publish: 'async', // FIXME: move out of here?
-  publishAs: 'async', // FIXME: move out of here?
+  publish: 'async',
+  publishAs: 'async',
   del: 'async',
   deleteFeed: 'async',
   addTransaction: 'async',
@@ -1061,6 +1061,16 @@ exports.init = function (sbot, config) {
     }
   })
 
+  function publish() {
+    // prettier-ignore
+    throw new Error('publish() not installed, you should .use(require("ssb-db2/compat/publish"))')
+  }
+
+  function publishAs() {
+    // prettier-ignore
+    throw new Error('publishAs() not installed, you should .use(require("ssb-db2/compat/publish"))')
+  }
+
   const api = {
     // Public API:
     installFeedFormat,
@@ -1084,6 +1094,8 @@ exports.init = function (sbot, config) {
     indexingProgress: () => indexingProgress.listen(),
 
     // needed primarily internally by other plugins in this project:
+    publish,
+    publishAs,
     encryptionFormats,
     findFeedFormatByName,
     findFeedFormatForAuthor,
