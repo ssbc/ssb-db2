@@ -42,7 +42,6 @@ jobs:
 
   benchmark:
     needs: test
-    if: false
 
     runs-on: ubuntu-latest
 
