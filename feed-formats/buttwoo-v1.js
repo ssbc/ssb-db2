@@ -29,8 +29,6 @@ module.exports = function init(ssb) {
     name: 'buttwoo-v1',
     encodings: ['js', 'bipf'],
 
-    // FIXME: do these weakmaps make a difference? Should we keep or delete?
-    // Which ones should we keep?
     _feedIdCache: new WeakMap(),
     _msgIdCache: new WeakMap(),
     _msgIdStringCache: new WeakMap(),

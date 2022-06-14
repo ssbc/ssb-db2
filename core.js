@@ -136,8 +136,6 @@ exports.init = function (sbot, config) {
     })
   })
 
-  // FIXME: we need to wait for box1 and box2 async "ready" to load
-
   indexesStateLoaded.onReady(updateIndexes)
 
   function setStateFeedsReady(x) {

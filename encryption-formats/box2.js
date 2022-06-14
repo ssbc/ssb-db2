@@ -84,6 +84,7 @@ module.exports = {
 
       onReady(cb) {
         // FIXME: load ssb-keyring here
+        cb()
       },
 
       getRecipients(opts) {

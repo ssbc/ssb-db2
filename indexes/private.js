@@ -30,6 +30,8 @@ module.exports = function (dir, sbot, config) {
   let encryptedIdxMap
 
   function loadIndexes(cb) {
+    const done = multicb({ pluck: 1 })
+
     decryptedIdx = new NumsFile(pathFor('decrypted.index'))
 
     encryptedIdxMap = new Map()
@@ -38,9 +40,8 @@ module.exports = function (dir, sbot, config) {
         encryptionFormat.name,
         new NumsFile(pathFor(`encrypted-${encryptionFormat.name}.index`))
       )
+      encryptionFormat.onReady(done())
     }
-
-    const done = multicb({ pluck: 1 })
 
     decryptedIdx.loadFile(done())
     for (const idx of encryptedIdxMap.values()) {
@@ -51,14 +52,11 @@ module.exports = function (dir, sbot, config) {
       if (err) {
         debug('failed to load encrypted or decrypted indexes')
         latestOffset.set(-1)
-        // FIXME: wait for all encryptionFormats ready
-        // if (sbot.box2) sbot.box2.isReady(stateLoaded.resolve)
-        //else
         stateLoaded.resolve()
         if (err.code === 'ENOENT') cb()
         else if (err.message === 'Empty NumsFile') cb()
         // prettier-ignore
-        else cb(clarify(err, 'private plugin failed to load index'))
+        else cb(clarify(err, 'private plugin failed to load'))
         return
       }
 
@@ -71,9 +69,6 @@ module.exports = function (dir, sbot, config) {
         (idx) => idx.offset
       )
       latestOffset.set(Math.min(decryptedIdx.offset, ...encryptedIdxOffsets))
-      // FIXME:
-      // if (sbot.box2) sbot.box2.isReady(stateLoaded.resolve)
-      //else
       stateLoaded.resolve()
       debug('loaded offset', latestOffset.value)
       cb()
