@@ -27,9 +27,6 @@ function makeKeysManager(config) {
   const buildSharedDMKey = directMessageKey.easy(config.keys)
 
   function sharedDMKey(author) {
-    if (author === config.keys.id) {
-      throw new Error('cannot create a shared DM key without yourself')
-    }
     if (!sharedDMKeysCache.has(author)) {
       sharedDMKeysCache.set(author, buildSharedDMKey(author))
     }
@@ -72,7 +69,7 @@ module.exports = {
     const keysManager = makeKeysManager(config)
 
     function isGroup(recp) {
-      return Ref.isCkeysManager.groupKey(recp) !== undefined
+      return keysManager.groupKey(recp) !== undefined
     }
 
     function isFeed(recp) {
@@ -107,13 +104,18 @@ module.exports = {
           // prettier-ignore
           throw new Error(`private-group spec allows maximum 16 slots, but you've tried to use ${validRecps.length}`)
         }
-        if (validRecps.filter(isGroup).length !== 1) {
+        // FIXME: move these validations to ssb-groups
+        // if (validRecps.filter(isGroup).length === 0) {
+        //   // prettier-ignore
+        //   throw new Error(`no group keys found among recipients: ${recps}`)
+        // }
+        // if (!isGroup(validRecps[0])) {
+        //   // prettier-ignore
+        //   throw new Error(`first recipient must be a group, but you've tried to use ${validRecps[0]}`)
+        // }
+        if (validRecps.filter(isGroup).length > 1) {
           // prettier-ignore
           throw new Error(`private-group spec only supports one group recipient, but you've tried to use ${validRecps.filter(isGroup).length}`)
-        }
-        if (!isGroup(validRecps[0])) {
-          // prettier-ignore
-          throw new Error(`first recipient must be a group, but you've tried to use ${validRecps[0]}`)
         }
 
         return validRecps.reduce((acc, recp) => {
