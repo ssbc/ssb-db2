@@ -10,51 +10,55 @@ const { box, unboxKey, unboxBody } = require('envelope-js')
 const { directMessageKey, SecretKey } = require('ssb-private-group-keys')
 
 function makeKeysManager(config) {
-  const dmCache = {}
+  const ownDMKeysCache = []
+  const sharedDMKeysCache = new Map()
+  const groupKeysCache = new Map()
 
-  const buildDMKey = directMessageKey.easy(config.keys)
-
-  function sharedDMKey(author) {
-    if (!dmCache[author]) dmCache[author] = buildDMKey(author)
-
-    return dmCache[author]
-  }
-
-  const ownKeys = []
-
-  function addDMKey(key) {
-    ownKeys.push(key)
+  function addOwnDMKey(key) {
+    ownDMKeysCache.push(key)
   }
 
   function ownDMKeys() {
-    return ownKeys.map((key) => {
+    return ownDMKeysCache.map((key) => {
       return { key, scheme: keySchemes.feed_id_self }
     })
   }
 
-  const allGroupKeys = {}
+  const buildSharedDMKey = directMessageKey.easy(config.keys)
+
+  function sharedDMKey(author) {
+    if (author === config.keys.id) {
+      throw new Error('cannot create a shared DM key without yourself')
+    }
+    if (!sharedDMKeysCache.has(author)) {
+      sharedDMKeysCache.set(author, buildSharedDMKey(author))
+    }
+    return sharedDMKeysCache.get(author)
+  }
 
   function addGroupKey(id, key) {
-    allGroupKeys[id] = key
+    groupKeysCache.set(id, key)
   }
 
   function groupKey(id) {
-    const key = allGroupKeys[id]
-    if (key) return { key, scheme: keySchemes.private_group }
-    else return undefined
+    if (groupKeysCache.has(id)) {
+      return { key: groupKeysCache.get(id), scheme: keySchemes.private_group }
+    } else {
+      return undefined
+    }
   }
 
   function groupKeys() {
-    return Object.values(allGroupKeys).map((key) => {
+    return [...groupKeysCache.values()].map((key) => {
       return { key, scheme: keySchemes.private_group }
     })
   }
 
   return {
+    addOwnDMKey,
     ownDMKeys,
-    TFKId: BFE.encode(config.keys.id),
+
     sharedDMKey,
-    addDMKey,
 
     addGroupKey,
     groupKey,
@@ -67,13 +71,14 @@ module.exports = {
   init: function init(ssb, config) {
     const keysManager = makeKeysManager(config)
 
-    function isGroup(recipient) {
-      return false // FIXME: uh what
+    function isGroup(recp) {
+      return Ref.isCkeysManager.groupKey(recp) !== undefined
     }
 
-    function isFeed(x) {
-      // FIXME: uh what
-      return Ref.isFeed(x) || isFeedSSBURI(x) || isBendyButtV1FeedSSBURI(x)
+    function isFeed(recp) {
+      return (
+        Ref.isFeed(recp) || isFeedSSBURI(recp) || isBendyButtV1FeedSSBURI(recp)
+      )
     }
 
     const encryptionFormat = {
@@ -81,40 +86,41 @@ module.exports = {
       suffix: 'box2',
 
       onReady(cb) {
-        // FIXME:
+        // FIXME: load ssb-keyring here
       },
 
       getRecipients(opts) {
-        if (!opts.recps && !opts.content.recps) return null
-        const recipients = (opts.recps || opts.content.recps).reduce(
-          (acc, recp) => {
-            if (recp === opts.keys.id)
-              return [...acc, ...keysManager.ownDMKeys()]
-            else if (isGroup(recp)) return [...acc, keysManager.groupKey(recp)]
-            else return [...acc, keysManager.sharedDMKey(recp)]
-          },
-          []
-        )
+        const recps = opts.recps || opts.content.recps
+        const selfId = opts.keys.id
+        if (!recps) return null
+        if (recps.length === 0) return null
 
-        if (recipients.length === 0) {
+        const validRecps = recps
+          .filter((recp) => typeof recp === 'string')
+          .filter((recp) => recp === selfId || isGroup(recp) || isFeed(recp))
+
+        if (validRecps.length === 0) {
           // prettier-ignore
-          throw new Error(`no keys found for recipients: ${opts.recps || opts.content.recps}`)
+          throw new Error(`no box2 keys found for recipients: ${recps}`)
         }
-        if (recipients.length > 16) {
+        if (validRecps.length > 16) {
           // prettier-ignore
-          throw new Error(`private-group spec allows maximum 16 slots, but you've tried to use ${recipients.length}`)
+          throw new Error(`private-group spec allows maximum 16 slots, but you've tried to use ${validRecps.length}`)
+        }
+        if (validRecps.filter(isGroup).length !== 1) {
+          // prettier-ignore
+          throw new Error(`private-group spec only supports one group recipient, but you've tried to use ${validRecps.filter(isGroup).length}`)
+        }
+        if (!isGroup(validRecps[0])) {
+          // prettier-ignore
+          throw new Error(`first recipient must be a group, but you've tried to use ${validRecps[0]}`)
         }
 
-        // groupId can only be in first "slot"
-        // FIXME: "setIsGroup" etc
-        // if (!isGroup(recipients[0]) && !isFeed(recipients[0]))
-        //   throw new Error('first recipient must be a group or feed')
-
-        // if (recipients.length > 1 && !recipients.slice(1).every(isFeed)) {
-        //   throw new Error('only feed IDs are supported as secondary recipients')
-        // }
-
-        return recipients
+        return validRecps.reduce((acc, recp) => {
+          if (recp === selfId) return [...acc, ...keysManager.ownDMKeys()]
+          else if (isGroup(recp)) return [...acc, keysManager.groupKey(recp)]
+          else if (isFeed(recp)) return [...acc, keysManager.sharedDMKey(recp)]
+        }, [])
       },
 
       encrypt(plaintextBuf, recipients, opts) {
@@ -178,11 +184,11 @@ module.exports = {
       },
     }
 
-    ssb.db.installEncryptionFormat(encryptionFormat)
+    if (ssb.db) ssb.db.installEncryptionFormat(encryptionFormat)
 
-    // FIXME: is this the nicest approach???
     return {
-      addOwnDMKey: keysManager.addDMKey,
+      addOwnDMKey: keysManager.addOwnDMKey,
+      addGroupKey: keysManager.addGroupKey,
     }
   },
 }

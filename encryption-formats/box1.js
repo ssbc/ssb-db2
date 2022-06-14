@@ -67,5 +67,5 @@ module.exports = function init(ssb) {
     },
   }
 
-  ssb.db.installEncryptionFormat(encryptionFormat)
+  if (ssb.db) ssb.db.installEncryptionFormat(encryptionFormat)
 }
