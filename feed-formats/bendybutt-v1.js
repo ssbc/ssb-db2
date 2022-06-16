@@ -117,8 +117,7 @@ module.exports = function init(ssb) {
       }
     },
 
-    validateSingle(hmacKey, nativeMsg, previousNativeMsg, cb) {
-      // FIXME: standardize ssb-bendy-butt validateSingle to be async
+    validate(nativeMsg, previousNativeMsg, hmacKey, cb) {
       const msgVal = feedFormat.fromNativeMsg(nativeMsg, 'js')
       const previous = previousNativeMsg
         ? feedFormat.fromNativeMsg(previousNativeMsg, 'js')

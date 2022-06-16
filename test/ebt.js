@@ -9,7 +9,7 @@ const bipf = require('bipf')
 const bfe = require('ssb-bfe')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
-const validate = require('ssb-validate')
+const classic = require('ssb-classic/format')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 
@@ -102,16 +102,15 @@ test('Encrypted', (t) => {
 })
 
 test('add', (t) => {
-  let state = validate.initial()
   const keys2 = ssbKeys.generate()
 
-  state = validate.appendNew(
-    state,
-    null,
-    keys2,
-    { type: 'post', text: 'testing sbot.add' },
-    Date.now()
-  )
+  const msgVal = classic.newNativeMsg({
+    keys: keys2,
+    content: { type: 'post', text: 'testing sbot.add' },
+    previous: null,
+    timestamp: Date.now(),
+    hmacKey: null,
+  })
 
   let i = 0
 
@@ -124,7 +123,7 @@ test('add', (t) => {
     }
   })
 
-  sbot.add(state.queue[0].value, (err, added) => {
+  sbot.add(msgVal, (err, added) => {
     t.error(err)
     t.equal(added.value.content.text, 'testing sbot.add')
     t.end()

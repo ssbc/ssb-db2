@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Unlicense
 
 const ssbKeys = require('ssb-keys')
-const validate = require('ssb-validate')
+const classic = require('ssb-classic/format')
 const path = require('path')
 const test = require('tape')
 const pull = require('pull-stream')
@@ -32,12 +32,17 @@ const db = sbot.db
 test('Base', (t) => {
   const post = { type: 'post', text: 'Testing!' }
 
-  let state = validate.initial()
   const otherKeys = ssbKeys.generate()
-  const otherMsg = { type: 'post', text: 'test1' }
 
-  state = validate.appendNew(state, null, otherKeys, otherMsg, Date.now())
-  db.add(state.queue[0].value, (err) => {
+  const msgVal = classic.newNativeMsg({
+    keys: otherKeys,
+    content: { type: 'post', text: 'test1' },
+    previous: null,
+    timestamp: Date.now(),
+    hmacKey: null,
+  })
+
+  db.add(msgVal, (err) => {
     db.publish(post, (err, postMsg) => {
       pull(
         sbot.createHistoryStream({ id: keys.id, keys: false }),
@@ -76,20 +81,32 @@ test('No values', (t) => {
 
 test('createWriteStream', (t) => {
   const rando = ssbKeys.generate()
-  const post1 = { type: 'post', text: 'a' }
-  const post2 = { type: 'post', text: 'b' }
-  const post3 = { type: 'post', text: 'c' }
 
-  let s = validate.initial()
-
-  s = validate.appendNew(s, null, rando, post1, Date.now() - 3)
-  s = validate.appendNew(s, null, rando, post2, Date.now() - 2)
-  s = validate.appendNew(s, null, rando, post3, Date.now() - 1)
+  const msg1 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'a' },
+    previous: null,
+    timestamp: Date.now() - 3,
+    hmacKey: null,
+  })
+  const msg2 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'b' },
+    previous: { key: classic.getMsgId(msg1), value: msg1 },
+    timestamp: Date.now() - 2,
+    hmacKey: null,
+  })
+  const msg3 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'c' },
+    previous: { key: classic.getMsgId(msg2), value: msg2 },
+    timestamp: Date.now() - 1,
+    hmacKey: null,
+  })
 
   let wrote = 0
   pull(
-    pull.values(s.queue),
-    pull.map((kvt) => kvt.value),
+    pull.values([msg1, msg2, msg3]),
     pull.through(() => {
       wrote++
     }),

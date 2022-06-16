@@ -4,7 +4,7 @@
 
 module.exports = [
   require('./core'),
-  require('./feed-formats/classic'),
+  require('ssb-classic'),
   require('./feed-formats/bendybutt-v1'),
   require('./feed-formats/buttwoo-v1'), // FIXME: remove this from index.js
   require('./encryption-formats/box1'),

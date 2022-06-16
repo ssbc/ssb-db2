@@ -7,7 +7,6 @@ const ssbKeys = require('ssb-keys')
 const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
-const validate = require('ssb-validate')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 

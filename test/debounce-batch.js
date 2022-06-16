@@ -8,7 +8,7 @@ const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const pify = require('util').promisify
-const validate = require('ssb-validate')
+const classic = require('ssb-classic/format')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 
@@ -28,32 +28,38 @@ const sbot = SecretStack({ appKey: caps.shs })
   })
 
 test('add many times', async (t) => {
-  let state = validate.initial()
   const keys1 = ssbKeys.generate()
   const keys2 = ssbKeys.generate()
 
+  let prev1 = null
+  let prev2 = null
+  const queue = []
   // 1..99, inclusive
   for (let i = 1; i <= 99; ++i) {
     if (i % 2 === 0) {
-      state = validate.appendNew(
-        state,
-        null,
-        keys1,
-        { type: 'post', text: 'a' + i },
-        Date.now()
-      )
+      const msgVal = classic.newNativeMsg({
+        keys: keys1,
+        content: { type: 'post', text: 'a' + i },
+        previous: prev1,
+        timestamp: Date.now(),
+        hmacKey: null,
+      })
+      queue.push(msgVal)
+      prev1 = { key: classic.getMsgId(msgVal), value: msgVal }
     } else {
-      state = validate.appendNew(
-        state,
-        null,
-        keys2,
-        { type: 'post', text: 'b' + i },
-        Date.now()
-      )
+      const msgVal = classic.newNativeMsg({
+        keys: keys2,
+        content: { type: 'post', text: 'b' + i },
+        previous: prev2,
+        timestamp: Date.now(),
+        hmacKey: null,
+      })
+      queue.push(msgVal)
+      prev2 = { key: classic.getMsgId(msgVal), value: msgVal }
     }
   }
 
-  await Promise.all(state.queue.map((kvt) => pify(sbot.add)(kvt.value)))
+  await Promise.all(queue.map((msgVal) => pify(sbot.add)(msgVal)))
   t.pass('added messages by two authors')
 
   await pify(setTimeout)(1000)
@@ -73,16 +79,15 @@ test('add many times', async (t) => {
   t.equals(msgs1.length, 49, 'there are 49 messages by author1')
   t.equals(msgs2.length, 50, 'there are 50 messages by author2')
 
-  state = validate.appendNew(
-    state,
-    null,
-    keys1,
-    { type: 'post', text: 'a' + 100 },
-    Date.now()
-  )
-  const finalKVT = state.queue[state.queue.length - 1]
-  const added = await pify(sbot.add)(finalKVT.value)
-  t.deepEquals(added.value, finalKVT.value)
+  const finalMsgVal = classic.newNativeMsg({
+    keys: keys1,
+    content: { type: 'post', text: 'a' + 100 },
+    previous: prev1,
+    timestamp: Date.now(),
+    hmacKey: null,
+  })
+  const added = await pify(sbot.add)(finalMsgVal)
+  t.deepEquals(added.value, finalMsgVal)
 
   await pify(sbot.close)(true)
   t.end()

@@ -361,7 +361,7 @@ module.exports = function init(ssb) {
       }
     },
 
-    validateSingle: (hmacKey, nativeMsg, prevNativeMsg, cb) => {
+    validate(nativeMsg, prevNativeMsg, hmacKey, cb) {
       const [encodedVal, sigBuf, contentBuf] = feedFormat._extract(nativeMsg)
       const [
         authorBFE,

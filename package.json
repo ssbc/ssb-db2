@@ -50,12 +50,11 @@
     "ssb-bendy-butt": "~0.12.2",
     "ssb-bfe": "^3.3.0",
     "ssb-buttwoo": "^0.2.0",
+    "ssb-classic": "^1.0.1",
     "ssb-keys": "^8.4.0",
     "ssb-private-group-keys": "^0.4.1",
     "ssb-ref": "^2.14.3",
     "ssb-uri2": "^1.5.2",
-    "ssb-validate": "^4.1.3",
-    "ssb-validate2": "~0.1.1",
     "too-hot": "^1.0.0",
     "typedarray-to-buffer": "^4.0.0"
   },

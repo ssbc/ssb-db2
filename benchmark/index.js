@@ -13,11 +13,8 @@ const caps = require('ssb-caps')
 const ssbKeys = require('ssb-keys')
 const multicb = require('multicb')
 const pull = require('pull-stream')
-const validate = require('ssb-validate')
+const classic = require('ssb-classic/format')
 const butt2 = require('ssb-buttwoo')
-const pify = require('promisify-4loc')
-const SSBURI = require('ssb-uri2')
-const bfe = require('ssb-bfe')
 const bipf = require('bipf')
 const DeferredPromise = require('p-defer')
 const trammel = require('trammel')
@@ -225,7 +222,7 @@ test('buttwoo testing', (t) => {
   startMeasure(t, `validate ${N} messages sbot`)
   for (let i = 0; i < N; ++i) {
     const prev = i === 0 ? null : sbotMessages[i - 1]
-    format.validateSingle(hmacKey, sbotMessages[i], prev, (err) => {
+    format.validate(sbotMessages[i], prev, hmacKey, (err) => {
       if (err) console.log(err)
     })
   }
@@ -297,18 +294,21 @@ test('add a bunch of messages', (t) => {
     .use(require('../'))
     .call(null, { keys, path: dirAdd })
 
-  let state = validate.initial()
+  let previous = null
+  const queue = []
   for (var i = 0; i < 1000; ++i) {
-    state = validate.appendNew(
-      state,
-      null,
+    const msgVal = classic.newNativeMsg({
       keys,
-      { type: 'tick', count: i },
-      Date.now()
-    )
+      content: {type:'tick', count: i},
+      previous,
+      timestamp: Date.now(),
+      hmacKey: null,
+    })
+    queue.push(msgVal)
+    previous = {key : classic.getMsgId(msgVal), value: msgVal}
   }
 
-  const msgVals = state.queue.map((x) => x.value)
+  const msgVals = queue.map((x) => x.value)
 
   const done = multicb({ pluck: 1 })
   startMeasure(t, 'add 1000 elements')

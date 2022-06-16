@@ -7,7 +7,7 @@ const ssbKeys = require('ssb-keys')
 const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
-const validate = require('ssb-validate')
+const classic = require('ssb-classic/format')
 const pull = require('pull-stream')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
@@ -217,25 +217,38 @@ test('deleteFeed unknown', (t) => {
 
 test('add three messages', (t) => {
   const rando = ssbKeys.generate()
-  const post1 = { type: 'post', text: 'a' }
-  const post2 = { type: 'post', text: 'b' }
-  const post3 = { type: 'post', text: 'c' }
 
-  let s = validate.initial()
-
-  s = validate.appendNew(s, null, rando, post1, Date.now() - 3)
-  s = validate.appendNew(s, null, rando, post2, Date.now() - 2)
-  s = validate.appendNew(s, null, rando, post3, Date.now() - 1)
+  const msg1 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'a' },
+    previous: null,
+    timestamp: Date.now() - 3,
+    hmacKey: null,
+  })
+  const msg2 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'b' },
+    previous: { key: classic.getMsgId(msg1), value: msg1 },
+    timestamp: Date.now() - 2,
+    hmacKey: null,
+  })
+  const msg3 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'c' },
+    previous: { key: classic.getMsgId(msg2), value: msg2 },
+    timestamp: Date.now() - 1,
+    hmacKey: null,
+  })
 
   const pickValue = (kvt) => kvt.value
 
+  const msgVals = [msg1, msg2, msg3]
   pull(
-    pull.values(s.queue),
-    pull.map(pickValue),
+    pull.values(msgVals),
     pull.asyncMap((msgVal, cb) => db.add(msgVal, cb)),
     pull.collect((err, kvts) => {
       t.error(err)
-      t.deepEquals(kvts.map(pickValue), s.queue.map(pickValue))
+      t.deepEquals(kvts.map(pickValue), msgVals)
       db.onDrain(() => {
         pull(
           db.query(where(author(rando.id)), toPullStream()),
@@ -254,19 +267,32 @@ test('add three messages', (t) => {
 
 test('add three messages in batch', (t) => {
   const rando = ssbKeys.generate()
-  const post4 = { type: 'post', text: 'd' }
-  const post5 = { type: 'post', text: 'e' }
-  const post6 = { type: 'post', text: 'f' }
 
-  let s = validate.initial()
-
-  s = validate.appendNew(s, null, rando, post4, Date.now() - 3)
-  s = validate.appendNew(s, null, rando, post5, Date.now() - 2)
-  s = validate.appendNew(s, null, rando, post6, Date.now() - 1)
+  const msg4 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'd' },
+    previous: null,
+    timestamp: Date.now() - 3,
+    hmacKey: null,
+  })
+  const msg5 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'e' },
+    previous: { key: classic.getMsgId(msg4), value: msg4 },
+    timestamp: Date.now() - 2,
+    hmacKey: null,
+  })
+  const msg6 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'f' },
+    previous: { key: classic.getMsgId(msg5), value: msg5 },
+    timestamp: Date.now() - 1,
+    hmacKey: null,
+  })
 
   const pickValue = (kvt) => kvt.value
 
-  const msgVals = s.queue.map(pickValue)
+  const msgVals = [msg4, msg5, msg6]
   db.addBatch(msgVals, (err, kvts) => {
     t.error(err, 'no err')
     t.equals(kvts.length, 3)
@@ -277,23 +303,41 @@ test('add three messages in batch', (t) => {
 
 test('multi batch', (t) => {
   const rando = ssbKeys.generate()
-  const post7 = { type: 'post', text: 'g' }
-  const post8 = { type: 'post', text: 'h' }
-  const post9 = { type: 'post', text: 'i' }
-  const post10 = { type: 'post', text: 'j' }
 
-  let s = validate.initial()
-
-  s = validate.appendNew(s, null, rando, post7, Date.now() - 4)
-  s = validate.appendNew(s, null, rando, post8, Date.now() - 3)
-  s = validate.appendNew(s, null, rando, post9, Date.now() - 2)
-  s = validate.appendNew(s, null, rando, post10, Date.now() - 1)
+  const msg7 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'g' },
+    previous: null,
+    timestamp: Date.now() - 4,
+    hmacKey: null,
+  })
+  const msg8 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'h' },
+    previous: { key: classic.getMsgId(msg7), value: msg7 },
+    timestamp: Date.now() - 3,
+    hmacKey: null,
+  })
+  const msg9 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'i' },
+    previous: { key: classic.getMsgId(msg8), value: msg8 },
+    timestamp: Date.now() - 2,
+    hmacKey: null,
+  })
+  const msg10 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'j' },
+    previous: { key: classic.getMsgId(msg9), value: msg9 },
+    timestamp: Date.now() - 1,
+    hmacKey: null,
+  })
 
   let done = 0
 
   const pickValue = (kvt) => kvt.value
 
-  const msgVals = s.queue.map(pickValue)
+  const msgVals = [msg7, msg8, msg9, msg10]
 
   const batch1 = msgVals.slice(0, 2)
   db.addBatch(batch1, (err, kvts) => {
@@ -314,19 +358,32 @@ test('multi batch', (t) => {
 
 test('add transaction', (t) => {
   const rando = ssbKeys.generate()
-  const post11 = { type: 'post', text: 'k' }
-  const post12 = { type: 'post', text: 'l' }
-  const post13 = { type: 'post', text: 'm' }
 
-  let s = validate.initial()
-
-  s = validate.appendNew(s, null, rando, post11, Date.now() - 3)
-  s = validate.appendNew(s, null, rando, post12, Date.now() - 2)
-  s = validate.appendNew(s, null, rando, post13, Date.now() - 1)
+  const msg11 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'k' },
+    previous: null,
+    timestamp: Date.now() - 3,
+    hmacKey: null,
+  })
+  const msg12 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'l' },
+    previous: { key: classic.getMsgId(msg11), value: msg11 },
+    timestamp: Date.now() - 2,
+    hmacKey: null,
+  })
+  const msg13 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'm' },
+    previous: { key: classic.getMsgId(msg12), value: msg12 },
+    timestamp: Date.now() - 1,
+    hmacKey: null,
+  })
 
   const pickValue = (kvt) => kvt.value
 
-  const msgVals = s.queue.map(pickValue)
+  const msgVals = [msg11, msg12, msg13]
   db.addTransaction(msgVals, null, (err, kvts) => {
     t.error(err, 'no err')
     t.equals(kvts.length, 3)
@@ -337,19 +394,30 @@ test('add transaction', (t) => {
 
 test('add transaction ooo', (t) => {
   const rando = ssbKeys.generate()
-  const post14 = { type: 'post', text: 'o' }
-  const post15 = { type: 'post', text: 'p' }
-  const post16 = { type: 'post', text: 'q' }
 
-  let s = validate.initial()
+  const msg14 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'o' },
+    previous: null,
+    timestamp: Date.now() - 3,
+    hmacKey: null,
+  })
+  const msg15 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'p' },
+    previous: { key: classic.getMsgId(msg14), value: msg14 },
+    timestamp: Date.now() - 2,
+    hmacKey: null,
+  })
+  const msg16 = classic.newNativeMsg({
+    keys: rando,
+    content: { type: 'post', text: 'q' },
+    previous: { key: classic.getMsgId(msg15), value: msg15 },
+    timestamp: Date.now() - 1,
+    hmacKey: null,
+  })
 
-  s = validate.appendNew(s, null, rando, post14, Date.now() - 3)
-  s = validate.appendNew(s, null, rando, post15, Date.now() - 2)
-  s = validate.appendNew(s, null, rando, post16, Date.now() - 1)
-
-  const pickValue = (kvt) => kvt.value
-
-  const msgVals = s.queue.map(pickValue)
+  const msgVals = [msg14, msg15, msg16]
   db.addTransaction(msgVals.slice(0, 1), msgVals.slice(2, 3), (err, kvts) => {
     t.error(err, 'no err')
     t.equals(kvts.length, 2)

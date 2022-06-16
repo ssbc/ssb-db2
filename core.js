@@ -391,7 +391,7 @@ exports.init = function (sbot, config) {
       () => {
         const feedId = feedFormat.getFeedId(nativeMsgs[0])
         const prevNativeMsg = state.get(feedId)
-        feedFormat.validateBatch(hmacKey, nativeMsgs, prevNativeMsg, (err) => {
+        feedFormat.validateBatch(nativeMsgs, prevNativeMsg, hmacKey, (err) => {
           if (err) return cb(clarify(err, 'validation in addBatch() failed'))
           const done = multicb({ pluck: 1 })
           for (var i = 0; i < nativeMsgs.length; ++i) {
@@ -424,7 +424,7 @@ exports.init = function (sbot, config) {
     const encoding = opts.encoding
     const feedId = feedFormat.getFeedId(nativeMsg)
     const prevNativeMsg = state.get(feedId)
-    feedFormat.validateSingle(hmacKey, nativeMsg, prevNativeMsg, (err) => {
+    feedFormat.validate(nativeMsg, prevNativeMsg, hmacKey, (err) => {
       // prettier-ignore
       if (err) return cb(clarify(err, 'addImmediately() failed validation for feed format ' + feedFormat.name))
       const msgId = feedFormat.getMsgId(nativeMsg)
@@ -458,12 +458,12 @@ exports.init = function (sbot, config) {
       // prettier-ignore
       return cb(new Error('addOOO() failed because could not find feed format for: ' + nativeMsg))
     }
-    if (!feedFormat.validateOOOBatch) {
+    if (!feedFormat.validateOOO) {
       // prettier-ignore
-      return cb(new Error('addOOO() failed because feed format ' + feedFormat.name + ' does not support validateOOOBatch'))
+      return cb(new Error('addOOO() failed because feed format ' + feedFormat.name + ' does not support validateOOO'))
     }
 
-    feedFormat.validateOOOBatch(hmacKey, [nativeMsg], (err) => {
+    feedFormat.validateOOO(nativeMsg, hmacKey, (err) => {
       // prettier-ignore
       if (err) return cb(clarify(err, 'addOOO() failed validation for feed format ' + feedFormat.name))
       const msgId = feedFormat.getMsgId(nativeMsg)
@@ -501,7 +501,7 @@ exports.init = function (sbot, config) {
       return cb(new Error('addOOOBatch() failed because feed format ' + feedFormat.name + ' does not support validateOOOBatch'))
     }
 
-    feedFormat.validateOOOBatch(hmacKey, nativeMsgs, (err) => {
+    feedFormat.validateOOOBatch(nativeMsgs, hmacKey, (err) => {
       if (err) return cb(clarify(err, 'validation in addOOOBatch() failed'))
       const done = multicb({ pluck: 1 })
       for (var i = 0; i < nativeMsgs.length; ++i) {
@@ -553,12 +553,12 @@ exports.init = function (sbot, config) {
         if (nativeMsgs.length > 0) {
           const feedId = feedFormat.getFeedId(nativeMsgs[0])
           const prevNativeMsg = state.get(feedId)
-          feedFormat.validateBatch(hmacKey, nativeMsgs, prevNativeMsg, done())
+          feedFormat.validateBatch(nativeMsgs, prevNativeMsg, hmacKey, done())
         } else {
           done()(null, [])
         }
 
-        feedFormat.validateOOOBatch(hmacKey, oooNativeMsgs, done())
+        feedFormat.validateOOOBatch(oooNativeMsgs, hmacKey, done())
 
         done((err) => {
           // prettier-ignore
