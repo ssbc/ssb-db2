@@ -295,7 +295,7 @@ test('add a bunch of messages', (t) => {
     .call(null, { keys, path: dirAdd })
 
   let previous = null
-  const queue = []
+  const msgVals = []
   for (var i = 0; i < 1000; ++i) {
     const msgVal = classic.newNativeMsg({
       keys,
@@ -304,11 +304,9 @@ test('add a bunch of messages', (t) => {
       timestamp: Date.now(),
       hmacKey: null,
     })
-    queue.push(msgVal)
+    msgVals.push(msgVal)
     previous = {key : classic.getMsgId(msgVal), value: msgVal}
   }
-
-  const msgVals = queue.map((x) => x.value)
 
   const done = multicb({ pluck: 1 })
   startMeasure(t, 'add 1000 elements')
