@@ -87,7 +87,7 @@ module.exports = {
         cb()
       },
 
-      getRecipients(opts) {
+      getEncryptionKeys(opts) {
         const recps = opts.recps || opts.content.recps
         const selfId = opts.keys.id
         if (!recps) return null

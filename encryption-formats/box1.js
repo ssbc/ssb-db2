@@ -23,7 +23,7 @@ module.exports = function init(ssb) {
       cb()
     },
 
-    getRecipients(opts) {
+    getEncryptionKeys(opts) {
       if (!opts.recps && !opts.content.recps) return null
       return (opts.recps || opts.content.recps)
         .map(function convertToBase64DataStr(recp) {

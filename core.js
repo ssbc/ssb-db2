@@ -642,10 +642,10 @@ exports.init = function (sbot, config) {
         if (opts.recps || opts.content.recps) {
           const plaintext = feedFormat.toPlaintextBuffer(fullOpts)
           function encryptWith(encryptionFormat) {
-            const recipients = encryptionFormat.getRecipients(fullOpts)
+            const encryptionKeys = encryptionFormat.getEncryptionKeys(fullOpts)
             const ciphertextBuf = encryptionFormat.encrypt(
               plaintext,
-              recipients,
+              encryptionKeys,
               fullOpts
             )
             return (
