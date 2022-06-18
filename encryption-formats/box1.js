@@ -19,7 +19,7 @@ module.exports = function init(ssb) {
     name: NAME,
     suffix: 'box',
 
-    onReady(cb) {
+    setup(config, cb) {
       cb()
     },
 

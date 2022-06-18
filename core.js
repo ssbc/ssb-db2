@@ -297,6 +297,9 @@ exports.init = function (sbot, config) {
   }
 
   function installEncryptionFormat(encryptionFormat) {
+    const loaded = new ReadyGate()
+    encryptionFormat.setup(config, loaded.setReady.bind(loaded))
+    encryptionFormat.onReady = loaded.onReady.bind(loaded)
     encryptionFormats.push(encryptionFormat)
   }
 

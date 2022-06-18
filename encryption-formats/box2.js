@@ -65,26 +65,38 @@ function makeKeysManager(config) {
 
 module.exports = {
   name: 'box2',
-  init: function init(ssb, config) {
-    const keysManager = makeKeysManager(config)
-
-    function isGroup(recp) {
-      return keysManager.groupKey(recp) !== undefined
-    }
-
-    function isFeed(recp) {
-      return (
-        Ref.isFeed(recp) || isFeedSSBURI(recp) || isBendyButtV1FeedSSBURI(recp)
-      )
-    }
-
+  init: function init(ssb) {
     const encryptionFormat = {
       name: 'box2',
       suffix: 'box2',
 
-      onReady(cb) {
+      setup(config, cb) {
+        encryptionFormat._selfId = config.keys.id
+        if (!encryptionFormat._keysManager) {
+          encryptionFormat._keysManager = makeKeysManager(config)
+        }
         // FIXME: load ssb-keyring here
         cb()
+      },
+
+      _isGroup(recp) {
+        return encryptionFormat._keysManager.groupKey(recp) !== undefined
+      },
+
+      _isFeed(recp) {
+        return (
+          Ref.isFeed(recp) ||
+          isFeedSSBURI(recp) ||
+          isBendyButtV1FeedSSBURI(recp)
+        )
+      },
+
+      _addOwnDMKey(key) {
+        encryptionFormat._keysManager.addOwnDMKey(key)
+      },
+
+      _addGroupKey(id, key) {
+        encryptionFormat._keysManager.addGroupKey(id, key)
       },
 
       getEncryptionKeys(opts) {
@@ -92,6 +104,9 @@ module.exports = {
         const selfId = opts.keys.id
         if (!recps) return null
         if (recps.length === 0) return null
+
+        const isGroup = encryptionFormat._isGroup
+        const isFeed = encryptionFormat._isFeed
 
         const validRecps = recps
           .filter((recp) => typeof recp === 'string')
@@ -119,6 +134,7 @@ module.exports = {
           throw new Error(`private-group spec only supports one group recipient, but you've tried to use ${validRecps.filter(isGroup).length}`)
         }
 
+        const keysManager = encryptionFormat._keysManager
         return validRecps.reduce((acc, recp) => {
           if (recp === selfId) return [...acc, ...keysManager.ownDMKeys()]
           else if (isGroup(recp)) return [...acc, keysManager.groupKey(recp)]
@@ -147,6 +163,7 @@ module.exports = {
       decrypt(ciphertextBuf, opts) {
         const authorBFE = BFE.encode(opts.author)
         const previousBFE = BFE.encode(opts.previous)
+        const keysManager = encryptionFormat._keysManager
 
         const trialGroupKeys = keysManager.groupKeys()
         const readKeyFromGroup = unboxKey(
@@ -167,7 +184,7 @@ module.exports = {
           )
 
         const trialDMKeys =
-          opts.author !== ssb.id
+          opts.author !== encryptionFormat._selfId
             ? [keysManager.sharedDMKey(opts.author), ...keysManager.ownDMKeys()]
             : keysManager.ownDMKeys()
 
@@ -190,8 +207,8 @@ module.exports = {
     if (ssb.db) ssb.db.installEncryptionFormat(encryptionFormat)
 
     return {
-      addOwnDMKey: keysManager.addOwnDMKey,
-      addGroupKey: keysManager.addGroupKey,
+      addOwnDMKey: encryptionFormat._addOwnDMKey,
+      addGroupKey: encryptionFormat._addGroupKey,
     }
   },
 }
