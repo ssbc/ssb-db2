@@ -19,9 +19,8 @@ module.exports = function init(ssb) {
     name: NAME,
     suffix: 'box',
 
-    getEncryptionKeys(opts) {
-      if (!opts.recps && !opts.content.recps) return null
-      return (opts.recps || opts.content.recps)
+    encrypt(plaintextBuf, opts) {
+      const encryptionKeys = (opts.recps || opts.content.recps)
         .map(function convertToBase64DataStr(recp) {
           if (Ref.isFeed(recp)) return recp.slice(1, -8)
           else if (
@@ -37,9 +36,7 @@ module.exports = function init(ssb) {
         .filter((maybeBase64DataStr) => !!maybeBase64DataStr)
         .map((base64DataStr) => Buffer.from(base64DataStr, 'base64'))
         .map(sodium.crypto_sign_ed25519_pk_to_curve25519)
-    },
 
-    encrypt(plaintextBuf, encryptionKeys, opts) {
       return privateBox.multibox(plaintextBuf, encryptionKeys)
     },
 

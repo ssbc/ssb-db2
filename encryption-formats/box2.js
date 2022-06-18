@@ -99,11 +99,9 @@ module.exports = {
         encryptionFormat._keysManager.addGroupKey(id, key)
       },
 
-      getEncryptionKeys(opts) {
+      encrypt(plaintextBuf, opts) {
         const recps = opts.recps || opts.content.recps
         const selfId = opts.keys.id
-        if (!recps) return null
-        if (recps.length === 0) return null
 
         const isGroup = encryptionFormat._isGroup
         const isFeed = encryptionFormat._isFeed
@@ -135,14 +133,12 @@ module.exports = {
         }
 
         const keysManager = encryptionFormat._keysManager
-        return validRecps.reduce((acc, recp) => {
+        const encryptionKeys = validRecps.reduce((acc, recp) => {
           if (recp === selfId) return [...acc, ...keysManager.ownDMKeys()]
           else if (isGroup(recp)) return [...acc, keysManager.groupKey(recp)]
           else if (isFeed(recp)) return [...acc, keysManager.sharedDMKey(recp)]
         }, [])
-      },
 
-      encrypt(plaintextBuf, encryptionKeys, opts) {
         const msgSymmKey = new SecretKey().toBuffer()
         const authorIdBFE = BFE.encode(opts.keys.id)
         const previousMsgIdBFE = BFE.encode(
