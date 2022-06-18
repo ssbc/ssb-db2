@@ -40,7 +40,9 @@ module.exports = function (dir, sbot, config) {
         encryptionFormat.name,
         new NumsFile(pathFor(`encrypted-${encryptionFormat.name}.index`))
       )
-      encryptionFormat.onReady(done())
+      if (encryptionFormat.setup) {
+        encryptionFormat.onReady(done())
+      }
     }
 
     decryptedIdx.loadFile(done())

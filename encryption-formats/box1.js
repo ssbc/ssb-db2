@@ -19,10 +19,6 @@ module.exports = function init(ssb) {
     name: NAME,
     suffix: 'box',
 
-    setup(config, cb) {
-      cb()
-    },
-
     getEncryptionKeys(opts) {
       if (!opts.recps && !opts.content.recps) return null
       return (opts.recps || opts.content.recps)
