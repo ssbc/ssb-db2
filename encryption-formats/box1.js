@@ -43,8 +43,8 @@ module.exports = function init(ssb) {
         .map(sodium.crypto_sign_ed25519_pk_to_curve25519)
     },
 
-    encrypt(plaintextBuf, recipients, opts) {
-      return privateBox.multibox(plaintextBuf, recipients)
+    encrypt(plaintextBuf, encryptionKeys, opts) {
+      return privateBox.multibox(plaintextBuf, encryptionKeys)
     },
 
     decrypt(ciphertextBuf, opts) {

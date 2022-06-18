@@ -126,7 +126,7 @@ module.exports = {
         }, [])
       },
 
-      encrypt(plaintextBuf, recipients, opts) {
+      encrypt(plaintextBuf, encryptionKeys, opts) {
         const msgSymmKey = new SecretKey().toBuffer()
         const authorIdBFE = BFE.encode(opts.keys.id)
         const previousMsgIdBFE = BFE.encode(
@@ -138,7 +138,7 @@ module.exports = {
           authorIdBFE,
           previousMsgIdBFE,
           msgSymmKey,
-          recipients
+          encryptionKeys
         )
 
         return ciphertextBuf
