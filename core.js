@@ -309,7 +309,7 @@ exports.init = function (sbot, config) {
     if (!ciphertextJS) return null
     if (typeof ciphertextJS !== 'string') return null
     for (const encryptionFormat of encryptionFormats) {
-      if (ciphertextJS.endsWith(`.${encryptionFormat.suffix}`)) {
+      if (ciphertextJS.endsWith(`.${encryptionFormat.name}`)) {
         return encryptionFormat
       }
     }
@@ -657,7 +657,7 @@ exports.init = function (sbot, config) {
             }
             const ciphertextBuf = encryptionFormat.encrypt(plaintext, eOpts)
             return (
-              ciphertextBuf.toString('base64') + '.' + encryptionFormat.suffix
+              ciphertextBuf.toString('base64') + '.' + encryptionFormat.name
             )
           }
           if (fullOpts.encryptionFormat) {

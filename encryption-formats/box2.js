@@ -68,7 +68,6 @@ module.exports = {
   init: function init(ssb) {
     const encryptionFormat = {
       name: 'box2',
-      suffix: 'box2',
 
       setup(config, cb) {
         encryptionFormat._selfId = config.keys.id

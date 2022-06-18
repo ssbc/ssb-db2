@@ -48,6 +48,7 @@
     "push-stream": "^11.0.0",
     "rimraf": "^3.0.2",
     "ssb-bfe": "^3.3.0",
+    "ssb-box": "^1.0.0",
     "ssb-buttwoo": "^0.2.0",
     "ssb-classic": "^1.0.1",
     "ssb-keys": "^8.4.0",

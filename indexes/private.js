@@ -189,7 +189,7 @@ module.exports = function (dir, sbot, config) {
       if (!encryptionFormat) return record
 
       // Special optimization specific to box1
-      if (encryptionFormat.name === 'box1' && startDecryptBox1) {
+      if (encryptionFormat.name === 'box' && startDecryptBox1) {
         const pTimestamp = bipf.seekKey2(recBuffer, pValue, BIPF_TIMESTAMP, 0)
         const declaredTimestamp = bipf.decode(recBuffer, pTimestamp)
         if (declaredTimestamp < startDecryptBox1) return record

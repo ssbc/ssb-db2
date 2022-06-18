@@ -56,13 +56,13 @@ test('create() classic', (t) => {
   )
 })
 
-test('create() classic box1', (t) => {
+test('create() classic box', (t) => {
   db.create(
     {
       content: { type: 'post', text: 'I am chewing food' },
       feedFormat: 'classic',
       recps: [keys.id],
-      encryptionFormat: 'box1',
+      encryptionFormat: 'box',
     },
     (err, msgBoxed) => {
       t.error(err, 'no err')
@@ -171,7 +171,7 @@ test('create() bendybutt-v1', (t) => {
   )
 })
 
-test('create() bendybutt-v1 box1', (t) => {
+test('create() bendybutt-v1 box', (t) => {
   const chessKeys = ssbKeys.generate()
   const mfKeys = ssbKeys.generate(null, null, 'bendybutt-v1')
 
@@ -188,7 +188,7 @@ test('create() bendybutt-v1 box1', (t) => {
       keys: mfKeys,
       contentKeys: chessKeys,
       recps: [mfKeys.id, keys.id],
-      encryptionFormat: 'box1',
+      encryptionFormat: 'box',
     },
     (err, msgBoxed) => {
       t.error(err, 'no err')
@@ -281,7 +281,7 @@ test('create() buttwoo-v1', (t) => {
   )
 })
 
-test('create() buttwoo-v1 box1', (t) => {
+test('create() buttwoo-v1 box', (t) => {
   const buttwooKeys = ssbKeys.generate(null, null, 'buttwoo-v1')
 
   db.create(
@@ -293,7 +293,7 @@ test('create() buttwoo-v1 box1', (t) => {
       keys: buttwooKeys,
       feedFormat: 'buttwoo-v1',
       recps: [buttwooKeys.id, keys.id],
-      encryptionFormat: 'box1',
+      encryptionFormat: 'box',
     },
     (err, msgBoxed) => {
       t.error(err, 'no err')
@@ -468,9 +468,9 @@ test('add buttwoo-v1', (t) => {
   })
 })
 
-test('query box1', (t) => {
+test('query box', (t) => {
   db.query(
-    where(isDecrypted('box1')),
+    where(isDecrypted('box')),
     toCallback((err, msgs) => {
       t.error(err, 'no err')
       t.equal(msgs.length, 4)

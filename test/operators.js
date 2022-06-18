@@ -224,9 +224,9 @@ test('execute and(type("post"), isDecrypted())', (t) => {
   })
 })
 
-test('execute isDecrypted(box1))', (t) => {
+test('execute isDecrypted(box))', (t) => {
   db.query(
-    where(and(type('post'), isDecrypted('box1'))),
+    where(and(type('post'), isDecrypted('box'))),
     toCallback((err, msgs) => {
       t.error(err, 'no err')
       t.equal(msgs.length, 1)
@@ -276,9 +276,9 @@ test('execute isEncrypted()', (t) => {
   })
 })
 
-test('execute isEncrypted(box1)', (t) => {
+test('execute isEncrypted(box)', (t) => {
   db.query(
-    where(isEncrypted('box1')),
+    where(isEncrypted('box')),
     toCallback((err, msgs) => {
       t.error(err, 'no err')
       t.equal(msgs.length, 1)
