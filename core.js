@@ -645,17 +645,23 @@ exports.init = function (sbot, config) {
 
         // If the inputs require encryption, try some encryption formats,
         // and pick the best output.
-        const recps = opts.recps || opts.content.recps
+        const recps = fullOpts.recps || fullOpts.content.recps
         if (Array.isArray(recps) && recps.length > 0) {
           const plaintext = feedFormat.toPlaintextBuffer(fullOpts)
           function encryptWith(encryptionFormat) {
-            const ciphertextBuf = encryptionFormat.encrypt(plaintext, fullOpts)
+            const eOpts = {
+              ...fullOpts,
+              keys,
+              recps,
+              previous: previous ? previous.key : null,
+            }
+            const ciphertextBuf = encryptionFormat.encrypt(plaintext, eOpts)
             return (
               ciphertextBuf.toString('base64') + '.' + encryptionFormat.suffix
             )
           }
-          if (opts.encryptionFormat) {
-            const format = findEncryptionFormatByName(opts.encryptionFormat)
+          if (fullOpts.encryptionFormat) {
+            const format = findEncryptionFormatByName(fullOpts.encryptionFormat)
             const ciphertext = encryptWith(format)
             fullOpts.content = ciphertext
           } else {

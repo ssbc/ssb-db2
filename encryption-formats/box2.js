@@ -100,7 +100,7 @@ module.exports = {
       },
 
       encrypt(plaintextBuf, opts) {
-        const recps = opts.recps || opts.content.recps
+        const recps = opts.recps
         const selfId = opts.keys.id
 
         const isGroup = encryptionFormat._isGroup
@@ -141,9 +141,7 @@ module.exports = {
 
         const msgSymmKey = new SecretKey().toBuffer()
         const authorIdBFE = BFE.encode(opts.keys.id)
-        const previousMsgIdBFE = BFE.encode(
-          opts.previous ? opts.previous.key : null
-        )
+        const previousMsgIdBFE = BFE.encode(opts.previous)
 
         const ciphertextBuf = box(
           plaintextBuf,

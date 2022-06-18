@@ -20,7 +20,7 @@ module.exports = function init(ssb) {
     suffix: 'box',
 
     encrypt(plaintextBuf, opts) {
-      const encryptionKeys = (opts.recps || opts.content.recps)
+      const encryptionKeys = opts.recps
         .map(function convertToBase64DataStr(recp) {
           if (Ref.isFeed(recp)) return recp.slice(1, -8)
           else if (
@@ -41,15 +41,6 @@ module.exports = function init(ssb) {
     },
 
     decrypt(ciphertextBuf, opts) {
-      if (!opts.keys)
-        throw new Error(`${NAME} decryption requires keys argument`)
-      // prettier-ignore
-      if (typeof opts.keys !== 'object') throw new Error(`${NAME} decryption requires keys as an object`)
-      // prettier-ignore
-      if (!opts.keys.private) throw new Error(`${NAME} decryption requires keys.private`)
-      // prettier-ignore
-      if (typeof opts.keys.private !== 'string') throw new Error(`${NAME} decryption requires keys.private as a string`)
-
       const secretKey =
         opts.keys._exchangeKey || // use the cache
         sodium.crypto_sign_ed25519_sk_to_curve25519(
