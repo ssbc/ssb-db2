@@ -8,7 +8,7 @@ const path = require('path')
 const fs = require('fs')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
-const bendyButt = require('ssb-bendy-butt')
+const bendyButt = require('ssb-bendy-butt/format')
 const pull = require('pull-stream')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
@@ -43,6 +43,7 @@ const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 const sbot = SecretStack({ appKey: caps.shs })
   .use(require('../'))
   .use(require('../full-mentions'))
+  .use(require('ssb-bendy-butt'))
   .call(null, {
     keys,
     path: dir,
@@ -161,11 +162,13 @@ test('execute and(type("post"), author(me))', (t) => {
 })
 
 test('author() supports bendy butt URIs', (t) => {
-  const mfKeys = ssbKeys.generate(null, null, 'bendybutt-v1')
+  const mfKeys = ssbKeys.generate(null, 'banana', 'bendybutt-v1')
   const mainKeys = keys
 
-  const bbmsg1 = bendyButt.encodeNew(
-    {
+  const bbmsg1 = bendyButt.newNativeMsg({
+    keys: mfKeys,
+    contentKeys: mainKeys,
+    content: {
       type: 'metafeed/add/existing',
       feedpurpose: 'main',
       subfeed: mainKeys.id,
@@ -177,14 +180,11 @@ test('author() supports bendy butt URIs', (t) => {
         },
       },
     },
-    mainKeys,
-    mfKeys,
-    1, // sequence
-    null, // previous
-    Date.now() // timestamp
-  )
-  const msgVal = bendyButt.decode(bbmsg1)
-  const msgKey = bendyButt.hash(msgVal)
+    previous: null,
+    timestamp: Date.now(),
+    hmacKey: null,
+  })
+  const msgKey = bendyButt.getMsgId(bbmsg1)
 
   db.add(bbmsg1, (err, postMsg) => {
     t.error(err, 'no err')

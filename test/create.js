@@ -22,6 +22,7 @@ const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 let sbot = SecretStack({ appKey: caps.shs })
   .use(require('../'))
   .use(require('../compat/ebt'))
+  .use(require('ssb-bendy-butt'))
   .call(null, {
     keys,
     path: dir,
@@ -133,6 +134,7 @@ test('create() bendybutt-v1', (t) => {
 
   db.create(
     {
+      feedFormat: 'bendybutt-v1',
       content: {
         type: 'metafeed/add/existing',
         feedpurpose: 'main',
@@ -140,7 +142,7 @@ test('create() bendybutt-v1', (t) => {
         metafeed: mfKeys.id,
       },
       keys: mfKeys,
-      feedFormat: 'bendybutt-v1',
+      contentKeys: mainKeys,
     },
     (err, msg1) => {
       t.error(err, 'no err')
@@ -175,6 +177,7 @@ test('create() bendybutt-v1 box1', (t) => {
 
   db.create(
     {
+      feedFormat: 'bendybutt-v1',
       content: {
         type: 'metafeed/add/derived',
         feedpurpose: 'chess',
@@ -182,8 +185,8 @@ test('create() bendybutt-v1 box1', (t) => {
         metafeed: mfKeys.id,
         nonce: Buffer.alloc(32, 3),
       },
-      feedFormat: 'bendybutt-v1',
       keys: mfKeys,
+      contentKeys: chessKeys,
       recps: [mfKeys.id, keys.id],
       encryptionFormat: 'box1',
     },
@@ -207,6 +210,7 @@ test('create() bendybutt-v1 box2', (t) => {
 
   db.create(
     {
+      feedFormat: 'bendybutt-v1',
       content: {
         type: 'metafeed/add/derived',
         feedpurpose: 'chess',
@@ -214,8 +218,8 @@ test('create() bendybutt-v1 box2', (t) => {
         metafeed: mfKeys.id,
         nonce: Buffer.alloc(32, 3),
       },
-      feedFormat: 'bendybutt-v1',
       keys: mfKeys,
+      contentKeys: chessKeys,
       recps: [mfKeys.id, keys.id],
       encryptionFormat: 'box2',
     },

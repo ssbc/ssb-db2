@@ -11,7 +11,7 @@ const classic = require('ssb-classic/format')
 const pull = require('pull-stream')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
-const bendyButt = require('ssb-bendy-butt')
+const bendyButt = require('ssb-bendy-butt/format')
 
 const {
   where,
@@ -50,6 +50,7 @@ test('onDrain not called after db closed', (t) => {
       sbot = SecretStack({ appKey: caps.shs })
         .use(require('../'))
         .use(require('../compat/ebt'))
+        .use(require('ssb-bendy-butt'))
         .call(null, {
           keys,
           path: dir,
@@ -436,11 +437,13 @@ test('add transaction ooo', (t) => {
 })
 
 test('add some bendybutt-v1 messages', (t) => {
-  const mfKeys = ssbKeys.generate(null, null, 'bendybutt-v1')
-  const mainKeys = ssbKeys.generate()
+  const mfKeys = ssbKeys.generate(null, 'mousefood', 'bendybutt-v1')
+  const mainKeys = ssbKeys.generate(null, 'alice')
 
-  const bbmsg1 = bendyButt.encodeNew(
-    {
+  const bbmsg1 = bendyButt.newNativeMsg({
+    keys: mfKeys,
+    contentKeys: mainKeys,
+    content: {
       type: 'metafeed/add/existing',
       feedpurpose: 'main',
       subfeed: mainKeys.id,
@@ -452,17 +455,16 @@ test('add some bendybutt-v1 messages', (t) => {
         },
       },
     },
-    mainKeys,
-    mfKeys,
-    1, // sequence
-    null, // previous
-    Date.now() // timestamp
-  )
-  const msgVal1 = bendyButt.decode(bbmsg1)
-  const msgKey1 = bendyButt.hash(msgVal1)
+    previous: null,
+    timestamp: Date.now(),
+    hmacKey: null,
+  })
+  const msgKey1 = bendyButt.getMsgId(bbmsg1)
 
-  const bbmsg2 = bendyButt.encodeNew(
-    {
+  const bbmsg2 = bendyButt.newNativeMsg({
+    keys: mfKeys,
+    contentKeys: mainKeys,
+    content: {
       type: 'metafeed/tombstone',
       subfeed: mainKeys.id,
       metafeed: mfKeys.id,
@@ -473,12 +475,10 @@ test('add some bendybutt-v1 messages', (t) => {
         },
       },
     },
-    mainKeys,
-    mfKeys,
-    2, // sequence
-    msgKey1, // previous
-    Date.now() // timestamp
-  )
+    previous: { key: msgKey1, value: bendyButt.fromNativeMsg(bbmsg1) },
+    timestamp: Date.now() + 1,
+    hmacKey: null,
+  })
 
   pull(
     pull.values([bbmsg1, bbmsg2]),

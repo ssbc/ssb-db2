@@ -148,7 +148,8 @@ exports.init = function (sbot, config) {
       const feedId = kvtf.feed || kvtf.value.author
       const feedFormat = findFeedFormatForAuthor(feedId)
       if (!feedFormat) {
-        throw new Error('No feed format installed understands ' + feedId)
+        console.warn('No feed format installed understands ' + feedId)
+        return
       }
       const nativeMsg = feedFormat.toNativeMsg(kvtf.value, 'js')
       this._map.set(feedId, nativeMsg)

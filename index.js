@@ -5,7 +5,6 @@
 module.exports = [
   require('./core'),
   require('ssb-classic'),
-  require('./feed-formats/bendybutt-v1'),
   require('./feed-formats/buttwoo-v1'), // FIXME: remove this from index.js
   require('./encryption-formats/box1'),
   require('./encryption-formats/box2'),
