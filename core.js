@@ -668,6 +668,7 @@ exports.init = function (sbot, config) {
             const outputs = encryptionFormats.map((format) => {
               try {
                 const ciphertext = encryptWith(format)
+                if (!ciphertext) return [new Error('encryption failed')]
                 return [null, { ciphertext, name: format.name }]
               } catch (err) {
                 return [err]
