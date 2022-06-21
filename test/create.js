@@ -24,6 +24,7 @@ let sbot = SecretStack({ appKey: caps.shs })
   .use(require('../compat/ebt'))
   .use(require('ssb-bendy-butt'))
   .use(require('ssb-buttwoo'))
+  .use(require('../encryption-formats/box2'))
   .call(null, {
     keys,
     path: dir,

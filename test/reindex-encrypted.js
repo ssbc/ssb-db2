@@ -34,6 +34,7 @@ test('box2 group reindex larger', async (t) => {
   const keysAlice = ssbKeys.generate(null, 'alice')
   const alice = SecretStack({ appKey: caps.shs })
     .use(require('../'))
+    .use(require('../encryption-formats/box2'))
     .call(null, {
       keys: keysAlice,
       path: dirAlice,
@@ -49,6 +50,7 @@ test('box2 group reindex larger', async (t) => {
   const bob = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .use(require('../full-mentions'))
+    .use(require('../encryption-formats/box2'))
     .call(null, {
       keys: keysBob,
       path: dirBob,
