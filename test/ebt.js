@@ -23,6 +23,7 @@ const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 const sbot = SecretStack({ appKey: caps.shs })
   .use(require('../'))
   .use(require('../compat/ebt'))
+  .use(require('ssb-buttwoo'))
   .call(null, {
     keys,
     path: dir,
@@ -109,6 +110,7 @@ test('add', (t) => {
     content: { type: 'post', text: 'testing sbot.add' },
     previous: null,
     timestamp: Date.now(),
+    tag: 0,
     hmacKey: null,
   })
 
@@ -135,13 +137,14 @@ test('buttwoo-v1 sequenceNativeMsg', (t) => {
 
   db.create(
     {
+      feedFormat: 'buttwoo-v1',
       content: {
         type: 'post',
         text: 'I am buttwoo',
       },
-      parent: null,
       keys: buttwooKeys,
-      feedFormat: 'buttwoo-v1',
+      parent: null,
+      tag: 0,
     },
     (err, msg1) => {
       t.error(err, 'no err')

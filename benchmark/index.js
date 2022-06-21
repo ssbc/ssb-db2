@@ -14,7 +14,6 @@ const ssbKeys = require('ssb-keys')
 const multicb = require('multicb')
 const pull = require('pull-stream')
 const classic = require('ssb-classic/format')
-const butt2 = require('ssb-buttwoo')
 const bipf = require('bipf')
 const DeferredPromise = require('p-defer')
 const trammel = require('trammel')
@@ -106,14 +105,18 @@ function startMeasure(t, name) {
   if (measurements.has(name)) {
     t.fail(`Measurement ${name} already started`)
   } else {
-    measurements.set(name, performance.now())
+    measurements.set(
+      name,
+      (typeof performance !== 'undefined' ? performance : Date).now()
+    )
   }
 }
 
 function endMeasure(t, name) {
   if (measurements.has(name)) {
     const start = measurements.get(name)
-    const duration = performance.now() - start
+    const duration =
+      (typeof performance !== 'undefined' ? performance : Date).now() - start
     t.pass(`${name}: ${duration.toFixed(2)}ms`)
     fs.appendFileSync(
       reportPath,
@@ -140,6 +143,7 @@ test('buttwoo testing', (t) => {
 
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
+    .use(require('ssb-buttwoo'))
     .call(null, { keys, path: dirAdd })
 
   const butt2Key = ssbKeys.generate(null, null, 'buttwoo-v1')
@@ -148,100 +152,44 @@ test('buttwoo testing', (t) => {
   const N = 5 * 1000
   const content = { text: 'hello world', type: 'post' }
 
-  let messages = []
-  let sbotMessages = []
-  const hmac = null
-  let previousBFE = null
-  let previousBFESbot = null
+  const hmacKey = null
+  let nativeMsgs = []
+  let previousMsgId = null
   let startDate = +new Date()
 
   startMeasure(t, `create ${N} new messages`)
   for (let i = 0; i < N; ++i) {
-    const [msgKeyBFE, butt2Msg] = butt2.encodeNew(
-      content,
-      butt2Key,
-      null,
-      messages.length + 1,
-      previousBFE,
-      startDate++,
-      butt2.tags.SSB_FEED,
-      hmac
-    )
-    messages.push(butt2Msg)
-    previousBFE = msgKeyBFE
-
-    const sbotButt2Msg = format.newNativeMsg({
+    const nativeMsg = format.newNativeMsg({
       keys: butt2Key,
       previous: {
-        key: previousBFESbot,
-        value: { sequence: sbotMessages.length },
+        key: previousMsgId,
+        value: { sequence: nativeMsgs.length },
       },
       content,
       tag: 0,
       timestamp: startDate++,
+      hmacKey,
     })
-    previousBFESbot = format.getMsgId(sbotButt2Msg)
-    sbotMessages.push(sbotButt2Msg)
+    previousMsgId = format.getMsgId(nativeMsg)
+    nativeMsgs.push(nativeMsg)
   }
   endMeasure(t, `create ${N} new messages`)
 
-  const hmacKey = null
-  const msgKeys = []
-  const extractedData = []
-
-  startMeasure(t, `validate ${N} messages ssb-buttwoo`)
+  startMeasure(t, `validate ${N} messages`)
   for (let i = 0; i < N; ++i) {
-    const msg = messages[i]
-    const e = butt2.extractData(msg)
-    extractedData.push(e)
-    const msgKeyBFE = butt2.hash(e)
-    msgKeys.push(msgKeyBFE)
-  }
-
-  let isOk = true
-
-  for (let i = 0; i < N; ++i) {
-    const prevData = i === 0 ? null : extractedData[i - 1]
-    const prevMsgKey = i === 0 ? null : msgKeys[i - 1]
-
-    const validate = butt2.validateSingle(
-      extractedData[i],
-      prevData,
-      prevMsgKey,
-      hmacKey
-    )
-    if (typeof validate === 'string') {
-      isOk = false
-      break
-    }
-  }
-  endMeasure(t, `validate ${N} messages ssb-buttwoo`)
-
-  if (!isOk) console.log('failed validation')
-
-  startMeasure(t, `validate ${N} messages sbot`)
-  for (let i = 0; i < N; ++i) {
-    const prev = i === 0 ? null : sbotMessages[i - 1]
-    format.validate(sbotMessages[i], prev, hmacKey, (err) => {
+    const prev = i === 0 ? null : nativeMsgs[i - 1]
+    format.validate(nativeMsgs[i], prev, hmacKey, (err) => {
       if (err) console.log(err)
     })
   }
-  endMeasure(t, `validate ${N} messages sbot`)
+  endMeasure(t, `validate ${N} messages`)
 
-  const bipfs = []
-  const bipfsSbot = []
+  const bipfMsgs = []
 
-  startMeasure(t, `native to db format ${N} messages ssb-buttwoo`)
+  startMeasure(t, `native to db format ${N} messages`)
   for (let i = 0; i < N; ++i) {
-    const dbFormat = butt2.butt2ToBipf(extractedData[i], msgKeys[i])
-    bipfs.push(dbFormat)
-  }
-  endMeasure(t, `native to db format ${N} messages ssb-buttwoo`)
-
-  startMeasure(t, `native to db format ${N} messages sbot`)
-  for (let i = 0; i < N; ++i) {
-    const value = format.fromNativeMsg(sbotMessages[i], 'bipf')
-    const key = format.getMsgId(sbotMessages[i])
+    const key = format.getMsgId(nativeMsgs[i])
+    const value = format.fromNativeMsg(nativeMsgs[i], 'bipf')
 
     bipf.markIdempotent(value)
     const kvt = {
@@ -251,22 +199,15 @@ test('buttwoo testing', (t) => {
     }
     const recBuffer = bipf.allocAndEncode(kvt)
 
-    bipfsSbot.push(recBuffer)
+    bipfMsgs.push(recBuffer)
   }
-  endMeasure(t, `native to db format ${N} messages sbot`)
+  endMeasure(t, `native to db format ${N} messages`)
 
-  startMeasure(t, `db to native format ${N} messages ssb-buttwoo`)
-  for (let i = 0; i < N; ++i) {
-    const dbFormat = butt2.bipfToButt2(bipfs[i])
-  }
-  endMeasure(t, `db to native format ${N} messages ssb-buttwoo`)
-
-  const BIPF_AUTHOR = bipf.allocAndEncode('author')
   const BIPF_VALUE = bipf.allocAndEncode('value')
 
-  startMeasure(t, `db to native format ${N} messages sbot`)
+  startMeasure(t, `db to native format ${N} messages`)
   for (let i = 0; i < N; ++i) {
-    const buffer = bipfsSbot[i]
+    const buffer = bipfMsgs[i]
 
     const pValue = bipf.seekKey2(buffer, 0, BIPF_VALUE, 0)
 
@@ -281,7 +222,7 @@ test('buttwoo testing', (t) => {
       nativeMsg = feedFormat.toNativeMsg(msgVal, 'js')
     }
   }
-  endMeasure(t, `db to native format ${N} messages sbot`)
+  endMeasure(t, `db to native format ${N} messages`)
 
   sbot.close(true, t.end)
 })
@@ -299,13 +240,13 @@ test('add a bunch of messages', (t) => {
   for (var i = 0; i < 1000; ++i) {
     const msgVal = classic.newNativeMsg({
       keys,
-      content: {type:'tick', count: i},
+      content: { type: 'tick', count: i },
       previous,
       timestamp: Date.now(),
       hmacKey: null,
     })
     msgVals.push(msgVal)
-    previous = {key : classic.getMsgId(msgVal), value: msgVal}
+    previous = { key: classic.getMsgId(msgVal), value: msgVal }
   }
 
   const done = multicb({ pluck: 1 })
@@ -507,7 +448,7 @@ test('migrate (+db1)', async (t) => {
   pull(
     sbot.db2migrate.progress(),
     pull.filter((progress) => {
-      console.log(progress);
+      console.log(progress)
       return progress === 1
     }),
     pull.take(1),

@@ -23,6 +23,7 @@ let sbot = SecretStack({ appKey: caps.shs })
   .use(require('../'))
   .use(require('../compat/ebt'))
   .use(require('ssb-bendy-butt'))
+  .use(require('ssb-buttwoo'))
   .call(null, {
     keys,
     path: dir,
@@ -32,8 +33,8 @@ let db = sbot.db
 test('create() classic', (t) => {
   db.create(
     {
-      content: { type: 'post', text: 'I am hungry' },
       feedFormat: 'classic',
+      content: { type: 'post', text: 'I am hungry' },
     },
     (err, msg1) => {
       t.error(err, 'no err')
@@ -59,8 +60,8 @@ test('create() classic', (t) => {
 test('create() classic box', (t) => {
   db.create(
     {
-      content: { type: 'post', text: 'I am chewing food' },
       feedFormat: 'classic',
+      content: { type: 'post', text: 'I am chewing food' },
       recps: [keys.id],
       encryptionFormat: 'box',
     },
@@ -88,8 +89,8 @@ test('create() classic box2', (t) => {
 
   db.create(
     {
-      content: { type: 'post', text: 'I am drinking milk' },
       feedFormat: 'classic',
+      content: { type: 'post', text: 'I am drinking milk' },
       recps: [keys.id],
       encryptionFormat: 'box2',
     },
@@ -110,8 +111,8 @@ test('create() classic box2', (t) => {
 test('create() classic "any box"', (t) => {
   db.create(
     {
-      content: { type: 'post', text: 'I am drinking beer' },
       feedFormat: 'classic',
+      content: { type: 'post', text: 'I am drinking beer' },
       recps: [keys.id],
     },
     (err, msgBoxed) => {
@@ -242,14 +243,15 @@ test('create() buttwoo-v1', (t) => {
 
   db.create(
     {
+      feedFormat: 'buttwoo-v1',
       content: {
         type: 'post',
         text: 'I am the future of scuttlebutt',
       },
+      keys: buttwooKeys,
       parent:
         'ssb:message/buttwoo-v1/Xnbc3Ihuslpx8peGO52c1-s59vufH9R5JnxT04vksnA=',
-      keys: buttwooKeys,
-      feedFormat: 'buttwoo-v1',
+      tag: 0,
     },
     (err, msg1) => {
       t.error(err, 'no err')
@@ -260,14 +262,15 @@ test('create() buttwoo-v1', (t) => {
 
       db.create(
         {
+          feedFormat: 'buttwoo-v1',
           content: {
             type: 'post',
             text: 'I am the future of scuttlebutt 2',
           },
+          keys: buttwooKeys,
           parent:
             'ssb:message/buttwoo-v1/Xnbc3Ihuslpx8peGO52c1-s59vufH9R5JnxT04vksnA=',
-          keys: buttwooKeys,
-          feedFormat: 'buttwoo-v1',
+          tag: 0,
           encoding: 'bipf',
         },
         (err, msg2) => {
@@ -286,12 +289,13 @@ test('create() buttwoo-v1 box', (t) => {
 
   db.create(
     {
+      feedFormat: 'buttwoo-v1',
       content: {
         type: 'post',
         text: 'I am the secret future of ssb',
       },
       keys: buttwooKeys,
-      feedFormat: 'buttwoo-v1',
+      tag: 0,
       recps: [buttwooKeys.id, keys.id],
       encryptionFormat: 'box',
     },
@@ -313,12 +317,13 @@ test('create() buttwoo-v1 box2', (t) => {
 
   db.create(
     {
+      feedFormat: 'buttwoo-v1',
       content: {
         type: 'post',
         text: 'Heat death of the universe',
       },
       keys: buttwooKeys,
-      feedFormat: 'buttwoo-v1',
+      tag: 0,
       recps: [buttwooKeys.id, keys.id],
       encryptionFormat: 'box2',
     },
