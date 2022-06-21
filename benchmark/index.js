@@ -372,12 +372,10 @@ test('private box1 no decrypt', (t) => {
 test('private box2', (t) => {
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
+    .use(require('../encryption-formats/box2'))
     .call(null, {
       keys: keys4,
       path: dirBox2,
-      box2: {
-        alwaysbox2: true,
-      },
     })
 
   const recps = [...randos, keys2.id]
