@@ -832,6 +832,7 @@ exports.init = function (sbot, config) {
             rimraf.sync(reindexJitPath(dir))
           })
         }
+        status.reset()
         compactStartOffset = null
       } else {
         rimraf.sync(resetLevelPath(dir))
