@@ -206,7 +206,7 @@ test('post-compaction reindex resets state in memory too', async (t) => {
 
   t.equals(sbot.db.getStatus().value.indexes.base, -1, 'status for base index is -1')
 
-  await pify(setTimeout)(2000)
+  await pify(sbot.db.onDrain)('aboutSelf')
 
   t.equals(sbot.db.getStatus().value.indexes.base, offsetBefore, 'status for base index is latest offset')
   const profileAfter = sbot.db.getIndex('aboutSelf').getProfile(author.id)
