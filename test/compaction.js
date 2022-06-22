@@ -197,11 +197,18 @@ test('post-compaction reindex resets state in memory too', async (t) => {
   await pify(sbot.db.del)(msg2.key)
   t.pass('deleted description about')
 
+  const offsetBefore = sbot.db.getStatus().value.log
+  t.true(offsetBefore > 0, 'log offset is > 0')
+  t.equals(sbot.db.getStatus().value.indexes.base, offsetBefore, 'status for base index is latest offset')
+
   await pify(sbot.db.compact)()
   t.pass('compacted the log')
 
-  await pify(setTimeout)(1000)
+  t.equals(sbot.db.getStatus().value.indexes.base, -1, 'status for base index is -1')
 
+  await pify(setTimeout)(2000)
+
+  t.equals(sbot.db.getStatus().value.indexes.base, offsetBefore, 'status for base index is latest offset')
   const profileAfter = sbot.db.getIndex('aboutSelf').getProfile(author.id)
   t.equal(profileAfter.name, 'Alice')
   t.notOk(profileAfter.description)
