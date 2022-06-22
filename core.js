@@ -694,15 +694,15 @@ exports.init = function (sbot, config) {
         const encodedMsg = feedFormat.fromNativeMsg(nativeMsg, encoding)
         state.update(feedId, nativeMsg)
 
-        log.add(msgId, encodedMsg, feedId, encoding, (err, encodedKVT) => {
+        log.add(msgId, encodedMsg, feedId, encoding, (err, kvt) => {
           if (err) return cb(clarify(err, 'create() failed in the log'))
 
           onMsgAdded.set({
-            kvt: encodedKVT,
+            kvt,
             nativeMsg: nativeMsg,
             feedFormat: feedFormat.name,
           })
-          cb(null, encodedKVT)
+          cb(null, kvt)
         })
       }
     )

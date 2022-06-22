@@ -11,10 +11,19 @@ replacement for [ssb-db]. The main reason for creating a new database
 is to be able to rework some of the existing decisions without having
 to be 100% backwards compatible. The main reasons are:
 
- - Performance, the database stores data in [bipf]
- - Replace flume with [jitdb] and specialized indexes
- - Run in the browser via [ssb-browser-core](https://github.com/arj03/ssb-browser-core)
- - Work well with partial replication
+- Performance, the database stores data in [bipf]
+- Replace flume with [jitdb] and specialized indexes
+- Run in the browser via [ssb-browser-core](https://github.com/arj03/ssb-browser-core)
+- Work well with partial replication
+
+Over time, this database received more features than ssb-db, and now supports:
+
+- Deletion and compaction
+- Customizable feed formats and encryption formats
+  - You are not tied to classic SSB messages and the classic mode of encryption,
+  you can use any format you want, or build one yourself, with [ssb-feed-format]
+  and [ssb-encryption-format]
+- Query language (as composable JS functions)
 
 SSB-DB2 is a secret-stack plugin that registers itself in the db
 namespace.
@@ -23,21 +32,66 @@ By default SSB-DB2 only loads a base index (indexes/base), this index
 includes the basic functionality for getting messages from the log and
 for doing EBT.
 
-By default the database is stored in `~/.ssb/db2/log.bipf` and indexes
-are stored in `~/.ssb/db2/indexes/`.
+By default the database is stored in `ssb/db2/log.bipf`, leveldb indexes
+are stored in `ssb/db2/indexes/`, and jitdb indexes in `ssb/db2/jit`.
 
 🎥 [Watch a presentation about this new database](https://www.youtube.com/watch?v=efzJheWQey8).
 
 [Read the developer guide](https://dev.scuttlebutt.nz/#/javascript/?id=ssb-db2)
 
+## Installation
+
+- Requires **Node.js 12** or higher
+- Requires `secret-stack@^6.2.0`
+
+```diff
+ SecretStack({appKey: require('ssb-caps').shs})
+   .use(require('ssb-master'))
++  .use(require('ssb-db2'))
+   .use(require('ssb-conn'))
+   .use(require('ssb-blobs'))
+   .call(null, config)
+```
+
 ## Usage
 
-To get the post messages of a specific author, you can do:
+To **create** and publish a new message, you can do:
 
 ```js
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
-const {where, and, type, author, toCallback} = require('ssb-db2/operators')
+
+const sbot = SecretStack({ caps })
+  .use(require('ssb-db2'))
+  .call(null, { path: './' })
+
+sbot.db.create({ content: { type: 'post', text: 'hello!' } }, (err, msg) => {
+  // A new message is now published on the log, with the contents above.
+  console.log(msg)
+  /*
+  {
+    key,
+    value: {
+      previous: null,
+      sequence: 1,
+      author,
+      timestamp: 1633715006539,
+      hash: 'sha256',
+      content: { type: 'post', text: 'hello!' },
+      signature,
+    },
+    timestamp: 1633715006540
+  }
+  */
+})
+```
+
+To **get** the post messages of a specific author, you can do:
+
+```js
+const SecretStack = require('secret-stack')
+const caps = require('ssb-caps')
+const { where, and, type, author, toCallback } = require('ssb-db2/operators')
 
 const sbot = SecretStack({ caps })
   .use(require('ssb-db2'))
@@ -48,10 +102,12 @@ sbot.db.query(
     and(
       type('post'),
       author('@6CAxOI3f+LUOVrbAl0IemqiS7ATpQvr9Mdw9LC4+Uv0=.ed25519')
-    ),
+    )
   ),
   toCallback((err, msgs) => {
-    console.log('There are ' + msgs.length + ' messages of type "post" from arj')
+    console.log(
+      'There are ' + msgs.length + ' messages of type "post" from arj'
+    )
     sbot.close()
   })
 )
@@ -261,6 +317,8 @@ const sbot = SecretStack({ caps })
   .use(require('ssb-db2/compat/log-stream')) // legacy replication
   .use(require('ssb-db2/compat/history-stream')) // legacy replication
   .use(require('ssb-db2/compat/ebt')) // ebt db helpers
+  .use(require('ssb-db2/compat/publish')) // publish() function like in ssb-db
+  .use(require('ssb-db2/compat/post')) // post() obv like in ssb-db
   .call(null, {})
 ```
 
@@ -268,11 +326,11 @@ const sbot = SecretStack({ caps })
 
 The following is a list of modules that works well with ssb-db2:
 
- - [ssb-threads] for working with post messages as threads
- - [ssb-suggest-lite] for fetching profiles of authors
- - [ssb-friends] for working with the social graph
- - [ssb-search2] for full-text searching
- - [ssb-crut] for working with records that can be modified
+- [ssb-threads] for working with post messages as threads
+- [ssb-suggest-lite] for fetching profiles of authors
+- [ssb-friends] for working with the social graph
+- [ssb-search2] for full-text searching
+- [ssb-crut] for working with records that can be modified
 
 ## Migrating from ssb-db
 
@@ -322,8 +380,8 @@ const keys = ssbKeys.loadOrCreateSync(path.join(__dirname, 'secret'))
 const config = {
   keys: keys,
   db2: {
-    automigrate: true
-  }
+    automigrate: true,
+  },
 }
 
 const sbot = SecretStack({ caps })
@@ -361,7 +419,7 @@ preparation for later activating db2, then you can include only the
 migration plugin, like this:
 
 ```js
-const sbot = SecretStack({appKey: caps.shs})
+const sbot = SecretStack({ appKey: caps.shs })
   .use(require('ssb-db2/migrate'))
   .call(null, config)
 ```
@@ -375,6 +433,42 @@ sbot.db2migrate.start()
 
 ## Methods
 
+### create(opts, cb)
+
+Method for creating and publishing a new message on the log. The `opts` allows
+you to fully customize how this message will be written, including which feed
+format is used, which keys are signing/authoring the message, what encryption
+format is used and so forth.
+
+The `opts` must be an object and should contain the following keys:
+
+- `content` **required**: the message content, MUST be an object and SHOULD
+  include `type` as a string property.
+- `feedFormat` _optional_ (defaults to `'classic'`): a string that specifies
+  the feed format to use.
+- `keys` _optional_ (defaults to `config.keys`): the keys to use for signing
+  and authoring the message. `keys.id` must be valid for the `feedFormat` you
+  selected.
+- `encryptionFormat` _optional_, if you want to publish an encrypted message,
+  it is recommended you set this field to a string that specifies which
+  encryption format to use. Typically this is the string `'box'`.
+- `recps`: _optional_, an array of feed IDs (strings) that will be used to
+  encrypt the message. **The message is only encrypted if `opts.recps` (or
+  `opts.content.recps`) exists**.
+- `encoding`: _optional_ (defaults to `'js'`): a string that specifies the
+  encoding to use when serializing the message to be written to the database.
+  Supported values are `'js'` and `'bipf'`. Note that all messages in the
+  database end up as `bipf` buffers even if you choose `'js'` encoding, so
+  setting `encoding` to `'bipf'` is only a matter of improving serialize/persist
+  performance **if** your selected feed format supports encoding to bipf
+  directly.
+- Depending on the feed format chosen, you may have to provide additional opts.
+  See the docs for the specific feed format you are using.
+
+The callback `cb` is called when the message has been published. `cb(err)` if
+published failed with an error `err`, and `cb(null, encodedKVT)` if it was
+successfully published, where `kvt` is a JavaScript object with the shape `{key, value, timestamp}` exactly representing the message written to the database.
+
 ### get(msgId, cb)
 
 Get a particular message value by message id.
@@ -383,38 +477,29 @@ Get a particular message value by message id.
 
 Get a particular message including key by message id.
 
-### del(msgId, cb)
+### query(...operators)
 
-Delete a specific message given the message id from the
-database. Please note that this will break replication for anything
-trying to get that message, like createHistoryStream for the author or
-EBT. Because of this, it is not recommended to delete message with
-this method unless you know exactly what you are doing.
+Flexible API to get messages from the database based on various criteria
+determined by the `operators`. There are usually two parts in this list of
+operators:
 
-### deleteFeed(feedId, cb)
+- The `where()` part, determining the criteria to match messages against.
+  - Example: `where(and(type('post'), author(ssb.id)))`
+- The `to____()` part, determining how you want the messages delivered, e.g.
+  - `toCallback((err, msgs) => { })`
+  - `toPromise()`
+  - `toPullStream()`
+  - `toAsyncIter()`
 
-Delete all messages of a specific feedId. Compared to `del` this
-method is safe to use.
-
-### publish(msgContent, cb)
-
-Convenience method for validating and adding a classic SSB message to
-the database written by the feed running the secret-stack. If message
-`msgContent` contains recps, the message will automatically be encrypted.
-
-### publishAs(feedKeys, msgContent, cb)
-
-Convenience method for validating and adding a classic SSB message to
-the database written by a different feed than running the secret-stack.
-If message `msgContent` contains recps, the message will automatically be
-encrypted.
+See [jitdb operators] and [operators/index.js] for a complete list of supported
+operators.
 
 ### add(msgValue, cb)
 
 Validate and add a message value (without id and timestamp) to the
 database. In the callback will be the stored message (id, timestamp,
 value = `msgValue`) or err. Supports `msgValue` in SSB classic feeds
-as well as [Bendy Butt] messages
+as well as [bendy butt] messages
 
 ### addOOO(msgValue, cb)
 
@@ -437,12 +522,33 @@ will be validated similar to `addOOOBatch`. Finally all the messages
 are added to the database in such a way that either all of them are
 written to disc or none of them are.
 
-### post(cb)
+### del(msgId, cb)
 
-Subscribe to any data added to the database. The `cb` will only
-receive one argument, the message added. `post` is an [observable] so
-the latest message added to the database can also be read using
-`ssb.db.post.value`.
+Delete a specific message given the message id from the
+database. Please note that this will break replication for anything
+trying to get that message, like createHistoryStream for the author or
+EBT. Because of this, it is not recommended to delete message with
+this method unless you know exactly what you are doing.
+
+### deleteFeed(feedId, cb)
+
+Delete all messages of a specific feedId. Compared to `del` this
+method is safe to use.
+
+### onMsgAdded(cb)
+
+Subscribe to know when a message is added to the database. The `cb` will be
+called as soon as a message is successfully persisted to the log, with one
+argument, `event`, which contains:
+
+- `event.feedFormat`: the feed format used to persist the message.
+- `event.nativeMsg`: the message that was just added to the database, in the
+  "native" shape determined by its feed format. This could be e.g. a buffer.
+- `event.kvt`: the message that was just added to the database, in the
+  `{key, value, timestamp}` shape, as a JavaScript object.
+
+`onMsgAdded` itself is an [obz], so the latest message added to the database can
+also be read using `ssb.db.onMsgAdded.value`.
 
 ### getStatus
 
@@ -473,6 +579,18 @@ asynchronously in order to not block message writing.
 
 Compacts the log (filling in the blanks left by deleted messages and optimizing
 space) and then rebuilds indexes.
+
+### installFeedFormat(feedFormat)
+
+If `feedFormat` conforms to the [ssb-feed-format] spec, then this method will
+install the `feedFormat` in this database instance, meaning that you can create
+messages for that feed format using the `create` method.
+
+### installEncryptionFormat(encryptionFormat)
+
+If `encryptionFormat` conforms to the [ssb-encryption-format] spec, then this
+method will install the `encryptionFormat` in this database instance, meaning
+that you can now encrypt and decrypt messages using that encryption format.
 
 ## Configuration
 
@@ -506,7 +624,7 @@ const config = {
      * Only try to decrypt box1 messages created after this date
      * Default: null
      */
-    startDecryptBox1: "2022-03-25",
+    startDecryptBox1: '2022-03-25',
 
     /**
      * A debouncing interval (measured in milliseconds) to control how often
@@ -534,7 +652,7 @@ const config = {
      * Default: 90
      */
     maxCpuWait: 90,
-  }
+  },
 }
 ```
 
@@ -542,36 +660,39 @@ const config = {
 
 The following operators are included by default, see
 [operators/index.js] for how they are implemented. Also exposed are
-all [JITDB operators]
+all [jitdb operators]
 
-* type
-* author
-* channel
-* key
-* votesFor
-* contact
-* mentions
-* about
-* hasRoot
-* hasFork
-* hasBranch
-* authorIsBendyButtV1
-* isRoot
-* isPublic
-* isEncrypted
-* isDecrypted
+- type
+- author
+- channel
+- key
+- votesFor
+- contact
+- mentions
+- about
+- hasRoot
+- hasFork
+- hasBranch
+- authorIsBendyButtV1
+- isRoot
+- isPublic
+- isEncrypted
+- isDecrypted
 
 [ssb-db]: https://github.com/ssbc/ssb-db/
 [bipf]: https://github.com/ssbc/bipf/
 [jitdb]: https://github.com/ssb-ngi-pointer/jitdb/
-[Bendy Butt]: https://github.com/ssb-ngi-pointer/ssb-bendy-butt
+[bendy butt]: https://github.com/ssb-ngi-pointer/ssb-bendy-butt
+[obz]: https://github.com/ssbc/obz/
 [ssb-social-index]: https://github.com/ssbc/ssb-social-index
 [ssb-db2-box2]: https://github.com/ssb-ngi-pointer/ssb-db2-box2
 [level-codec]: https://github.com/Level/codec#builtin-encodings
 [ssb-threads]: https://github.com/ssbc/ssb-threads
 [ssb-suggest-lite]: https://github.com/ssb-ngi-pointer/ssb-suggest-lite
 [ssb-friends]: https://github.com/ssbc/ssb-friends
+[ssb-feed-format]: https://github.com/ssbc/ssb-feed-format
+[ssb-encryption-format]: https://github.com/ssbc/ssb-encryption-format
 [ssb-search2]: https://github.com/staltz/ssb-search2
 [ssb-crut]: https://gitlab.com/ahau/lib/ssb-crut
 [operators/index.js]: https://github.com/ssb-ngi-pointer/ssb-db2/blob/master/operators/index.js
-[JITDB operators]: https://github.com/ssb-ngi-pointer/jitdb#operators
+[jitdb operators]: https://github.com/ssb-ngi-pointer/jitdb#operators
