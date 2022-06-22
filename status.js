@@ -90,9 +90,20 @@ module.exports = function Status(log, jitdb) {
     update()
   }
 
+  function reset() {
+    stats.log = -1
+    stats.jit = {}
+    for (let name in stats.indexes) {
+      stats.indexes[name] = -1
+    }
+    stats.progress = 0
+    obv.set(stats)
+  }
+
   return {
     obv,
     updateLog,
     updateIndex,
+    reset,
   }
 }
