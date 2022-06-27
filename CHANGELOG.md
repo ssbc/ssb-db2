@@ -4,6 +4,26 @@ SPDX-FileCopyrightText: 2022 Andre 'Staltz' Medeiros
 SPDX-License-Identifier: CC0-1.0
 -->
 
+## 5.0.0
+
+### New APIs
+
+- `create()`
+- `onMsgAdded()`
+- `installFeedFormat()`
+- `installEncryptionFormat()`
+
+Check the README for more details on these APIs.
+
+### Breaking changes
+
+- The operator `isPrivate()` removed in favor of two new operators: `isDecrypted()` and `isEncrypted()`, both support the encryption format name as an optional argument, e.g. `isDecrypted('box')` and `isEncrypted('box2')`
+
+### Notable changes
+
+- The indexes `canDecrypt.index` and `encrypted.index` were renamed to `decrypted.index` and `encrypted-box2.index` respectively. You can either let ssb-db2 recreate these indexes with the new names, or you can manually rename them *before* ssb-db2 loads.
+- Deprecated APIs: `ssb.db.post`, `ssb.db.publish`, `ssb.db.publishAs` are marked as obsolete, in favor of `onMsgAdded` and `create()`, but still supported as before. In a future version they may be removed from the default setup and you'll have to manually import them from `ssb-db2/compat/post` and `ssb-db2/compat/publish`.
+
 ## 4.0.0
 
 ### Breaking changes
