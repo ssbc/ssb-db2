@@ -37,7 +37,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: npm install
       - name: npm test
-        run: DEBUG=jitdb,ssb:* npm test
+        run: DEBUG=ssb:db2,ssb:db2:* npm test
 
   benchmark:
     needs: test
