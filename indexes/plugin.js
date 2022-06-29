@@ -20,6 +20,9 @@ module.exports = class Plugin {
   constructor(log, dir, name, version, keyEncoding, valueEncoding) {
     this.log = log
     this.name = name
+    this.levelPutListeners = []
+    this.levelDelListeners = []
+    this.levelBatchListeners = []
     this._keyEncoding = keyEncoding
     this._valueEncoding = valueEncoding
     const debug = Debug('ssb:db2:' + name)
@@ -76,6 +79,9 @@ module.exports = class Plugin {
                 // prettier-ignore
                 if (err3) cb(clarify(err3, 'failed to persist META when flushing'))
                 else {
+                  if (processedOffsetAtFlush === this.log.since.value) {
+                    this.enableLive()
+                  }
                   this.offset.set(processedOffsetAtFlush)
                   cb()
                 }
@@ -142,6 +148,7 @@ module.exports = class Plugin {
 
     const subClassReset = this.reset
     this.reset = (cb) => {
+      this.disableLive()
       if (subClassReset) subClassReset.call(this)
       this.batch = []
       this.offset.set(-1)
@@ -178,6 +185,24 @@ module.exports = class Plugin {
 
   processRecord() {
     throw new Error('processRecord() is missing an implementation')
+  }
+
+  disableLive() {
+    this.levelPutListeners = this.level.rawListeners('put')
+    this.levelDelListeners = this.level.rawListeners('del')
+    this.levelBatchListeners = this.level.rawListeners('batch')
+    this.level.removeAllListeners('put')
+    this.level.removeAllListeners('del')
+    this.level.removeAllListeners('batch')
+  }
+
+  enableLive() {
+    for (const fn of this.levelPutListeners) this.level.on('put', fn)
+    for (const fn of this.levelDelListeners) this.level.on('del', fn)
+    for (const fn of this.levelBatchListeners) this.level.on('batch', fn)
+    this.levelPutListeners.length = 0
+    this.levelDelListeners.length = 0
+    this.levelBatchListeners.length = 0
   }
 
   // used for reindexing encrypted content
