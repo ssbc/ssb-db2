@@ -570,7 +570,10 @@ exports.init = function (sbot, config) {
 
   function updateIndexes() {
     if (!log.compactionProgress.value.done) return
-    if (abortLogStreamForIndexes) throw Error('updateIndexes() already running')
+    if (abortLogStreamForIndexes) {
+      debug('updateIndexes() called while another one is in progress')
+      return
+    }
     const start = Date.now()
 
     const indexesArr = Object.values(indexes)
