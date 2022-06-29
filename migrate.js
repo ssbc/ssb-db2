@@ -208,6 +208,7 @@ exports.init = function init(sbot, config) {
   function oldLogMissingThenRetry(retryFn) {
     if (!hasCloseHook) {
       sbot.close.hook(function (fn, args) {
+        stop()
         if (!sbot.db && newLog) {
           newLog.close(() => {
             fn.apply(this, args)
