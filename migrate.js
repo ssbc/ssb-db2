@@ -200,6 +200,7 @@ exports.init = function init(sbot, config) {
   const progressStream = Notify()
   let started = false
   let hasCloseHook = false
+  let newLog
   let retryPeriod = 250
   let drainAborter = null
   let liveProgressInterval = null
@@ -207,8 +208,13 @@ exports.init = function init(sbot, config) {
   function oldLogMissingThenRetry(retryFn) {
     if (!hasCloseHook) {
       sbot.close.hook(function (fn, args) {
-        stop()
-        fn.apply(this, args)
+        if (!sbot.db && newLog) {
+          newLog.close(() => {
+            fn.apply(this, args)
+          })
+        } else {
+          fn.apply(this, args)
+        }
       })
       hasCloseHook = true
     }
@@ -259,7 +265,7 @@ exports.init = function init(sbot, config) {
     synchronized.set(false)
 
     const oldLog = getOldLog(sbot, config)
-    const newLog =
+    newLog =
       sbot.db && sbot.db.getLog() && sbot.db.getLog().stream
         ? sbot.db.getLog()
         : AsyncLog(newLogPath(config.path), { blockSize: BLOCK_SIZE })
