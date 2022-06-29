@@ -28,19 +28,19 @@ function onceWhen(obv, filter, cb) {
 
 class ReadyGate {
   constructor() {
-    this.waiting = []
+    this.waiting = new Set()
     this.ready = false
   }
 
   onReady(cb) {
     if (this.ready) cb()
-    else this.waiting.push(cb)
+    else this.waiting.add(cb)
   }
 
   setReady() {
     this.ready = true
     for (const cb of this.waiting) cb()
-    this.waiting = []
+    this.waiting.clear()
   }
 }
 
