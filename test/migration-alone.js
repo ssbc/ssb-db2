@@ -49,16 +49,15 @@ test('migrate (alone) moves msgs from old log to new log', (t) => {
     pull.filter((x) => x === 1),
     pull.take(1),
     pull.collect((err) => {
-      t.error(err)
-      setTimeout(() => {
+      t.error(err, 'no error when migration is done')
+      sbot.close(true, () => {
+        t.pass('sbot closed')
         t.true(
           fs.existsSync(path.join(dir, 'db2', 'log.bipf')),
-          'migration done'
+          'migration created log.bipf file'
         )
-        sbot.close(() => {
-          t.end()
-        })
-      }, 1000)
+        t.end()
+      })
     })
   )
 })
