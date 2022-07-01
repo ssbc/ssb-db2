@@ -12,6 +12,14 @@ const Debug = require('debug')
 const DeferredPromise = require('p-defer')
 const { indexesPath } = require('../defaults')
 
+const notInABrowser = typeof window === 'undefined'
+let rimraf
+let mkdirp
+if (notInABrowser) {
+  rimraf = require('rimraf')
+  mkdirp = require('mkdirp')
+}
+
 function thenMaybeReportError(err) {
   if (err) console.error(err)
 }
@@ -25,15 +33,11 @@ module.exports = class Plugin {
     this.levelBatchListeners = []
     this._keyEncoding = keyEncoding
     this._valueEncoding = valueEncoding
+    this._indexPath = path.join(indexesPath(dir), name)
     const debug = Debug('ssb:db2:' + name)
 
-    const indexPath = path.join(indexesPath(dir), name)
-    if (typeof window === 'undefined') {
-      // outside browser
-      const mkdirp = require('mkdirp')
-      mkdirp.sync(indexPath)
-    }
-    this.level = Level(indexPath)
+    if (notInABrowser) mkdirp.sync(this._indexPath)
+    this.level = Level(this._indexPath)
 
     const META = '\x00'
     const chunkSize = 2048
@@ -152,11 +156,32 @@ module.exports = class Plugin {
       if (subClassReset) subClassReset.call(this)
       this.batch = []
       this.offset.set(-1)
-      this.level.clear(() => {
+      this.clear(function levelPluginCleared() {
         processedSeq = 0
         processedOffset = -1
         cb()
       })
+    }
+  }
+
+  /**
+   * Leveldown clear() is notoriously slow, because it does something naive:
+   * it iterates over each db item (in JS!) and deletes one *at a time*. Not
+   * even parallelism is employed.
+   *
+   * So we implement clear ourselves with a nuclear approach: delete the folder
+   * and recreate level.
+   */
+  clear(cb) {
+    if (notInABrowser) {
+      this.level.close(() => {
+        rimraf.sync(this._indexPath)
+        mkdirp.sync(this._indexPath)
+        this.level = Level(this._indexPath)
+        cb()
+      })
+    } else {
+      this.level.clear(cb)
     }
   }
 
