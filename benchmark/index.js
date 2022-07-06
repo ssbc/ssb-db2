@@ -39,6 +39,7 @@ const dirAdd = '/tmp/ssb-db2-benchmark-add'
 const dirBox1 = '/tmp/ssb-db2-benchmark-box1'
 const dirBox1NoDecrypt = '/tmp/ssb-db2-benchmark-box1-no-decrypt'
 const dirBox2 = '/tmp/ssb-db2-benchmark-box2'
+const dirBox2Group = '/tmp/ssb-db2-benchmark-box2-group'
 const oldLogPath = path.join(dir, 'flume', 'log.offset')
 const db2Path = path.join(dir, 'db2')
 const indexesPath = path.join(dir, 'db2', 'indexes')
@@ -48,6 +49,7 @@ rimraf.sync(dirAdd)
 rimraf.sync(dirBox1)
 rimraf.sync(dirBox1NoDecrypt)
 rimraf.sync(dirBox2)
+rimraf.sync(dirBox2Group)
 
 const skipCreate = process.argv[2] === 'noCreate'
 
@@ -128,12 +130,13 @@ function endMeasure(t, name) {
   }
 }
 
-let keys, keys2, keys3, keys4
+let keys, keys2, keys3, keys4, keys5
 test('setup', (t) => {
   keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   keys2 = ssbKeys.loadOrCreateSync(path.join(dirBox1, 'secret'))
   keys3 = ssbKeys.loadOrCreateSync(path.join(dirBox1NoDecrypt, 'secret'))
   keys4 = ssbKeys.loadOrCreateSync(path.join(dirBox2, 'secret'))
+  keys5 = ssbKeys.loadOrCreateSync(path.join(dirBox2Group, 'secret'))
   t.end()
 })
 
@@ -410,6 +413,87 @@ test('private box2', (t) => {
               where(author(sbot.id)),
               toCallback((err, results) => {
                 endMeasure(t, 'unbox 1000 box2 msgs second run')
+
+                sbot.close(true, t.end)
+              })
+            )
+          })
+        )
+      })
+    })
+  )
+})
+
+test('private box2 group keys', (t) => {
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .use(require('../encryption-formats/box2'))
+    .call(null, {
+      keys: keys5,
+      path: dirBox2Group,
+    })
+
+  // variables
+
+  // all your groups keys  
+  const groups = 100
+
+  // for messages, the percentage of groups that includes you
+  const percentMe = 30
+
+  const otherKey = Buffer.from(
+    '12345d8f9cbf37f6d7062826f6decac93e308060a8aaaa77e6a4747f40ee1a76',
+    'hex'
+  )
+  sbot.box2.addGroupKey('other', otherKey)
+
+  for (let i = 0; i < groups; ++i)
+  {
+    const startOfKey = String(i).padStart(5, '0')
+
+    const testkey = Buffer.from(
+      startOfKey + 'd8f9cbf37f6d7062826f6decac93e308060a8aaaa77e6a4747f40ee1a76',
+      'hex'
+    )
+    sbot.box2.addGroupKey('mygroup' + i, testkey)
+  }
+
+  t.pass(`Group keys: ${groups}, percentage for me: ${percentMe}%`)
+
+  let contents = []
+  for (var i = 0; i < 1000; ++i) {
+    const percentage = Math.floor(Math.random() * 100)
+    const groupId = Math.floor(Math.random() * groups)
+    const group = percentage < percentMe ? 'mygroup' + groupId : 'other'
+
+    // group must be first
+    const recps = [group]
+    contents.push({ type: 'tick', count: i, recps })
+  }
+
+  startMeasure(t, 'add 1000 box2 group msgs')
+  pull(
+    pull.values(contents),
+    pull.asyncMap(sbot.db.publish),
+    pull.collect((err, msgs) => {
+      endMeasure(t, 'add 1000 box2 group msgs')
+      if (err) t.fail(err)
+
+      //console.log(msgs)
+      sbot.box2.removeGroupKey('other', otherKey)
+
+      sbot.db.onDrain('base', () => {
+        startMeasure(t, 'unbox 1000 box2 group msgs first run')
+        sbot.db.query(
+          where(author(sbot.id)),
+          toCallback((err, results) => {
+            endMeasure(t, 'unbox 1000 box2 group msgs first run')
+
+            startMeasure(t, 'unbox 1000 box2 group msgs second run')
+            sbot.db.query(
+              where(author(sbot.id)),
+              toCallback((err, results) => {
+                endMeasure(t, 'unbox 1000 box2 group msgs second run')
 
                 sbot.close(true, t.end)
               })

@@ -37,6 +37,10 @@ function makeKeysManager(config) {
     groupKeysCache.set(id, key)
   }
 
+  function removeGroupKey(id) {
+    groupKeysCache.delete(id)
+  }
+
   function groupKey(id) {
     if (groupKeysCache.has(id)) {
       return { key: groupKeysCache.get(id), scheme: keySchemes.private_group }
@@ -58,6 +62,7 @@ function makeKeysManager(config) {
     sharedDMKey,
 
     addGroupKey,
+    removeGroupKey,
     groupKey,
     groupKeys,
   }
@@ -96,6 +101,10 @@ module.exports = {
 
       _addGroupKey(id, key) {
         encryptionFormat._keysManager.addGroupKey(id, key)
+      },
+
+      _removeGroupKey(id, key) {
+        encryptionFormat._keysManager.removeGroupKey(id, key)
       },
 
       encrypt(plaintextBuf, opts) {
@@ -202,6 +211,7 @@ module.exports = {
     return {
       addOwnDMKey: encryptionFormat._addOwnDMKey,
       addGroupKey: encryptionFormat._addGroupKey,
+      removeGroupKey: encryptionFormat._removeGroupKey,
     }
   },
 }
