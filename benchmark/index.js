@@ -337,14 +337,19 @@ test('private box1 no decrypt', (t) => {
 
   const recps = [...randos, keys.id]
 
-  let contents = []
+  let opts = []
   for (var i = 0; i < 1000; ++i)
-    contents.push({ type: 'tick', count: i, recps: shuffle(recps) })
+    opts.push({
+      feedFormat: 'classic',
+      content: { type: 'tick', count: i },
+      recps: shuffle(recps),
+      encryptionFormat: 'box'
+    })
 
   startMeasure(t, 'add 1000 box1 msgs')
   pull(
-    pull.values(contents),
-    pull.asyncMap(sbot.db.publish),
+    pull.values(opts),
+    pull.asyncMap(sbot.db.create),
     pull.collect((err, msgs) => {
       endMeasure(t, 'add 1000 box1 msgs')
       if (err) t.fail(err)
@@ -389,14 +394,19 @@ test('private box2', (t) => {
   )
   sbot.box2.addOwnDMKey(testkey)
 
-  let contents = []
+  let opts = []
   for (var i = 0; i < 1000; ++i)
-    contents.push({ type: 'tick', count: i, recps: shuffle(recps) })
+    opts.push({
+      feedFormat: 'classic',
+      content: { type: 'tick', count: i },
+      recps: shuffle(recps),
+      encryptionFormat: 'box2'
+    })
 
   startMeasure(t, 'add 1000 box2 msgs')
   pull(
-    pull.values(contents),
-    pull.asyncMap(sbot.db.publish),
+    pull.values(opts),
+    pull.asyncMap(sbot.db.create),
     pull.collect((err, msgs) => {
       endMeasure(t, 'add 1000 box2 msgs')
       if (err) t.fail(err)
@@ -460,7 +470,7 @@ test('private box2 group keys', (t) => {
 
   t.pass(`Group keys: ${groups}, percentage for me: ${percentMe}%`)
 
-  let contents = []
+  let opts = []
   for (var i = 0; i < 1000; ++i) {
     const percentage = Math.floor(Math.random() * 100)
     const groupId = Math.floor(Math.random() * groups)
@@ -468,13 +478,18 @@ test('private box2 group keys', (t) => {
 
     // group must be first
     const recps = [group]
-    contents.push({ type: 'tick', count: i, recps })
+    opts.push({
+      feedFormat: 'classic',
+      content: { type: 'tick', count: i },
+      recps: recps,
+      encryptionFormat: 'box2'
+    })
   }
 
   startMeasure(t, 'add 1000 box2 group msgs')
   pull(
-    pull.values(contents),
-    pull.asyncMap(sbot.db.publish),
+    pull.values(opts),
+    pull.asyncMap(sbot.db.create),
     pull.collect((err, msgs) => {
       endMeasure(t, 'add 1000 box2 group msgs')
       if (err) t.fail(err)
