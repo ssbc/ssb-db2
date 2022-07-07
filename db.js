@@ -515,23 +515,33 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('deleteFeed()')
     if (guard) return cb(guard)
 
-    self.query(
-      where(author(feedId)),
-      asOffsets(),
-      toCallback((err, offsets) => {
-        if (err) return cb(clarify(err, 'deleteFeed() failed to query jitdb'))
-        push(
-          push.values(offsets),
-          push.asyncMap(log.del),
-          push.collect((err) => {
-            if (err) cb(clarify(err, 'deleteFeed() failed for feed ' + feedId))
-            else {
-              delete state[feedId]
-              indexes.base.removeFeedFromLatest(feedId, cb)
-            }
+    onceWhen(
+      stateFeedsReady,
+      (ready) => ready === true,
+      () => {
+        if (!state[feedId]) return cb()
+
+        self.query(
+          where(author(feedId)),
+          asOffsets(),
+          toCallback((err, offsets) => {
+            // prettier-ignore
+            if (err) return cb(clarify(err, 'deleteFeed() failed to query jitdb for ' + feedId))
+
+            push(
+              push.values(offsets),
+              push.asyncMap(log.del),
+              push.collect((err) => {
+                // prettier-ignore
+                if (err) return cb(clarify(err, 'deleteFeed() failed for feed ' + feedId))
+
+                delete state[feedId]
+                indexes.base.removeFeedFromLatest(feedId, cb)
+              })
+            )
           })
         )
-      })
+      }
     )
   }
 
