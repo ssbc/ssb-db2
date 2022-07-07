@@ -160,6 +160,9 @@ exports.init = function (sbot, config) {
     get(feedId) {
       return this._map.get(feedId) || null
     },
+    has(feedId) {
+      return this._map.has(feedId)
+    },
     getAsKV(feedId, feedFormat) {
       const nativeMsg = this._map.get(feedId)
       if (!nativeMsg) return null
@@ -742,23 +745,33 @@ exports.init = function (sbot, config) {
     const guard = guardAgainstDuplicateLogs('deleteFeed()')
     if (guard) return cb(guard)
 
-    self.query(
-      where(author(feedId)),
-      asOffsets(),
-      toCallback((err, offsets) => {
-        if (err) return cb(clarify(err, 'deleteFeed() failed to query jitdb'))
-        push(
-          push.values(offsets),
-          push.asyncMap(log.del),
-          push.collect((err) => {
-            if (err) cb(clarify(err, 'deleteFeed() failed for feed ' + feedId))
-            else {
-              state.delete(feedId)
-              indexes.base.removeFeedFromLatest(feedId, cb)
-            }
+    onceWhen(
+      stateFeedsReady,
+      (ready) => ready === true,
+      () => {
+        if (!state.has(feedId)) return cb()
+
+        self.query(
+          where(author(feedId)),
+          asOffsets(),
+          toCallback((err, offsets) => {
+            // prettier-ignore
+            if (err) return cb(clarify(err, 'deleteFeed() failed to query jitdb for ' + feedId))
+
+            push(
+              push.values(offsets),
+              push.asyncMap(log.del),
+              push.collect((err) => {
+                // prettier-ignore
+                if (err) return cb(clarify(err, 'deleteFeed() failed for feed ' + feedId))
+
+                state.delete(feedId)
+                indexes.base.removeFeedFromLatest(feedId, cb)
+              })
+            )
           })
         )
-      })
+      }
     )
   }
 
