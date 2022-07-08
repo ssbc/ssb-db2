@@ -70,6 +70,7 @@ exports.manifest = {
   getStatus: 'sync',
   compact: 'async',
   indexingProgress: 'source',
+  compactionProgress: 'source',
 
   // `query` should be `sync`, but secret-stack is automagically converting it
   // to async because of secret-stack/utils.js#hookOptionalCB. Eventually we
@@ -101,6 +102,7 @@ exports.init = function (sbot, config) {
   const debug = Debug('ssb:db2')
   const onMsgAdded = Obv()
   const indexingProgress = Notify()
+  const compactionProgress = Notify()
   const indexingActive = Obv().set(0)
   let abortLogStreamForIndexes = null
   const compacting = Obv().set(false)
@@ -1046,6 +1048,7 @@ exports.init = function (sbot, config) {
 
   let compactStartOffset = null
   log.compactionProgress((stats) => {
+    compactionProgress(stats)
     if (typeof stats.startOffset === 'number' && compactStartOffset === null) {
       compactStartOffset = stats.startOffset
     }
@@ -1117,6 +1120,7 @@ exports.init = function (sbot, config) {
     compact,
     reindexEncrypted,
     indexingProgress: () => indexingProgress.listen(),
+    compactionProgress: () => compactionProgress.listen(),
 
     // needed primarily internally by other plugins in this project:
     publish,
