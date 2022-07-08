@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Unlicense
 
+const pull = require('pull-stream')
 const test = require('tape')
 const ssbKeys = require('ssb-keys')
 const path = require('path')
@@ -69,6 +70,14 @@ test('compaction fills holes and reindexes', async (t) => {
     done = true
   })
 
+  const expectedProgress = [0.0008620390691959752, 1]
+  pull(
+    sbot.db.compactionProgress(),
+    pull.drain((stats) => {
+      t.equals(stats.percent, expectedProgress.shift(), 'progress')
+    })
+  )
+
   console.time('compact')
   await pify(sbot.db.compact)()
   console.timeEnd('compact')
@@ -90,6 +99,8 @@ test('compaction fills holes and reindexes', async (t) => {
   t.notEquals(newLogSize, 0, 'new log size is ' + newLogSize)
   t.true(newLogSize < oldLogSize * 0.6, 'at most 0.6x smaller')
   t.true(newLogSize > oldLogSize * 0.4, 'at least 0.4x smaller')
+
+  t.equals(expectedProgress.length, 0, 'all progress events reported')
 
   await pify(sbot.close)(true)
   t.end()
@@ -199,16 +210,28 @@ test('post-compaction reindex resets state in memory too', async (t) => {
 
   const offsetBefore = sbot.db.getStatus().value.log
   t.true(offsetBefore > 0, 'log offset is > 0')
-  t.equals(sbot.db.getStatus().value.indexes.base, offsetBefore, 'status for base index is latest offset')
+  t.equals(
+    sbot.db.getStatus().value.indexes.base,
+    offsetBefore,
+    'status for base index is latest offset'
+  )
 
   await pify(sbot.db.compact)()
   t.pass('compacted the log')
 
-  t.equals(sbot.db.getStatus().value.indexes.base, -1, 'status for base index is -1')
+  t.equals(
+    sbot.db.getStatus().value.indexes.base,
+    -1,
+    'status for base index is -1'
+  )
 
   await pify(sbot.db.onDrain)('aboutSelf')
 
-  t.equals(sbot.db.getStatus().value.indexes.base, offsetBefore, 'status for base index is latest offset')
+  t.equals(
+    sbot.db.getStatus().value.indexes.base,
+    offsetBefore,
+    'status for base index is latest offset'
+  )
   const profileAfter = sbot.db.getIndex('aboutSelf').getProfile(author.id)
   t.equal(profileAfter.name, 'Alice')
   t.notOk(profileAfter.description)

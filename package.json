@@ -16,8 +16,8 @@
     "operators/*.js"
   ],
   "dependencies": {
-    "async-append-only-log": "^4.2.4",
-    "atomic-file-rw": "^0.2.1",
+    "async-append-only-log": "^4.2.7",
+    "atomic-file-rw": "^0.3.0",
     "binary-search-bounds": "^2.0.4",
     "bipf": "^1.5.4",
     "clarify-error": "^1.0.0",
@@ -26,7 +26,7 @@
     "flumecodec": "0.0.1",
     "flumelog-offset": "3.4.4",
     "hoox": "0.0.1",
-    "jitdb": "^6.6.0",
+    "jitdb": "^6.6.3",
     "level": "^6.0.1",
     "level-codec": "^9.0.2",
     "lodash.debounce": "^4.0.8",
@@ -67,7 +67,7 @@
     "ssb-fixtures": "3.0.4",
     "ssb-friends": "5.1.0",
     "ssb-threads": "9.2.0",
-    "tap-arc": "^0.1.2",
+    "tap-arc": "^0.3.4",
     "tape": "^5.2.2",
     "trammel": "~4.0.0"
   },
