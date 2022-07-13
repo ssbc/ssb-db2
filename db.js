@@ -813,10 +813,10 @@ exports.init = function (sbot, config) {
     if (notYetZero(jitdb.queriesActive, compact, cb)) return
     if (notYetZero(indexingActive, compact, cb)) return
 
+    compacting.set(true)
     fs.closeSync(fs.openSync(resetLevelPath(dir), 'w'))
     fs.closeSync(fs.openSync(resetPrivatePath(dir), 'w'))
     fs.closeSync(fs.openSync(reindexJitPath(dir), 'w'))
-    compacting.set(true)
     log.compact(function onLogCompacted(err) {
       if (err) cb(clarify(err, 'ssb-db2 compact() failed with the log'))
       else cb()
