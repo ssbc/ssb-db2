@@ -1037,6 +1037,7 @@ exports.init = function (sbot, config) {
     if (notYetZero(jitdb.queriesActive, compact, cb)) return
     if (notYetZero(indexingActive, compact, cb)) return
 
+    compacting.set(true)
     fs.closeSync(fs.openSync(resetLevelPath(dir), 'w'))
     fs.closeSync(fs.openSync(resetPrivatePath(dir), 'w'))
     fs.closeSync(fs.openSync(reindexJitPath(dir), 'w'))

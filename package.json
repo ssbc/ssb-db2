@@ -16,7 +16,7 @@
     "operators/*.js"
   ],
   "dependencies": {
-    "async-append-only-log": "^4.2.7",
+    "async-append-only-log": "^4.3.1",
     "atomic-file-rw": "^0.3.0",
     "binary-search-bounds": "^2.0.4",
     "bipf": "^1.9.0",
@@ -27,7 +27,7 @@
     "flumecodec": "0.0.1",
     "flumelog-offset": "3.4.4",
     "hoox": "0.0.1",
-    "jitdb": "^6.6.3",
+    "jitdb": "^6.6.4",
     "level": "^6.0.1",
     "level-codec": "^9.0.2",
     "lodash.debounce": "^4.0.8",

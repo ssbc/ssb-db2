@@ -239,3 +239,54 @@ test('post-compaction reindex resets state in memory too', async (t) => {
   await pify(sbot.close)(true)
   t.end()
 })
+
+test('jitdb queries are paused until reindex done', async (t) => {
+  t.timeoutAfter(20e3)
+
+  const dir = '/tmp/ssb-db2-compaction4'
+
+  rimraf.sync(dir)
+  mkdirp.sync(dir)
+
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .call(null, {
+      keys: ssbKeys.loadOrCreateSync(path.join(dir, 'secret')),
+      path: dir,
+    })
+
+  const TOTAL = 10000
+  const msgKeys = []
+  for (let i = 0; i < TOTAL; i += 1) {
+    const type = i % 2 ? 'post' : 'about'
+    const text = i % 2 ? `hello world ${i}` : `${i}`
+    const msg = await pify(sbot.db.publish)({ type, text })
+    msgKeys.push(msg.key)
+  }
+  t.pass('published messages')
+
+  for (let i = 0; i < TOTAL; i += 2) {
+    await pify(sbot.db.del)(msgKeys[i])
+  }
+  t.pass('deleted messages')
+
+  await new Promise((resolve) => {
+    let compacted = false
+    sbot.db.compact((err) => {
+      t.error(err, 'compaction ended')
+      compacted = true
+    })
+    t.pass('compaction started')
+    sbot.db.query(
+      toCallback((err, msgs) => {
+        t.error(err, 'query complete')
+        t.true(compacted, 'compaction done before query done')
+        t.equal(msgs.length, TOTAL * 0.5, 'half the amount of msgs as before')
+        resolve()
+      })
+    )
+  })
+
+  await pify(sbot.close)(true)
+  t.end()
+})
