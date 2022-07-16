@@ -6,7 +6,7 @@ const BFE = require('ssb-bfe')
 const Ref = require('ssb-ref')
 const { isFeedSSBURI, isBendyButtV1FeedSSBURI } = require('ssb-uri2')
 const { keySchemes } = require('private-group-spec')
-const { box, unboxKey, unboxBody } = require('envelope-js')
+const { box, unbox } = require('envelope-js')
 const { directMessageKey, SecretKey } = require('ssb-private-group-keys')
 
 function makeKeysManager(config) {
@@ -168,41 +168,31 @@ module.exports = {
         const keysManager = encryptionFormat._keysManager
 
         const trialGroupKeys = keysManager.groupKeys()
-        const readKeyFromGroup = unboxKey(
+
+        // NOTE the group recp is only allowed in the first slot,
+        // so we only test group keys in that slot (maxAttempts: 1)
+        const decryptedGroup = unbox(
           ciphertextBuf,
           authorBFE,
           previousBFE,
           trialGroupKeys,
           { maxAttempts: 1 }
         )
-        // NOTE the group recp is only allowed in the first slot,
-        // so we only test group keys in that slot (maxAttempts: 1)
-        if (readKeyFromGroup)
-          return unboxBody(
-            ciphertextBuf,
-            authorBFE,
-            previousBFE,
-            readKeyFromGroup
-          )
+        if (decryptedGroup)
+          return decryptedGroup
 
         const trialDMKeys =
           opts.author !== encryptionFormat._selfId
             ? [keysManager.sharedDMKey(opts.author), ...keysManager.ownDMKeys()]
             : keysManager.ownDMKeys()
 
-        const readKey = unboxKey(
+        return unbox(
           ciphertextBuf,
           authorBFE,
           previousBFE,
           trialDMKeys,
-          {
-            maxAttempts: 16,
-          }
+          { maxAttempts: 16 }
         )
-
-        if (readKey)
-          return unboxBody(ciphertextBuf, authorBFE, previousBFE, readKey)
-        else return null
       },
     }
 
