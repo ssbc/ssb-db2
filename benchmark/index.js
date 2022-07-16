@@ -287,10 +287,18 @@ test('box1', (t) => {
     .call(null, { keys: keys2, path: dirBox1 })
 
   const recps = [...randos, keys.id]
+  const recpsMe = [...randos, keys2.id]
+
+  // for messages, the percentage of groups that includes you
+  const percentMe = 30
 
   let contents = []
-  for (var i = 0; i < 1000; ++i)
-    contents.push({ type: 'tick', count: i, recps: shuffle(recps) })
+  for (var i = 0; i < 1000; ++i) {
+    const percentage = Math.floor(Math.random() * 100)
+    const msgRecps = percentage < percentMe ? shuffle(recpsMe) : shuffle(recps)
+
+    contents.push({ type: 'tick', count: i, recps: msgRecps })
+  }
 
   startMeasure(t, 'add 1000 box1 msgs')
   pull(
@@ -387,6 +395,10 @@ test('private box2', (t) => {
     })
 
   const recps = [...randos, keys2.id]
+  const recpsMe = [...randos, keys4.id]
+
+  // for messages, the percentage of groups that includes you
+  const percentMe = 30
 
   const testkey = Buffer.from(
     '30720d8f9cbf37f6d7062826f6decac93e308060a8aaaa77e6a4747f40ee1a76',
@@ -395,13 +407,17 @@ test('private box2', (t) => {
   sbot.box2.addOwnDMKey(testkey)
 
   let opts = []
-  for (var i = 0; i < 1000; ++i)
+  for (var i = 0; i < 1000; ++i) {
+    const percentage = Math.floor(Math.random() * 100)
+    const msgRecps = percentage < percentMe ? shuffle(recpsMe) : shuffle(recps)
+
     opts.push({
       feedFormat: 'classic',
       content: { type: 'tick', count: i },
-      recps: shuffle(recps),
+      recps: msgRecps,
       encryptionFormat: 'box2'
     })
+  }
 
   startMeasure(t, 'add 1000 box2 msgs')
   pull(
@@ -445,8 +461,8 @@ test('private box2 group keys', (t) => {
 
   // variables
 
-  // all your groups keys  
-  const groups = 100
+  // all your groups keys
+  const groups = 10
 
   // for messages, the percentage of groups that includes you
   const percentMe = 30
