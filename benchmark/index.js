@@ -295,7 +295,7 @@ test('box1', (t) => {
   let contents = []
   for (var i = 0; i < 1000; ++i) {
     const percentage = Math.floor(Math.random() * 100)
-    const msgRecps = percentage < percentMe ? shuffle(recps) : shuffle(recpsMe)
+    const msgRecps = percentage < percentMe ? shuffle(recpsMe) : shuffle(recps)
 
     contents.push({ type: 'tick', count: i, recps: msgRecps })
   }
@@ -409,7 +409,7 @@ test('private box2', (t) => {
   let opts = []
   for (var i = 0; i < 1000; ++i) {
     const percentage = Math.floor(Math.random() * 100)
-    const msgRecps = percentage < percentMe ? shuffle(recps) : shuffle(recpsMe)
+    const msgRecps = percentage < percentMe ? shuffle(recpsMe) : shuffle(recps)
 
     opts.push({
       feedFormat: 'classic',
