@@ -52,7 +52,7 @@
     "ssb-keys": "^8.4.0",
     "ssb-private-group-keys": "^0.4.1",
     "ssb-ref": "^2.14.3",
-    "ssb-uri2": "^1.5.2",
+    "ssb-uri2": "^2.0.0",
     "too-hot": "^1.0.0",
     "typedarray-to-buffer": "^4.0.0"
   },
