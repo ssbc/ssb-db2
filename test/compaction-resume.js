@@ -11,7 +11,7 @@ const mkdirp = require('mkdirp')
 const pify = require('util').promisify
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
-const {resetLevelPath, resetPrivatePath, reindexJitPath} = require('../defaults')
+const {resetLevelPath, resetPrivatePath} = require('../defaults')
 
 const dir = '/tmp/ssb-db2-compaction-resume'
 
@@ -54,7 +54,6 @@ test('compaction resumes automatically after a crash', async (t) => {
   fs.closeSync(fs.openSync(path.join(dir, 'db2', 'log.bipf.compaction'), 'w'))
   fs.closeSync(fs.openSync(resetLevelPath(dir), 'w'))
   fs.closeSync(fs.openSync(resetPrivatePath(dir), 'w'))
-  fs.closeSync(fs.openSync(reindexJitPath(dir), 'w'))
   t.pass('pretend that compaction was in progress')
 
   sbot = SecretStack({ appKey: caps.shs }).use(require('../')).call(null, {

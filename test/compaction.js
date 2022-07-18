@@ -70,7 +70,7 @@ test('compaction fills holes and reindexes', async (t) => {
     done = true
   })
 
-  const expectedProgress = [0.0008620390691959752, 1]
+  const expectedProgress = [0, 0.0008620390691959752, 1]
   pull(
     sbot.db.compactionProgress(),
     pull.drain((stats) => {
@@ -154,7 +154,7 @@ test('queries are queued if compaction is in progress', async (t) => {
           toCallback((err, msgs) => {
             t.error(err, 'no error')
             t.equals(msgs.length, 1)
-            t.equals(msgs[0].value.content.text, 'hi 3')
+            t.equals(msgs[0].value.content.text, 'hi 7')
             queryDoneAt = Date.now()
             if (compactDoneAt > 0) resolve()
           })
