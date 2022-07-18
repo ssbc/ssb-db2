@@ -176,7 +176,7 @@ test('non feed should err', (t) => {
   pull(
     sbot.createHistoryStream({ id: 'wat', limit: 1 }),
     pull.collect((err, results) => {
-      t.equal(err, 'wat is not a feed')
+      t.equal(err.message, 'wat is not a feed')
       t.end()
     })
   )

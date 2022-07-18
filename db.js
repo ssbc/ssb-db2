@@ -34,7 +34,6 @@ const {
   jitIndexesPath,
   resetLevelPath,
   resetPrivatePath,
-  reindexJitPath,
 } = require('./defaults')
 const { onceWhen, ReadyGate } = require('./utils')
 const DebouncingBatchAdd = require('./debounce-batch')
@@ -547,27 +546,24 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function resetAllIndexes(cb) {
-    const done = multicb({ pluck: 1 })
+  function stopUpdatingIndexes() {
     if (abortLogStreamForIndexes) {
       abortLogStreamForIndexes()
       abortLogStreamForIndexes = null
     }
+  }
+
+  function resumeUpdatingIndexes() {
+    if (abortLogStreamForIndexes) return
+    else indexesStateLoaded.onReady(updateIndexes)
+  }
+
+  function resetAllIndexes(cb) {
+    const done = multicb({ pluck: 1 })
     for (const indexName in indexes) {
       indexes[indexName].reset(done())
     }
-    done(function onResetAllIndexesDone() {
-      cb()
-      updateIndexes()
-    })
-  }
-
-  function restartUpdateIndexes() {
-    if (abortLogStreamForIndexes) {
-      abortLogStreamForIndexes()
-      abortLogStreamForIndexes = null
-    }
-    indexesStateLoaded.onReady(updateIndexes)
+    done(cb)
   }
 
   function registerIndex(Index) {
@@ -816,47 +812,39 @@ exports.init = function (sbot, config) {
     compacting.set(true)
     fs.closeSync(fs.openSync(resetLevelPath(dir), 'w'))
     fs.closeSync(fs.openSync(resetPrivatePath(dir), 'w'))
-    fs.closeSync(fs.openSync(reindexJitPath(dir), 'w'))
     log.compact(function onLogCompacted(err) {
       if (err) cb(clarify(err, 'ssb-db2 compact() failed with the log'))
       else cb()
     })
   }
 
-  let compactStartOffset = null
   log.compactionProgress((stats) => {
     compactionProgress(stats)
-    if (typeof stats.startOffset === 'number' && compactStartOffset === null) {
-      compactStartOffset = stats.startOffset
-    }
 
     if (compacting.value !== !stats.done) compacting.set(!stats.done)
 
     if (stats.done) {
       if (stats.sizeDiff > 0) {
+        let resettingLevelIndexes = false
         if (fs.existsSync(resetLevelPath(dir))) {
+          resettingLevelIndexes = true
+          stopUpdatingIndexes()
           resetAllIndexes(() => {
             rimraf.sync(resetLevelPath(dir))
+            resumeUpdatingIndexes()
           })
         }
         if (fs.existsSync(resetPrivatePath(dir))) {
+          if (!resettingLevelIndexes) stopUpdatingIndexes()
           privateIndex.reset(() => {
             rimraf.sync(resetPrivatePath(dir))
-          })
-        }
-        if (fs.existsSync(reindexJitPath(dir))) {
-          jitdb.reindex(compactStartOffset || 0, (err) => {
-            if (err) console.error('ssb-db2 reindex jitdb after compact', err)
-            rimraf.sync(reindexJitPath(dir))
+            if (!resettingLevelIndexes) resumeUpdatingIndexes()
           })
         }
         status.reset()
-        compactStartOffset = null
       } else {
         rimraf.sync(resetLevelPath(dir))
         rimraf.sync(resetPrivatePath(dir))
-        rimraf.sync(reindexJitPath(dir))
-        restartUpdateIndexes()
       }
     }
   })

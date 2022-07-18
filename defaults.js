@@ -13,8 +13,6 @@ exports.resetLevelPath = (dir) =>
   path.join(dir, 'db2', 'post-compact-reset-level')
 exports.resetPrivatePath = (dir) =>
   path.join(dir, 'db2', 'post-compact-reset-private')
-exports.reindexJitPath = (dir) =>
-  path.join(dir, 'db2', 'post-compact-reindex-jit')
 exports.jitIndexesPath = (dir) => path.join(dir, 'db2', 'jit')
 exports.tooHotOpts = (config) =>
   config.db2

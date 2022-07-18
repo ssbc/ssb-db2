@@ -3,10 +3,9 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 const pull = require('pull-stream')
-const pullCont = require('pull-cont')
 const ref = require('ssb-ref')
 const Hookable = require('hoox')
-const { author } = require('../operators')
+const { author, and, gte, where, batch, toPullStream } = require('../operators')
 const { reEncrypt } = require('../indexes/private')
 
 // exports.name is blank to merge into global namespace
@@ -21,6 +20,9 @@ exports.permissions = {
 
 exports.init = function (sbot, config) {
   sbot.createHistoryStream = Hookable(function createHistoryStream(opts) {
+    if (!ref.isFeed(opts.id)) {
+      return pull.error(Error(opts.id + ' is not a feed'))
+    }
     // default values
     const sequence = opts.sequence || opts.seq || 0
     const limit = opts.limit
@@ -28,21 +30,8 @@ exports.init = function (sbot, config) {
     const values = opts.values === false ? false : true
 
     let query = author(opts.id)
-
     if (sequence) {
-      query = {
-        type: 'AND',
-        data: [
-          query,
-          {
-            type: 'GTE',
-            data: {
-              indexName: 'sequence',
-              value: sequence,
-            },
-          },
-        ],
-      }
+      query = and(query, gte(sequence, 'sequence'))
     }
 
     function formatMsg(msg) {
@@ -53,39 +42,25 @@ exports.init = function (sbot, config) {
       else return msg
     }
 
-    return pull(
-      pullCont(function (cb) {
-        sbot.db.getLog().onDrain(() => {
-          if (!ref.isFeed(opts.id)) return cb(opts.id + ' is not a feed')
-
-          if (limit) {
-            sbot.db
-              .getJITDB()
-              .paginate(
-                query,
-                0,
-                limit,
-                false,
-                false,
-                'declared',
-                (err, answer) => {
-                  // prettier-ignore
-                  if (err) cb(new Error('ssb-db2 createHistoryStream failed: ' + err.message))
-                  else cb(null, pull.values(answer.results.map(formatMsg)))
-                }
-              )
-          } else {
-            sbot.db
-              .getJITDB()
-              .all(query, 0, false, false, 'declared', (err, results) => {
-                // prettier-ignore
-                if (err) cb(new Error('ssb-db2 createHistoryStream failed: ' + err.message))
-                else cb(null, pull.values(results.map(formatMsg)))
-              })
-          }
-        })
-      })
-    )
+    if (limit) {
+      return pull(
+        sbot.db.query(
+          where(query),
+          batch(limit),
+          toPullStream()
+        ),
+        pull.take(limit),
+        pull.map(formatMsg)
+      )
+    } else {
+      return pull(
+        sbot.db.query(
+          where(query),
+          toPullStream()
+        ),
+        pull.map(formatMsg)
+      )
+    }
   })
 
   return {}
