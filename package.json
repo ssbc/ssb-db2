@@ -16,7 +16,7 @@
     "operators/*.js"
   ],
   "dependencies": {
-    "async-append-only-log": "^4.3.1",
+    "async-append-only-log": "^4.3.2",
     "atomic-file-rw": "^0.3.0",
     "binary-search-bounds": "^2.0.4",
     "bipf": "^1.9.0",
