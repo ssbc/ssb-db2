@@ -6,18 +6,18 @@ module.exports = class DebouncingBatchAdd {
   constructor(addBatch, period) {
     this.addBatch = addBatch
     this.period = period
-    this.queueByAuthor = new Map()
-    this.timestampsByAuthor = new Map()
+    this.queueByFeed = new Map()
+    this.timestampsByFeed = new Map()
     this.timer = null
   }
 
-  flush(authorId) {
-    const queue = this.queueByAuthor.get(authorId)
+  flush(feedId) {
+    const queue = this.queueByFeed.get(feedId)
     const n = queue.length
     const msgVals = queue.map((x) => x[0])
     // Clear the queue memory BEFORE the callbacks trigger more queue additions
-    this.queueByAuthor.delete(authorId)
-    this.timestampsByAuthor.delete(authorId)
+    this.queueByFeed.delete(feedId)
+    this.timestampsByFeed.delete(feedId)
     // Add the messages in the queue
     const [msgVal1, opts1, cb1] = queue[0]
     this.addBatch(msgVals, opts1, (err, kvts) => {
@@ -47,17 +47,17 @@ module.exports = class DebouncingBatchAdd {
 
     this.timer = setInterval(() => {
       // Turn off the timer if there is nothing to flush
-      if (this.queueByAuthor.size === 0) {
+      if (this.queueByFeed.size === 0) {
         clearInterval(this.timer)
         this.timer = null
       }
-      // For each author, flush if enough time has passed
+      // For each feed, flush if enough time has passed
       else {
         const now = Date.now()
-        for (const authorId of this.queueByAuthor.keys()) {
-          const lastAdded = this.timestampsByAuthor.get(authorId)
+        for (const feedId of this.queueByFeed.keys()) {
+          const lastAdded = this.timestampsByFeed.get(feedId)
           if (now - lastAdded > this.period) {
-            this.flush(authorId)
+            this.flush(feedId)
           }
         }
       }
@@ -65,11 +65,11 @@ module.exports = class DebouncingBatchAdd {
   }
 
   add(msgVal, opts, cb) {
-    const authorId = msgVal.author
-    const queue = this.queueByAuthor.get(authorId) || []
+    const feedId = opts.feedId
+    const queue = this.queueByFeed.get(feedId) || []
     queue.push([msgVal, opts, cb])
-    this.queueByAuthor.set(authorId, queue)
-    this.timestampsByAuthor.set(authorId, Date.now())
+    this.queueByFeed.set(feedId, queue)
+    this.timestampsByFeed.set(feedId, Date.now())
     this.scheduleFlush()
   }
 }

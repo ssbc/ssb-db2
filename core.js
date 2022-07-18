@@ -369,6 +369,7 @@ exports.init = function (sbot, config) {
           return cb(new Error('add() failed because feed format is unknown for: ' + nativeMsg))
         }
         opts.feedFormat = feedFormat.name
+        opts.feedId = feedFormat.getFeedId(nativeMsg)
         if (feedFormat.validateBatch) debouncer.add(nativeMsg, opts, cb)
         else addImmediately(nativeMsg, feedFormat, opts, cb)
       }
