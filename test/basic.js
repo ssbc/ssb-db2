@@ -625,11 +625,11 @@ test('prepare()', (t) => {
 
     setTimeout(() => {
       t.ok(db.getJITDB().indexes)
-      t.notOk(db.getJITDB().indexes['value_content_type_article'])
+      t.notOk(db.getJITDB().indexes.get('value_content_type_article'))
       db.prepare(type('article'), (err, duration) => {
         t.error(err, 'no err')
         t.ok(db.getJITDB().indexes)
-        t.ok(db.getJITDB().indexes['value_content_type_article'])
+        t.ok(db.getJITDB().indexes.get('value_content_type_article'))
         t.ok(duration)
         t.end()
       })

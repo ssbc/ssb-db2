@@ -25,7 +25,6 @@ const {
   jitIndexesPath,
   resetLevelPath,
   resetPrivatePath,
-  reindexJitPath,
 } = require('./defaults')
 const { onceWhen, ReadyGate } = require('./utils')
 const DebouncingBatchAdd = require('./debounce-batch')
@@ -1041,19 +1040,14 @@ exports.init = function (sbot, config) {
     compacting.set(true)
     fs.closeSync(fs.openSync(resetLevelPath(dir), 'w'))
     fs.closeSync(fs.openSync(resetPrivatePath(dir), 'w'))
-    fs.closeSync(fs.openSync(reindexJitPath(dir), 'w'))
     log.compact(function onLogCompacted(err) {
       if (err) cb(clarify(err, 'ssb-db2 compact() failed with the log'))
       else cb()
     })
   }
 
-  let compactStartOffset = null
   log.compactionProgress((stats) => {
     compactionProgress(stats)
-    if (typeof stats.startOffset === 'number' && compactStartOffset === null) {
-      compactStartOffset = stats.startOffset
-    }
 
     if (compacting.value !== !stats.done) compacting.set(!stats.done)
 
@@ -1075,18 +1069,10 @@ exports.init = function (sbot, config) {
             if (!resettingLevelIndexes) resumeUpdatingIndexes()
           })
         }
-        if (fs.existsSync(reindexJitPath(dir))) {
-          jitdb.reindex(compactStartOffset || 0, (err) => {
-            if (err) console.error('ssb-db2 reindex jitdb after compact', err)
-            rimraf.sync(reindexJitPath(dir))
-          })
-        }
         status.reset()
-        compactStartOffset = null
       } else {
         rimraf.sync(resetLevelPath(dir))
         rimraf.sync(resetPrivatePath(dir))
-        rimraf.sync(reindexJitPath(dir))
       }
     }
   })
