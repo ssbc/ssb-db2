@@ -26,6 +26,12 @@ function onceWhen(obv, filter, cb) {
   })
 }
 
+function onceWhenPromise(obv, filter) {
+  return new Promise((resolve) => {
+    onceWhen(obv, filter, resolve)
+  })
+}
+
 class ReadyGate {
   constructor() {
     this.waiting = new Set()
@@ -44,4 +50,4 @@ class ReadyGate {
   }
 }
 
-module.exports = { onceWhen, ReadyGate }
+module.exports = { onceWhen, onceWhenPromise, ReadyGate }

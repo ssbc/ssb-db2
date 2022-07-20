@@ -45,20 +45,28 @@ module.exports = function (dir, sbot, config) {
       }
     }
 
-    decryptedIdx.loadFile(done())
+    decryptedIdx.loadFile(err => done()(null, err))
     for (const idx of encryptedIdxMap.values()) {
-      idx.loadFile(done())
+      idx.loadFile(err => done()(null, err))
     }
 
-    done((err) => {
-      if (err) {
-        debug('failed to load encrypted or decrypted indexes')
+    done((criticalError, results) => {
+      const loadFileErrors = results.filter(Boolean)
+
+      if (criticalError) {
+        return cb(clarify(criticalError, 'private plugin failed to load'))
+      }
+
+      if (loadFileErrors.length > 0) {
+        for (const err of loadFileErrors) {
+          if (err.code === 'ENOENT') continue
+          else if (err.message === 'Empty NumsFile') continue
+          else return cb(clarify(err, 'private plugin failed to load'))
+        }
+        debug('encrypted or decrypted indexes seem to be empty')
         latestOffset.set(-1)
         stateLoaded.resolve()
-        if (err.code === 'ENOENT') cb()
-        else if (err.message === 'Empty NumsFile') cb()
-        // prettier-ignore
-        else cb(clarify(err, 'private plugin failed to load'))
+        cb()
         return
       }
 
