@@ -8,6 +8,7 @@ const { isFeedSSBURI, isBendyButtV1FeedSSBURI } = require('ssb-uri2')
 const { keySchemes } = require('private-group-spec')
 const { box, unbox } = require('envelope-js')
 const { directMessageKey, SecretKey } = require('ssb-private-group-keys')
+const { ReadyGate } = require('../utils')
 
 function makeKeysManager(config) {
   const ownDMKeysCache = []
@@ -71,16 +72,19 @@ function makeKeysManager(config) {
 module.exports = {
   name: 'box2',
   init: function init(ssb) {
+    const keyringSetup = new ReadyGate()
+
     const encryptionFormat = {
       name: 'box2',
 
       setup(config, cb) {
         encryptionFormat._selfId = config.keys.id
-        if (!encryptionFormat._keysManager) {
+        // Simulate a slow ssb-keyring loading process
+        setTimeout(() => {
           encryptionFormat._keysManager = makeKeysManager(config)
-        }
-        // FIXME: load ssb-keyring here
-        cb()
+          keyringSetup.setReady()
+          cb()
+        }, 1000)
       },
 
       _isGroup(recp) {
@@ -96,15 +100,21 @@ module.exports = {
       },
 
       _addOwnDMKey(key) {
-        encryptionFormat._keysManager.addOwnDMKey(key)
+        keyringSetup.onReady(() => {
+          encryptionFormat._keysManager.addOwnDMKey(key)
+        })
       },
 
       _addGroupKey(id, key) {
-        encryptionFormat._keysManager.addGroupKey(id, key)
+        keyringSetup.onReady(() => {
+          encryptionFormat._keysManager.addGroupKey(id, key)
+        })
       },
 
       _removeGroupKey(id, key) {
-        encryptionFormat._keysManager.removeGroupKey(id, key)
+        keyringSetup.onReady(() => {
+          encryptionFormat._keysManager.removeGroupKey(id, key)
+        })
       },
 
       encrypt(plaintextBuf, opts) {
@@ -178,21 +188,16 @@ module.exports = {
           trialGroupKeys,
           { maxAttempts: 1 }
         )
-        if (decryptedGroup)
-          return decryptedGroup
+        if (decryptedGroup) return decryptedGroup
 
         const trialDMKeys =
           opts.author !== encryptionFormat._selfId
             ? [keysManager.sharedDMKey(opts.author), ...keysManager.ownDMKeys()]
             : keysManager.ownDMKeys()
 
-        return unbox(
-          ciphertextBuf,
-          authorBFE,
-          previousBFE,
-          trialDMKeys,
-          { maxAttempts: 16 }
-        )
+        return unbox(ciphertextBuf, authorBFE, previousBFE, trialDMKeys, {
+          maxAttempts: 16,
+        })
       },
     }
 

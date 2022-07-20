@@ -26,7 +26,7 @@ const {
   resetLevelPath,
   resetPrivatePath,
 } = require('./defaults')
-const { onceWhen, ReadyGate } = require('./utils')
+const { onceWhen, ReadyGate, onceWhenPromise } = require('./utils')
 const DebouncingBatchAdd = require('./debounce-batch')
 const Log = require('./log')
 const Status = require('./status')
@@ -620,7 +620,7 @@ exports.init = function (sbot, config) {
     )
   }
 
-  function create(opts, cb) {
+  async function create(opts, cb) {
     const guard = guardAgainstDuplicateLogs('create()')
     if (guard) return cb(guard)
 
@@ -637,83 +637,78 @@ exports.init = function (sbot, config) {
 
     if (!opts.content) return cb(new Error('create() requires a `content`'))
 
-    onceWhen(
-      stateFeedsReady,
-      (ready) => ready === true,
-      () => {
-        const provisionalNativeMsg = feedFormat.newNativeMsg({
-          timestamp: Date.now(),
-          ...opts,
-          previous: null,
+    await privateIndex.stateLoaded
+    await onceWhenPromise(stateFeedsReady, (ready) => ready === true)
+
+    // Create full opts:
+    const provisionalNativeMsg = feedFormat.newNativeMsg({
+      timestamp: Date.now(),
+      ...opts,
+      previous: null,
+      keys,
+    })
+    const feedId = feedFormat.getFeedId(provisionalNativeMsg)
+    const previous = state.getAsKV(feedId, feedFormat)
+    const fullOpts = { timestamp: Date.now(), ...opts, previous, keys, hmacKey }
+
+    // If opts ask for encryption, try encryption formats and pick the best:
+    const recps = fullOpts.recps || fullOpts.content.recps
+    if (Array.isArray(recps) && recps.length > 0) {
+      const plaintext = feedFormat.toPlaintextBuffer(fullOpts)
+      function encryptWith(encryptionFormat) {
+        const encryptOpts = {
+          ...fullOpts,
           keys,
-        })
-        const feedId = feedFormat.getFeedId(provisionalNativeMsg)
-        const previous = state.getAsKV(feedId, feedFormat)
-        const fullOpts = { timestamp: Date.now(), ...opts, previous, keys }
-
-        // If the inputs require encryption, try some encryption formats,
-        // and pick the best output.
-        const recps = fullOpts.recps || fullOpts.content.recps
-        if (Array.isArray(recps) && recps.length > 0) {
-          const plaintext = feedFormat.toPlaintextBuffer(fullOpts)
-          function encryptWith(encryptionFormat) {
-            const eOpts = {
-              ...fullOpts,
-              keys,
-              recps,
-              previous: previous ? previous.key : null,
-            }
-            const ciphertextBuf = encryptionFormat.encrypt(plaintext, eOpts)
-            return (
-              ciphertextBuf.toString('base64') + '.' + encryptionFormat.name
-            )
-          }
-          if (fullOpts.encryptionFormat) {
-            const format = findEncryptionFormatByName(fullOpts.encryptionFormat)
-            const ciphertext = encryptWith(format)
-            fullOpts.content = ciphertext
-          } else {
-            const outputs = encryptionFormats.map((format) => {
-              try {
-                const ciphertext = encryptWith(format)
-                if (!ciphertext) return [new Error('encryption failed')]
-                return [null, { ciphertext, name: format.name }]
-              } catch (err) {
-                return [err]
-              }
-            })
-            const successes = outputs
-              .filter(([err]) => !err)
-              .map(([, success]) => success)
-            const errors = outputs
-              .filter(([err]) => err)
-              .map(([error]) => error.message)
-            if (successes.length === 0) {
-              // prettier-ignore
-              return cb(new Error('create() failed to encrypt content: ' + errors.join('; ')))
-            }
-            fullOpts.content = successes[0].ciphertext
-          }
+          recps,
+          previous: previous ? previous.key : null,
         }
-
-        fullOpts.hmacKey = hmacKey
-        const nativeMsg = feedFormat.newNativeMsg(fullOpts)
-        const msgId = feedFormat.getMsgId(nativeMsg)
-        const encodedMsg = feedFormat.fromNativeMsg(nativeMsg, encoding)
-        state.update(feedId, nativeMsg)
-
-        log.add(msgId, encodedMsg, feedId, encoding, (err, kvt) => {
-          if (err) return cb(clarify(err, 'create() failed in the log'))
-
-          onMsgAdded.set({
-            kvt,
-            nativeMsg: nativeMsg,
-            feedFormat: feedFormat.name,
-          })
-          cb(null, kvt)
-        })
+        const ciphertextBuf = encryptionFormat.encrypt(plaintext, encryptOpts)
+        return ciphertextBuf.toString('base64') + '.' + encryptionFormat.name
       }
-    )
+      if (fullOpts.encryptionFormat) {
+        const format = findEncryptionFormatByName(fullOpts.encryptionFormat)
+        const ciphertext = encryptWith(format)
+        fullOpts.content = ciphertext
+      } else {
+        const outputs = encryptionFormats.map((format) => {
+          try {
+            const ciphertext = encryptWith(format)
+            if (!ciphertext) return [new Error('encryption failed')]
+            return [null, { ciphertext, name: format.name }]
+          } catch (err) {
+            return [err]
+          }
+        })
+        const successes = outputs
+          .filter(([err]) => !err)
+          .map(([, success]) => success)
+        const errors = outputs
+          .filter(([err]) => err)
+          .map(([error]) => error.message)
+        if (successes.length === 0) {
+          // prettier-ignore
+          return cb(new Error('create() failed to encrypt content: ' + errors.join('; ')))
+        }
+        fullOpts.content = successes[0].ciphertext
+      }
+    }
+
+    // Create the native message:
+    const nativeMsg = feedFormat.newNativeMsg(fullOpts)
+    const msgId = feedFormat.getMsgId(nativeMsg)
+    const encodedMsg = feedFormat.fromNativeMsg(nativeMsg, encoding)
+    state.update(feedId, nativeMsg)
+
+    // Encode the native message and append it to the log:
+    log.add(msgId, encodedMsg, feedId, encoding, (err, kvt) => {
+      if (err) return cb(clarify(err, 'create() failed in the log'))
+      onMsgAdded.set({
+        kvt,
+        nativeMsg: nativeMsg,
+        feedFormat: feedFormat.name,
+      })
+      cb(null, kvt)
+    })
   }
 
   function del(msgId, cb) {
