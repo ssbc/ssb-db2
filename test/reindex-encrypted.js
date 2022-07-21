@@ -19,13 +19,13 @@ test('box2 group reindex larger', async (t) => {
     '30720d8f9cbf37f6d7062826f6decac93e308060a8aaaa77e6a4747f40ee1a76',
     'hex'
   )
-  const groupId1 = 'group1.8K-group'
+  const groupId1 = '%Aihvp+fMdt5CihjbOY6eZc0qCe0eKsrN2wfgXV2E3PM=.cloaked'
 
   const groupKey2 = Buffer.from(
     '40720d8f9cbf37f6d7062826f6decac93e308060a8aaaa77e6a4747f40ee1a76',
     'hex'
   )
-  const groupId2 = 'group2.8K-group'
+  const groupId2 = '%Bihvp+fMdt5CihjbOY6eZc0qCe0eKsrN2wfgXV2E3PM=.cloaked'
 
   // Setup Alice
   const dirAlice = '/tmp/ssb-db2-box2-group-reindex2-alice'
@@ -34,7 +34,6 @@ test('box2 group reindex larger', async (t) => {
   const keysAlice = ssbKeys.generate(null, 'alice')
   const alice = SecretStack({ appKey: caps.shs })
     .use(require('../'))
-    .use(require('../encryption-formats/box2'))
     .call(null, {
       keys: keysAlice,
       path: dirAlice,
@@ -50,7 +49,6 @@ test('box2 group reindex larger', async (t) => {
   const bob = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .use(require('../full-mentions'))
-    .use(require('../encryption-formats/box2'))
     .call(null, {
       keys: keysBob,
       path: dirBob,

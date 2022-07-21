@@ -240,6 +240,14 @@ module.exports = function (dir, sbot, config) {
     saveIndexes(cb)
   }
 
+  function close(cb) {
+    const done = multicb({ pluck: 1 })
+    for (const encryptionFormat of sbot.db.encryptionFormats) {
+      if (encryptionFormat.teardown) encryptionFormat.teardown(done())
+    }
+    done(cb)
+  }
+
   return {
     latestOffset,
     decrypt,
@@ -247,6 +255,7 @@ module.exports = function (dir, sbot, config) {
     getEncryptedOffsets,
     saveIndexes,
     reset,
+    close,
     stateLoaded: stateLoaded.promise,
   }
 }

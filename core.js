@@ -896,6 +896,7 @@ exports.init = function (sbot, config) {
       const index = indexes[indexName]
       index.close(done())
     }
+    privateIndex.close(done())
     done((err) => {
       if (err) return cb(err)
       log.close(cb)

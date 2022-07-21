@@ -24,7 +24,6 @@ let sbot = SecretStack({ appKey: caps.shs })
   .use(require('../compat/ebt'))
   .use(require('ssb-bendy-butt'))
   .use(require('ssb-buttwoo'))
-  .use(require('../encryption-formats/box2'))
   .call(null, {
     keys,
     path: dir,
@@ -86,7 +85,7 @@ test('create() classic box2', (t) => {
     'hex'
   )
 
-  sbot.box2.addOwnDMKey(testkey)
+  sbot.box2.setOwnDMKey(testkey)
 
   db.create(
     {
@@ -210,6 +209,8 @@ test('create() bendybutt-v1 box2', (t) => {
   const chessKeys = ssbKeys.generate()
   const mfKeys = ssbKeys.generate(null, null, 'bendybutt-v1')
 
+  sbot.box2.addKeypair(mfKeys)
+
   db.create(
     {
       feedFormat: 'bendybutt-v1',
@@ -315,6 +316,8 @@ test('create() buttwoo-v1 box', (t) => {
 
 test('create() buttwoo-v1 box2', (t) => {
   const buttwooKeys = ssbKeys.generate(null, null, 'buttwoo-v1')
+
+  sbot.box2.addKeypair(buttwooKeys)
 
   db.create(
     {
@@ -496,7 +499,7 @@ test('query box2', (t) => {
   )
 })
 
-test('query anybox', t=> {
+test('query anybox', (t) => {
   db.query(
     where(isDecrypted()),
     toCallback((err, msgs) => {
