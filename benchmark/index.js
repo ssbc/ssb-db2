@@ -233,8 +233,9 @@ test('private box1 no decrypt', async (t) => {
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
     .call(null, {
-      keys: keys3, path: dirBox1NoDecrypt,
-      db2: { startDecryptBox1: startFrom.toISOString().split('T')[0] }
+      keys: keys3,
+      path: dirBox1NoDecrypt,
+      db2: { startDecryptBox1: startFrom.toISOString().split('T')[0] },
     })
 
   const recps = [...randos, keys.id]
@@ -876,6 +877,45 @@ for (const title in queries) {
   })
 }
 
+test('close sbot', (t) => {
+  sbot.close(t.end)
+})
+
+test('deleteFeed', async (t) => {
+  rimraf.sync(dirAdd)
+
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .call(null, { keys, path: dirAdd })
+
+  const TOTAL = 100000
+
+  const ended = DeferredPromise()
+
+  const done = multicb({ pluck: 1 })
+  for (let i = 0; i < TOTAL; i++) {
+    sbot.db.publish({ type: 'post', text: `post ${i}` }, done())
+  }
+  done(async (err) => {
+    if (err) t.fail(err)
+
+    await sleep(200) // some silence to make it easier to read the CPU profiler
+
+    const start = Date.now()
+    sbot.db.deleteFeed(keys.id, (err) => {
+      if (err) t.fail(err)
+      const duration = Date.now() - start
+      t.pass(`duration: ${duration}ms`)
+      fs.appendFileSync(reportPath, `| deleteFeed | ${duration}ms |\n`)
+      updateMaxRAM()
+      global.gc()
+      sbot.close(() => ended.resolve())
+    })
+  })
+
+  await ended.promise
+})
+
 test('maximum RAM used', (t) => {
   t.pass(`maximum memory usage: ${reportMem()}`)
   fs.appendFileSync(reportPath, `| Maximum memory usage | ${reportMem()} |\n`)
@@ -888,8 +928,4 @@ test('Indexes folder size', (t) => {
     fs.appendFileSync(reportPath, `| Indexes folder size | ${size} |\n`)
     t.end()
   })
-})
-
-test('teardown', (t) => {
-  sbot.close(t.end)
 })
