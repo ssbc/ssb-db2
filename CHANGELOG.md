@@ -18,6 +18,7 @@ Check the README for more details on these APIs.
 ### Breaking changes
 
 - The operator `isPrivate()` removed in favor of two new operators: `isDecrypted()` and `isEncrypted()`, both support the encryption format name as an optional argument, e.g. `isDecrypted('box')` and `isEncrypted('box2')`
+- `ssb.db.publish()` no longer supports box2 recipients such as private-groups. You need to use `ssb.db.create()` for that.
 
 ### Notable changes
 
