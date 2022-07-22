@@ -995,6 +995,41 @@ for (const title in queries) {
   })
 }
 
+test('close sbot', (t) => {
+  sbot.close(t.end)
+})
+
+test('deleteFeed', async (t) => {
+  rimraf.sync(dirAdd)
+
+  const sbot = SecretStack({ appKey: caps.shs })
+    .use(require('../'))
+    .call(null, { keys, path: dirAdd })
+
+  const TOTAL = 100000
+
+  const ended = DeferredPromise()
+
+  const done = multicb({ pluck: 1 })
+  for (let i = 0; i < TOTAL; i++) {
+    sbot.db.publish({ type: 'post', text: `post ${i}` }, done())
+  }
+  done(async (err) => {
+    if (err) t.fail(err)
+
+    await sleep(200) // some silence to make it easier to read the CPU profiler
+
+    startMeasure(t, 'deleteFeed')
+    sbot.db.deleteFeed(keys.id, (err) => {
+      if (err) t.fail(err)
+      endMeasure(t, 'deleteFeed')
+      sbot.close(true, () => ended.resolve())
+    })
+  })
+
+  await ended.promise
+})
+
 test('maximum RAM used', (t) => {
   t.pass(`maximum memory usage: ${reportMem()}`)
   fs.appendFileSync(reportPath, `| Maximum memory usage | ${reportMem()} |\n`)
@@ -1007,8 +1042,4 @@ test('Indexes folder size', (t) => {
     fs.appendFileSync(reportPath, `| Indexes folder size | ${size} |\n`)
     t.end()
   })
-})
-
-test('teardown', (t) => {
-  sbot.close(true, t.end)
 })
