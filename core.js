@@ -617,13 +617,18 @@ exports.init = function (sbot, config) {
     const keys = opts.keys || config.keys
 
     const feedFormat = findFeedFormatByName(opts.feedFormat || 'classic')
+    const encryptionFormat = findEncryptionFormatByName(
+      opts.encryptionFormat || 'box'
+    )
     const encoding = opts.encoding || 'js'
     // prettier-ignore
     if (!feedFormat) return cb(new Error('create() does not support feed format ' + opts.feedFormat))
-    if (!feedFormat.isAuthor(keys.id)) {
-      // prettier-ignore
-      return cb(new Error(`create() failed because keys.id ${keys.id} is not a valid author for feed format ${feedFormat.name}`))
-    }
+    // prettier-ignore
+    if (!feedFormat.encodings.includes(encoding)) return cb(new Error('create() does not support encoding ' + encoding))
+    // prettier-ignore
+    if (!feedFormat.isAuthor(keys.id)) return cb(new Error(`create() failed because keys.id ${keys.id} is not a valid author for feed format ${feedFormat.name}`))
+    // prettier-ignore
+    if (!encryptionFormat) return cb(new Error('create() does not support encryption format ' + opts.encryptionFormat))
 
     if (!opts.content) return cb(new Error('create() requires a `content`'))
 
@@ -641,56 +646,38 @@ exports.init = function (sbot, config) {
     const previous = state.getAsKV(feedId, feedFormat)
     const fullOpts = { timestamp: Date.now(), ...opts, previous, keys, hmacKey }
 
-    // If opts ask for encryption, try encryption formats and pick the best:
+    // If opts ask for encryption, encrypt and put ciphertext in opts.content
     const recps = fullOpts.recps || fullOpts.content.recps
     if (Array.isArray(recps) && recps.length > 0) {
       const plaintext = feedFormat.toPlaintextBuffer(fullOpts)
-      function encryptWith(encryptionFormat) {
-        const encryptOpts = {
-          ...fullOpts,
-          keys,
-          recps,
-          previous: previous ? previous.key : null,
-        }
-        const ciphertextBuf = encryptionFormat.encrypt(plaintext, encryptOpts)
-        return ciphertextBuf.toString('base64') + '.' + encryptionFormat.name
+      const encryptOpts = {
+        ...fullOpts,
+        keys,
+        recps,
+        previous: previous ? previous.key : null,
       }
-      if (fullOpts.encryptionFormat) {
-        const format = findEncryptionFormatByName(fullOpts.encryptionFormat)
-        const ciphertext = encryptWith(format)
-        fullOpts.content = ciphertext
-      } else {
-        const outputs = encryptionFormats.map((format) => {
-          try {
-            const ciphertext = encryptWith(format)
-            if (!ciphertext) return [new Error('encryption failed')]
-            return [null, { ciphertext, name: format.name }]
-          } catch (err) {
-            return [err]
-          }
-        })
-        const successes = outputs
-          .filter(([err]) => !err)
-          .map(([, success]) => success)
-        const errors = outputs
-          .filter(([err]) => err)
-          .map(([error]) => error.message)
-        if (successes.length === 0) {
-          // prettier-ignore
-          return cb(new Error('create() failed to encrypt content: ' + errors.join('; ')))
-        }
-        fullOpts.content = successes[0].ciphertext
+      let ciphertextBuf
+      try {
+        ciphertextBuf = encryptionFormat.encrypt(plaintext, encryptOpts)
+      } catch (err) {
+        return cb(clarify(err, 'create() failed to encrypt content'))
       }
+      if (!ciphertextBuf) {
+        // prettier-ignore
+        return cb(new Error('create() failed to encrypt with ' + encryptionFormat.name))
+      }
+      const ciphertextBase64 = ciphertextBuf.toString('base64')
+      fullOpts.content = ciphertextBase64 + '.' + encryptionFormat.name
     }
 
     // Create the native message:
     const nativeMsg = feedFormat.newNativeMsg(fullOpts)
     const msgId = feedFormat.getMsgId(nativeMsg)
-    const encodedMsg = feedFormat.fromNativeMsg(nativeMsg, encoding)
+    const msg = feedFormat.fromNativeMsg(nativeMsg, encoding)
     state.update(feedId, nativeMsg)
 
     // Encode the native message and append it to the log:
-    log.add(msgId, encodedMsg, feedId, encoding, (err, kvt) => {
+    log.add(msgId, msg, feedId, encoding, (err, kvt) => {
       if (err) return cb(clarify(err, 'create() failed in the log'))
       onMsgAdded.set({
         kvt,

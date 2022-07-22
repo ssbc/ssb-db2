@@ -55,22 +55,40 @@ test('box2 group reindex larger', async (t) => {
     })
 
   // Alice publishes 5 messages, some of them box2
-  let content1 = { type: 'about', text: 'not super secret1' }
-  let content2 = {
-    type: 'post',
-    text: 'super secret2',
-    mentions: [{ link: bob.id }],
-    recps: [groupId2],
+  let opts1 = {
+    keys: keysAlice,
+    content: { type: 'about', text: 'not super secret1' },
   }
-  let content3 = { type: 'weird' }
-  let content4 = { type: 'about', text: 'super secret4', recps: [groupId1] }
-  let content5 = { type: 'post', text: 'super secret5', recps: [groupId1] }
+  let opts2 = {
+    keys: keysAlice,
+    content: {
+      type: 'post',
+      text: 'super secret2',
+      mentions: [{ link: bob.id }],
+    },
+    recps: [groupId2],
+    encryptionFormat: 'box2',
+  }
+  let opts3 = {
+    content: { type: 'weird' },
+    keys: keysAlice,
+  }
+  let opts4 = {
+    content: { type: 'about', text: 'super secret4', recps: [groupId1] },
+    keys: keysAlice,
+    encryptionFormat: 'box2',
+  }
+  let opts5 = {
+    content: { type: 'post', text: 'super secret5', recps: [groupId1] },
+    keys: keysAlice,
+    encryptionFormat: 'box2',
+  }
 
-  const msg1 = await pify(alice.db.publish)(content1)
-  const msg2 = await pify(alice.db.publish)(content2)
-  const msg3 = await pify(alice.db.publish)(content3)
-  const msg4 = await pify(alice.db.publish)(content4)
-  const msg5 = await pify(alice.db.publish)(content5)
+  const msg1 = await pify(alice.db.create)(opts1)
+  const msg2 = await pify(alice.db.create)(opts2)
+  const msg3 = await pify(alice.db.create)(opts3)
+  const msg4 = await pify(alice.db.create)(opts4)
+  const msg5 = await pify(alice.db.create)(opts5)
   t.pass('alice published 5 messages')
 
   t.notEqual(typeof msg1.value.content, 'string', 'msg1 is public about')
