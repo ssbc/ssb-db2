@@ -388,7 +388,6 @@ test('private box1 no decrypt', (t) => {
 test('private box2', (t) => {
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
-    .use(require('../encryption-formats/box2'))
     .call(null, {
       keys: keys4,
       path: dirBox2,
@@ -453,7 +452,6 @@ test('private box2', (t) => {
 test('private box2 group keys', (t) => {
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
-    .use(require('../encryption-formats/box2'))
     .call(null, {
       keys: keys5,
       path: dirBox2Group,
