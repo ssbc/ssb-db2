@@ -44,7 +44,7 @@
     "push-stream": "^11.0.0",
     "rimraf": "^3.0.2",
     "ssb-box": "^1.0.0",
-    "ssb-box2": "^2.0.1",
+    "ssb-box2": "^2.0.2",
     "ssb-classic": "^1.0.3",
     "ssb-keys": "^8.4.0",
     "ssb-ref": "^2.14.3",
