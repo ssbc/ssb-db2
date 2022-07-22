@@ -23,6 +23,7 @@ Over time, this database received more features than ssb-db, and now supports:
   - You are not tied to classic SSB messages and the classic mode of encryption,
   you can use any format you want, or build one yourself, with [ssb-feed-format]
   and [ssb-encryption-format]
+  - By default supports [ssb-classic]
 - Query language (as composable JS functions)
 
 SSB-DB2 is a secret-stack plugin that registers itself in the db
@@ -466,8 +467,10 @@ The `opts` must be an object and should contain the following keys:
   See the docs for the specific feed format you are using.
 
 The callback `cb` is called when the message has been published. `cb(err)` if
-published failed with an error `err`, and `cb(null, encodedKVT)` if it was
-successfully published, where `kvt` is a JavaScript object with the shape `{key, value, timestamp}` exactly representing the message written to the database.
+published failed with an error `err`, and `cb(null, kvt)` if it was
+successfully published, where `kvt` is a JavaScript object with the shape
+`{key, value, timestamp}` exactly representing the message written to the
+database.
 
 ### get(msgId, cb)
 
@@ -494,46 +497,69 @@ operators:
 See [jitdb operators] and [operators/index.js] for a complete list of supported
 operators.
 
-### add(msgValue, cb)
+### add(nativeMsg, cb)
 
-Validate and add a message value (without id and timestamp) to the
-database. In the callback will be the stored message (id, timestamp,
-value = `msgValue`) or err. Supports `msgValue` in SSB classic feeds
-as well as [bendy butt] messages
+Validate and add a message to the database. The callback will the (possible)
+error in the 1st argument, and in the 2nd argument the stored message in "KVT"
+shape, i.e. `{key, value, timestamp}`. The `nativeMsg` is assumed to belong to
+a feed format that is currently installed, such as [ssb-classic].
 
-### addOOO(msgValue, cb)
+**Alternatively:** `add(nativeMsg, opts, cb)` where `opts.encoding` and
+`opts.feedFormat` can be specified. (Read above, in the `create` method, for
+details about these opts)
 
-Validate without checking the previous link and add to db. Useful for
-partial replication.
+### addOOO(nativeMsg, cb)
 
-### addOOOBatch(msgValues, cb)
+Validate and a message to the database, but validation will not check the
+`previous`. Useful for partial replication.
 
-Similar to `addOOO`, but you can pass an array of many message
-values. If the author is not yet known, the message is validated
-without checking if the previous link is correct, otherwise normal
-validation. This makes it possible to use for partial replication to
-add all contact messages from a feed.
+Callback arguments are `(err, kvt)`, similar to the callback in the `add`
+method.
 
-### addTransaction(msgValues, oooMsgValues, cb)
+**Alternatively:** `addOOO(nativeMsg, opts, cb)` where `opts.encoding` and
+`opts.feedFormat` can be specified. (Read above, in the `create` method, for
+details about these opts)
 
-Similar to `addOOOBatch`, except you pass in an array of `msgValues`
-that will be validated in order and an array of `oooMsgValues` that
-will be validated similar to `addOOOBatch`. Finally all the messages
-are added to the database in such a way that either all of them are
-written to disc or none of them are.
+### addOOOBatch(nativeMsgs, cb)
+
+Similar to `addOOO`, but you can pass an array of many messages. If the `author`
+is not yet known, the message is validated without checking if the `previous`
+link is correct, otherwise normal validation is performed. This makes it
+possible to use for partial replication to add all contact messages from a feed.
+
+Callback arguments are `(err, kvts)`, where `kvts` is an array of "KVT" matching
+each of the given `nativeMsgs`.
+
+**Alternatively:** `addOOOBatch(nativeMsgs, opts, cb)` where `opts.encoding` and
+`opts.feedFormat` can be specified. (Read above, in the `create` method, for
+details about these opts)
+
+### addTransaction(nativeMsgs, oooNativeMsgs, cb)
+
+Similar to `addOOOBatch`, except you pass in an array of `nativeMsgs` that will
+be validated in order and an array of `oooNativeMsgs` that will be validated
+similar to `addOOOBatch`. Finally all the messages are added to the database in
+such a way that either all of them are written to disc or none of them are.
+
+Callback arguments are `(err, kvts)`, similar to the callback in the
+`addOOOBatch` method.
+
+**Alternatively:** `addTransaction(nativeMsgs, oooNativeMsgs, opts, cb)` where
+`opts.encoding` and `opts.feedFormat` can be specified. (Read above, in the
+`create` method, for details about these opts)
 
 ### del(msgId, cb)
 
-Delete a specific message given the message id from the
-database. Please note that this will break replication for anything
-trying to get that message, like createHistoryStream for the author or
-EBT. Because of this, it is not recommended to delete message with
-this method unless you know exactly what you are doing.
+Delete a specific message given the message ID `msgId` from the database.
+:warning: Please note that this will break replication for anything trying to
+get that message, like `createHistoryStream` for the author or EBT. Because of
+this, it is not recommended to delete message with this method unless you know
+exactly what you are doing.
 
 ### deleteFeed(feedId, cb)
 
-Delete all messages of a specific feedId. Compared to `del` this
-method is safe to use.
+Delete all messages of a specific feedId. Compared to `del` this method is safe
+to use.
 
 ### onMsgAdded(cb)
 
@@ -690,6 +716,7 @@ all [jitdb operators]
 [ssb-threads]: https://github.com/ssbc/ssb-threads
 [ssb-suggest-lite]: https://github.com/ssb-ngi-pointer/ssb-suggest-lite
 [ssb-friends]: https://github.com/ssbc/ssb-friends
+[ssb-classic]: https://github.com/ssbc/ssb-classic
 [ssb-feed-format]: https://github.com/ssbc/ssb-feed-format
 [ssb-encryption-format]: https://github.com/ssbc/ssb-encryption-format
 [ssb-search2]: https://github.com/staltz/ssb-search2
