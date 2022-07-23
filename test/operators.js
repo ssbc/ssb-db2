@@ -18,6 +18,7 @@ const {
   type,
   isDecrypted,
   isEncrypted,
+  isPrivate,
   isPublic,
   toCallback,
   author,
@@ -294,6 +295,18 @@ test('execute isEncrypted(box2)', (t) => {
     toCallback((err, msgs) => {
       t.error(err, 'no err')
       t.equal(msgs.length, 0)
+      t.end()
+    })
+  )
+})
+
+
+test('execute isPrivate()', (t) => {
+  db.query(
+    where(isPrivate()),
+    toCallback((err, msgs) => {
+      t.error(err, 'no err')
+      t.equal(msgs.length, 2)
       t.end()
     })
   )
