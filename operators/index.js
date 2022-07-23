@@ -21,7 +21,7 @@ const {
   seekMetaEncryptionFormat,
   seekContent,
 } = require('../seekers')
-const { and, seqs, equal, predicate, includes, offsets, deferred } =
+const { and, or, seqs, equal, predicate, includes, offsets, deferred } =
   jitdbOperators
 
 function key(msgId) {
@@ -192,6 +192,10 @@ function isEncrypted(encryptionFormat) {
   }
 }
 
+function isPrivate(encryptionFormat) {
+  return or(isEncrypted(encryptionFormat), isDecrypted(encryptionFormat))
+}
+
 module.exports = Object.assign({}, jitdbOperators, {
   type,
   author,
@@ -209,4 +213,5 @@ module.exports = Object.assign({}, jitdbOperators, {
   isPublic,
   isDecrypted,
   isEncrypted,
+  isPrivate,
 })
