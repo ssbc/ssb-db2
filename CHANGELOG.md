@@ -4,6 +4,15 @@ SPDX-FileCopyrightText: 2022 Andre 'Staltz' Medeiros
 SPDX-License-Identifier: CC0-1.0
 -->
 
+## 5.1.0
+
+### New APIs
+
+- `isPrivate()` operator
+
+We brought back `isPrivate()` which is just a shortcut operator that does the
+same as `or(isEncryted(), isDecrypted())`.
+
 ## 5.0.0
 
 ### New APIs
