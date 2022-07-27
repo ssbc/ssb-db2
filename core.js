@@ -11,6 +11,7 @@ const Debug = require('debug')
 const clarify = require('clarify-error')
 const multicb = require('multicb')
 const mutexify = require('mutexify')
+const newTimestamp = require('monotonic-timestamp')
 const push = require('push-stream')
 const Notify = require('pull-notify')
 const pull = require('pull-stream')
@@ -636,15 +637,16 @@ exports.init = function (sbot, config) {
     await onceWhenPromise(stateFeedsReady, (ready) => ready === true)
 
     // Create full opts:
+    const timestamp = newTimestamp()
     const provisionalNativeMsg = feedFormat.newNativeMsg({
-      timestamp: Date.now(),
+      timestamp,
       ...opts,
       previous: null,
       keys,
     })
     const feedId = feedFormat.getFeedId(provisionalNativeMsg)
     const previous = state.getAsKV(feedId, feedFormat)
-    const fullOpts = { timestamp: Date.now(), ...opts, previous, keys, hmacKey }
+    const fullOpts = { timestamp, ...opts, previous, keys, hmacKey }
 
     // If opts ask for encryption, encrypt and put ciphertext in opts.content
     const recps = fullOpts.recps || fullOpts.content.recps
