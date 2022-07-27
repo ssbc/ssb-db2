@@ -5,6 +5,7 @@
 const OffsetLog = require('async-append-only-log')
 const bipf = require('bipf')
 const TooHot = require('too-hot')
+const newTimestamp = require('monotonic-timestamp')
 const { BLOCK_SIZE, newLogPath, tooHotOpts } = require('./defaults')
 
 const BIPF_AUTHOR = bipf.allocAndEncode('author')
@@ -37,7 +38,7 @@ module.exports = function (dir, config, privateIndex, db) {
     const kvt = {
       key,
       value,
-      timestamp: Date.now(),
+      timestamp: newTimestamp(),
     }
     if (feedId !== value.author) kvt.feed = feedId
     const recBuffer = bipf.allocAndEncode(kvt)
@@ -62,11 +63,12 @@ module.exports = function (dir, config, privateIndex, db) {
     let recBuffers = []
     let kvts = []
 
+    const timestamp = newTimestamp()
     for (let i = 0; i < keys.length; ++i) {
       const kvt = {
         key: keys[i],
         value: values[i],
-        timestamp: Date.now(),
+        timestamp,
       }
       const recBuffer = bipf.allocAndEncode(kvt)
       recBuffers.push(recBuffer)
