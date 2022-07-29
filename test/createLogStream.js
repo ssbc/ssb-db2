@@ -78,7 +78,7 @@ test('createLogStream (live)', function (t) {
     sbot.createLogStream({ live: true }),
     pull.drain(function (m) {
       if (m.sync) return t.pass('{sync: true}')
-      t.true(m.timestamp > ts)
+      t.true(m.timestamp > ts, `msg timestamp ${m.timestamp} > ${ts}`)
       t.equal(m.value.content.type, 'msg')
       t.end()
       return false // abort the pull.drain
