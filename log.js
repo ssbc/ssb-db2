@@ -63,12 +63,11 @@ module.exports = function (dir, config, privateIndex, db) {
     let recBuffers = []
     let kvts = []
 
-    const timestamp = newTimestamp()
     for (let i = 0; i < keys.length; ++i) {
       const kvt = {
         key: keys[i],
         value: values[i],
-        timestamp,
+        timestamp: newTimestamp(),
       }
       const recBuffer = bipf.allocAndEncode(kvt)
       recBuffers.push(recBuffer)
