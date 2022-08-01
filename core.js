@@ -68,6 +68,7 @@ exports.manifest = {
   addOOOBatch: 'async',
   getStatus: 'sync',
   compact: 'async',
+  logStats: 'async',
   indexingProgress: 'source',
   compactionProgress: 'source',
 
@@ -1080,6 +1081,7 @@ exports.init = function (sbot, config) {
     onMsgAdded,
     compact,
     reindexEncrypted,
+    logStats: log.stats,
     indexingProgress: () => indexingProgress.listen(),
     compactionProgress: () => compactionProgress.listen(),
 

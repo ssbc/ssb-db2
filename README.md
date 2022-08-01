@@ -588,6 +588,11 @@ at runtime and that changes what messages can be decrypted. Calling
 this function is needed after adding a new key. The function can be
 called multiple times safely.
 
+### logStats(cb)
+
+Use [async-append-only-log]'s `stats` method to get information on how many
+bytes are used by messages in the log, and how many bytes are zero-filled.
+
 ### prepare(operation, cb)
 
 Use [JITDB's prepare](https://github.com/ssb-ngi-pointer/jitdb/#prepareoperation-cb) method to warm up a JIT index.
@@ -706,6 +711,7 @@ all [jitdb operators]
 - isDecrypted
 
 [ssb-db]: https://github.com/ssbc/ssb-db/
+[async-append-only-log]: https://github.com/ssbc/async-append-only-log/
 [bipf]: https://github.com/ssbc/bipf/
 [jitdb]: https://github.com/ssb-ngi-pointer/jitdb/
 [bendy butt]: https://github.com/ssb-ngi-pointer/ssb-bendy-butt
