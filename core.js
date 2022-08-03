@@ -735,7 +735,9 @@ exports.init = function (sbot, config) {
 
             push(
               push.values(offsets),
-              push.asyncMap(log.del),
+              push.asyncMap((offset, cb) => {
+                setTimeout(() => log.del(offset, cb))
+              }),
               push.collect((err) => {
                 // prettier-ignore
                 if (err) return cb(clarify(err, 'deleteFeed() failed for feed ' + feedId))
