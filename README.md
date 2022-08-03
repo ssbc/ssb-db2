@@ -658,11 +658,11 @@ const config = {
     startDecryptBox1: '2022-03-25',
 
     /**
-     * A debouncing interval (measured in milliseconds) to control how often
+     * A throttle interval (measured in milliseconds) to control how often
      * should messages given to `sbot.add` be flushed in batches.
      * Default: 250
      */
-    addBatchDebounce: 250,
+    addBatchThrottle: 250,
 
     /**
      * An upper limit on the CPU load that ssb-db2 can use while indexing
