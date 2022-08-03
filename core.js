@@ -331,7 +331,7 @@ exports.init = function (sbot, config) {
     return null
   }
 
-  const throttlePeriod = config.db2.addThrottle || 250
+  const throttlePeriod = config.db2.addBatchThrottle || 250
   const throttler = new ThrottleBatchAdd(addBatch, throttlePeriod)
 
   function normalizeAddArgs(...args) {
