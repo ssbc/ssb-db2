@@ -170,9 +170,7 @@ test('delete single msg', (t) => {
 test('logStats()', (t) => {
   db.logStats((err, stats) => {
     t.error(err, 'no err')
-    t.equals(stats.totalCount, 34)
     t.equals(stats.totalBytes, 13312)
-    t.equals(stats.deletedCount, 1)
     t.equals(stats.deletedBytes, 405)
     t.end()
   })
