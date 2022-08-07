@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2022 Andre 'Staltz' Medeiros
 SPDX-License-Identifier: CC0-1.0
 -->
 
-## X.X.0
+## 6.0.0
 
 ### Breaking changes
 
