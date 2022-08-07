@@ -4,6 +4,18 @@ SPDX-FileCopyrightText: 2022 Andre 'Staltz' Medeiros
 SPDX-License-Identifier: CC0-1.0
 -->
 
+## 6.0.0
+
+### Breaking changes
+
+- `config.db2.addDebounce` replaced with `config.db2.addBatchThrottle`
+
+## 5.2.0
+
+### New APIs
+
+- `logStats()`
+
 ## 5.1.0
 
 ### New APIs

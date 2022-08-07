@@ -67,9 +67,10 @@ module.exports = class DebouncingBatchAdd {
   add(msgVal, opts, cb) {
     const feedId = opts.feedId
     const queue = this.queueByFeed.get(feedId) || []
+    const isNew = queue.length === 0
     queue.push([msgVal, opts, cb])
     this.queueByFeed.set(feedId, queue)
-    this.timestampsByFeed.set(feedId, Date.now())
+    if (isNew) this.timestampsByFeed.set(feedId, Date.now())
     this.scheduleFlush()
   }
 }

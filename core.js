@@ -27,7 +27,7 @@ const {
   resetPrivatePath,
 } = require('./defaults')
 const { onceWhen, ReadyGate, onceWhenPromise } = require('./utils')
-const DebouncingBatchAdd = require('./debounce-batch')
+const ThrottleBatchAdd = require('./throttle-batch')
 const Log = require('./log')
 const Status = require('./status')
 const makeBaseIndex = require('./indexes/base')
@@ -331,8 +331,8 @@ exports.init = function (sbot, config) {
     return null
   }
 
-  const debouncePeriod = config.db2.addDebounce || 250
-  const debouncer = new DebouncingBatchAdd(addBatch, debouncePeriod)
+  const throttlePeriod = config.db2.addBatchThrottle || 250
+  const throttler = new ThrottleBatchAdd(addBatch, throttlePeriod)
 
   function normalizeAddArgs(...args) {
     let cb, opts
@@ -370,7 +370,7 @@ exports.init = function (sbot, config) {
         }
         opts.feedFormat = feedFormat.name
         opts.feedId = feedFormat.getFeedId(nativeMsg)
-        if (feedFormat.validateBatch) debouncer.add(nativeMsg, opts, cb)
+        if (feedFormat.validateBatch) throttler.add(nativeMsg, opts, cb)
         else addImmediately(nativeMsg, feedFormat, opts, cb)
       }
     )
