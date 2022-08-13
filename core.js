@@ -1070,6 +1070,9 @@ exports.init = function (sbot, config) {
 
     if (compacting.value !== !stats.done) compacting.set(!stats.done)
 
+    // fs sync not working in browser
+    if (typeof window !== 'undefined') return
+
     if (stats.done) {
       if (stats.sizeDiff > 0) {
         let resettingLevelIndexes = false
