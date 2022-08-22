@@ -1090,6 +1090,7 @@ exports.init = function (sbot, config) {
     addOOO,
     addOOOBatch,
     getStatus: () => status.obv,
+    getIndexingActive: () => indexingActive,
     operators,
     onMsgAdded,
     compact,
