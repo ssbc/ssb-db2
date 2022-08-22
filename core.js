@@ -71,6 +71,7 @@ exports.manifest = {
   logStats: 'async',
   indexingProgress: 'source',
   compactionProgress: 'source',
+  reset: 'async',
 
   // `query` should be `sync`, but secret-stack is automagically converting it
   // to async because of secret-stack/utils.js#hookOptionalCB. Eventually we
@@ -1051,6 +1052,18 @@ exports.init = function (sbot, config) {
     }
   })
 
+  function reset(cb) {
+    stopUpdatingIndexes()
+    const done = multicb({ pluck: 1 })
+    status.reset()
+    resetAllIndexes(done())
+    privateIndex.reset(done())
+    done(() => {
+      resumeUpdatingIndexes()
+      cb()
+    })
+  }
+
   function publish() {
     // prettier-ignore
     throw new Error('publish() not installed, you should .use(require("ssb-db2/compat/publish"))')
@@ -1084,6 +1097,7 @@ exports.init = function (sbot, config) {
     logStats: log.stats,
     indexingProgress: () => indexingProgress.listen(),
     compactionProgress: () => compactionProgress.listen(),
+    reset,
 
     // needed primarily internally by other plugins in this project:
     publish,
