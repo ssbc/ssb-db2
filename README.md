@@ -623,6 +623,11 @@ If `encryptionFormat` conforms to the [ssb-encryption-format] spec, then this
 method will install the `encryptionFormat` in this database instance, meaning
 that you can now encrypt and decrypt messages using that encryption format.
 
+### reset(cb)
+
+Force all indexese to be rebuilt. Use this as a last resort if you suspect that
+the indexes are corrupted.
+
 ## Configuration
 
 You can use ssb-config parameters to configure some aspects of ssb-db2:
