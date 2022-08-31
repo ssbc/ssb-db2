@@ -787,6 +787,7 @@ exports.init = function (sbot, config) {
       debug('updateIndexes() called while another one is in progress')
       return
     }
+    const shouldDecrypt = true
     const start = Date.now()
 
     const indexesArr = Object.values(indexes)
@@ -798,7 +799,9 @@ exports.init = function (sbot, config) {
     debug(`lowest offset for all indexes is ${lowestOffset}`)
 
     indexingActive.set(indexingActive.value + 1)
-    const sink = log.stream({ gt: lowestOffset }).pipe({
+    const sourceOld = log.stream({ gt: lowestOffset, shouldDecrypt })
+    abortLogStreamForIndexes = sourceOld.abort.bind(sourceOld)
+    sourceOld.pipe({
       paused: false,
       write(record) {
         const buf = record.value
@@ -816,7 +819,9 @@ exports.init = function (sbot, config) {
           indexingActive.set(indexingActive.value - 1)
           debug('updateIndexes() live streaming')
           const gt = indexes['base'].offset.value
-          const sink = log.stream({ gt, live: true }).pipe({
+          const sourceLive = log.stream({ gt, live: true, shouldDecrypt })
+          abortLogStreamForIndexes = sourceLive.abort.bind(sourceLive)
+          sourceLive.pipe({
             paused: false,
             write(record) {
               const buf = record.value
@@ -824,11 +829,9 @@ exports.init = function (sbot, config) {
               for (const idx of indexesArr) idx.onRecord(record, true, pValue)
             },
           })
-          abortLogStreamForIndexes = sink.source.abort.bind(sink.source)
         })
       },
     })
-    abortLogStreamForIndexes = sink.source.abort.bind(sink.source)
   }
 
   function onDrain(indexName, cb) {
