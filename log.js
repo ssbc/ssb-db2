@@ -136,7 +136,7 @@ module.exports = function (dir, config, privateIndex, db) {
   // and to decrypt the msg
   const originalStream = log.stream
   log.stream = function (opts) {
-    const shouldDecrypt = opts.decrypt === false ? false : true
+    const shouldDecrypt = !!opts.shouldDecrypt
     const tooHot = config.db2.maxCpu ? TooHot(tooHotOpts(config)) : () => false
     const s = originalStream(opts)
     const originalPipe = s.pipe.bind(s)
