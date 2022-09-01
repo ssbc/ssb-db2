@@ -787,7 +787,7 @@ exports.init = function (sbot, config) {
       debug('updateIndexes() called while another one is in progress')
       return
     }
-    const shouldDecrypt = true
+    const updatePrivateIndex = true
     const start = Date.now()
 
     const indexesArr = Object.values(indexes)
@@ -799,7 +799,7 @@ exports.init = function (sbot, config) {
     debug(`lowest offset for all indexes is ${lowestOffset}`)
 
     indexingActive.set(indexingActive.value + 1)
-    const sourceOld = log.stream({ gt: lowestOffset, shouldDecrypt })
+    const sourceOld = log.stream({ gt: lowestOffset, updatePrivateIndex })
     abortLogStreamForIndexes = sourceOld.abort.bind(sourceOld)
     sourceOld.pipe({
       paused: false,
@@ -819,7 +819,7 @@ exports.init = function (sbot, config) {
           indexingActive.set(indexingActive.value - 1)
           debug('updateIndexes() live streaming')
           const gt = indexes['base'].offset.value
-          const sourceLive = log.stream({ gt, live: true, shouldDecrypt })
+          const sourceLive = log.stream({ gt, live: true, updatePrivateIndex })
           abortLogStreamForIndexes = sourceLive.abort.bind(sourceLive)
           sourceLive.pipe({
             paused: false,

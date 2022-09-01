@@ -165,7 +165,7 @@ module.exports = function (dir, sbot, config) {
     return { offset: record.offset, value: newRecBuffer }
   }
 
-  function decrypt(record, streaming) {
+  function decrypt(record, updatingPrivateIndex) {
     const recOffset = record.offset
     const recBuffer = record.value
     if (!recBuffer) return record
@@ -180,8 +180,8 @@ module.exports = function (dir, sbot, config) {
       if (!decryptedRecord) return record
 
       return decryptedRecord
-    } else if (recOffset > latestOffset.value || !streaming) {
-      if (streaming) latestOffset.set(recOffset)
+    } else if (recOffset > latestOffset.value || !updatingPrivateIndex) {
+      if (updatingPrivateIndex) latestOffset.set(recOffset)
 
       const pValue = bipf.seekKey2(recBuffer, 0, BIPF_VALUE, 0)
       if (pValue < 0) return record
@@ -203,7 +203,7 @@ module.exports = function (dir, sbot, config) {
         if (declaredTimestamp < startDecryptBox1) return record
       }
 
-      if (streaming) {
+      if (updatingPrivateIndex) {
         const encryptedIdx = encryptedIdxMap.get(encryptionFormat.name)
         encryptedIdx.insert(recOffset)
       }
@@ -214,7 +214,7 @@ module.exports = function (dir, sbot, config) {
       decryptedIdx.insert(recOffset)
       encryptedIdxMap.get(encryptionFormat.name).remove(recOffset)
 
-      if (!streaming) saveIndexes(() => {})
+      if (!updatingPrivateIndex) saveIndexes(() => {})
       return decryptedRecord
     } else {
       return record
