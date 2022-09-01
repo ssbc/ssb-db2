@@ -1059,6 +1059,7 @@ exports.init = function (sbot, config) {
     stopUpdatingIndexes()
     const done = multicb({ pluck: 1 })
     status.reset()
+    jitdb.reindex(0, done())
     resetAllIndexes(done())
     privateIndex.reset(done())
     done(() => {
