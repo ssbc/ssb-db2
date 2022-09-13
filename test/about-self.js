@@ -28,7 +28,13 @@ let sbot = SecretStack({ appKey: caps.shs })
 const db = sbot.db
 
 test('get self assigned', (t) => {
-  const about = { type: 'about', about: sbot.id, name: 'arj', image: '&blob', publicWebHosting: true }
+  const about = {
+    type: 'about',
+    about: sbot.id,
+    name: 'arj',
+    image: '&blob',
+    publicWebHosting: true,
+  }
   const aboutOther = { type: 'about', about: '@other', name: 'staltz' }
 
   db.publish(about, (err, postMsg) => {
@@ -69,7 +75,13 @@ test('get self assigned', (t) => {
 })
 
 test('get live profile', (t) => {
-  const about = { type: 'about', about: sbot.id, name: 'arj', image: '&blob', publicWebHosting: true }
+  const about = {
+    type: 'about',
+    about: sbot.id,
+    name: 'arj',
+    image: '&blob',
+    publicWebHosting: true,
+  }
   const aboutOther = { type: 'about', about: '@other', name: 'staltz' }
 
   db.publish(about, (err, postMsg) => {
@@ -83,7 +95,12 @@ test('get live profile', (t) => {
         t.equal(profile.name, about.name)
         t.equal(profile.image, about.image)
 
-        const newAbout = { type: 'about', about: sbot.id, name: 'arj03', publicWebHosting: false }
+        const newAbout = {
+          type: 'about',
+          about: sbot.id,
+          name: 'arj03',
+          publicWebHosting: false,
+        }
 
         pull(
           sbot.db.getIndex('aboutSelf').getLiveProfile(sbot.id),

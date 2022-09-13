@@ -79,10 +79,12 @@ module.exports = class AboutSelf extends Plugin {
 
     if (isString(content.description)) profile.description = content.description
 
-    if (content.image && isString(content.image.link)) profile.image = content.image.link
+    if (content.image && isString(content.image.link))
+      profile.image = content.image.link
     else if (isString(content.image)) profile.image = content.image
 
-    if (isBoolean(content.publicWebHosting)) profile.publicWebHosting = content.publicWebHosting
+    if (isBoolean(content.publicWebHosting))
+      profile.publicWebHosting = content.publicWebHosting
 
     this.profiles[author] = profile
   }
@@ -108,10 +110,10 @@ module.exports = class AboutSelf extends Plugin {
   }
 }
 
-function isString (str) {
+function isString(str) {
   return typeof str === 'string'
 }
 
-function isBoolean (bool) {
+function isBoolean(bool) {
   return typeof str === 'boolean'
 }
