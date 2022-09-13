@@ -107,7 +107,7 @@ test('get live profile', (t) => {
           pull.drain((profile) => {
             t.equal(profile.name, newAbout.name)
             t.equal(profile.image, about.image)
-            t.equal(profile.publicWebHosting, newAbout.image)
+            t.equal(profile.publicWebHosting, newAbout.publicWebHosting)
             t.end()
           })
         )

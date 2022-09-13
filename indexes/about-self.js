@@ -115,5 +115,5 @@ function isString(str) {
 }
 
 function isBoolean(bool) {
-  return typeof str === 'boolean'
+  return typeof bool === 'boolean'
 }
