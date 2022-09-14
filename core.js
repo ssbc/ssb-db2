@@ -536,23 +536,22 @@ exports.init = function (sbot, config) {
     if (nativeMsgs.length === 0 && oooNativeMsgs.length === 0) {
       return cb(null, [])
     }
-    const exampleNativeMsg =
-      nativeMsgs.length > 0 ? nativeMsgs[0] : oooNativeMsgs[0]
-    const feedFormat = findFeedFormatByNameOrNativeMsg(
-      opts.feedFormat,
-      exampleNativeMsg
-    )
-    if (!feedFormat) {
-      // prettier-ignore
-      return cb(new Error('addTransaction() failed because could not find feed format for: ' + exampleNativeMsg))
-    }
-    if (!feedFormat.validateBatch) {
+    const feedFormat =
+      nativeMsgs.length > 0
+        ? findFeedFormatByNameOrNativeMsg(opts.feedFormat, nativeMsgs[0])
+        : null
+    const oooFeedFormat = findFeedFormatForNativeMsg(oooNativeMsgs[0])
+    if (feedFormat && !feedFormat.validateBatch) {
       // prettier-ignore
       return cb(new Error('addTransaction() failed because feed format ' + feedFormat.name + ' does not support validateBatch'))
     }
-    if (!feedFormat.validateOOOBatch) {
+    if (!oooFeedFormat) {
       // prettier-ignore
-      return cb(new Error('addTransaction() failed because feed format ' + feedFormat.name + ' does not support validateOOOBatch'))
+      return cb(new Error('addTransaction() failed because could not find feed format for: ' + oooNativeMsgs[0]))
+    }
+    if (!oooFeedFormat.validateOOOBatch) {
+      // prettier-ignore
+      return cb(new Error('addTransaction() failed because feed format ' + oooFeedFormat.name + ' does not support validateOOOBatch'))
     }
 
     onceWhen(
@@ -569,14 +568,14 @@ exports.init = function (sbot, config) {
           done()(null, [])
         }
 
-        feedFormat.validateOOOBatch(oooNativeMsgs, hmacKey, done())
+        oooFeedFormat.validateOOOBatch(oooNativeMsgs, hmacKey, done())
 
         done((err) => {
           // prettier-ignore
           if (err) return cb(clarify(err, 'validation in addTransaction() failed'))
 
           const msgIds = nativeMsgs.map((m) => feedFormat.getMsgId(m))
-          const oooMsgIds = oooNativeMsgs.map((m) => feedFormat.getMsgId(m))
+          const oooMsgIds = oooNativeMsgs.map((m) => oooFeedFormat.getMsgId(m))
 
           if (nativeMsgs.length > 0) {
             const lastIndex = nativeMsgs.length - 1
@@ -586,9 +585,14 @@ exports.init = function (sbot, config) {
           }
 
           const allMsgIds = [].concat(msgIds, oooMsgIds)
-          const allMsgs = []
-            .concat(nativeMsgs, oooNativeMsgs)
-            .map((nMsg) => feedFormat.fromNativeMsg(nMsg, opts.encoding))
+          const allMsgs = [].concat(
+            nativeMsgs.map((nMsg) =>
+              feedFormat.fromNativeMsg(nMsg, opts.encoding)
+            ),
+            oooNativeMsgs.map((nMsg) =>
+              oooFeedFormat.fromNativeMsg(nMsg, opts.encoding)
+            )
+          )
 
           log.addTransaction(allMsgIds, allMsgs, opts.encoding, (err, kvts) => {
             if (err)
@@ -599,10 +603,16 @@ exports.init = function (sbot, config) {
             }
 
             for (let i = 0; i < kvts.length; ++i) {
+              const nativeMsg =
+                i < nativeMsgs.length
+                  ? nativeMsgs[i]
+                  : oooNativeMsgs[i - nativeMsgs.length]
+              const ff =
+                i < nativeMsgs.length ? feedFormat.name : oooFeedFormat.name
               onMsgAdded.set({
                 kvt: kvts[i],
-                nativeMsg: allMsgs[i],
-                feedFormat: feedFormat.name,
+                nativeMsg,
+                feedFormat: ff,
               })
             }
             cb(null, kvts)
