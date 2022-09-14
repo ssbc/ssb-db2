@@ -510,6 +510,63 @@ test('query anybox', (t) => {
   )
 })
 
+test('addTransaction classic and buttwoo', (t) => {
+  const buttwoo = db.findFeedFormatByName('buttwoo-v1')
+
+  const buttwooMsg = buttwoo.toNativeMsg(
+    {
+      author:
+        'ssb:feed/buttwoo-v1/2rZrvozfnW8Sz4JaVa3R2a_993gK9kryjCDe7QlZw-Q=',
+      parent: null,
+      sequence: 1,
+      timestamp: 1663157978792,
+      previous: null,
+      tag: Buffer.from([0]),
+      content: { type: 'text', text: 'hi' },
+      contentHash: Buffer.from([
+        0, 221, 173, 63, 188, 16, 108, 36, 145, 16, 246, 31, 7, 166, 213, 35,
+        99, 85, 246, 208, 234, 136, 13, 192, 90, 4, 53, 93, 183, 250, 16, 239,
+        17,
+      ]),
+      signature: Buffer.from([
+        55, 83, 95, 228, 174, 19, 179, 249, 147, 245, 212, 38, 170, 242, 127,
+        102, 19, 118, 252, 110, 104, 120, 95, 188, 196, 160, 54, 197, 124, 5,
+        253, 160, 40, 39, 196, 153, 227, 143, 149, 47, 86, 137, 237, 203, 145,
+        217, 174, 69, 31, 4, 199, 69, 242, 57, 6, 5, 42, 77, 62, 154, 34, 241,
+        163, 4,
+      ]),
+    },
+    'js'
+  )
+
+  const classic = db.findFeedFormatByName('classic')
+
+  const classicMsg = classic.toNativeMsg(
+    {
+      previous: null,
+      sequence: 1,
+      author: '@0rk3aksZ35umCfQlygf9PlU8PMZOLrYZ9rEM1GyO2yo=.ed25519',
+      timestamp: 1663158063984,
+      hash: 'sha256',
+      content: {
+        type: 'text',
+        text: 'hi',
+      },
+      signature:
+        '5AlnQJJb3PKSx3j9aKBSNBoQ+9dtCcWb+WpkUuvv+u81zO9pnLeqw/BbOa5EhM1r1lfKc5IIDfGGSu4VCrDEAw==.sig.ed25519',
+    },
+    'js'
+  )
+
+  db.addTransaction([buttwooMsg], [classicMsg], (err, msgs) => {
+    t.error(err, 'no err')
+    t.equals(msgs.length, 2, 'two messages added')
+    t.true(msgs[0].key.startsWith('ssb:message/buttwoo-v1/'), 'buttwoo message')
+    t.true(msgs[1].key.startsWith('%'), 'classic message')
+    t.end()
+  })
+})
+
 test('teardown', (t) => {
   sbot.close(t.end)
 })
