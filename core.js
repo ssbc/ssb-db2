@@ -540,16 +540,15 @@ exports.init = function (sbot, config) {
       nativeMsgs.length > 0
         ? findFeedFormatByNameOrNativeMsg(opts.feedFormat, nativeMsgs[0])
         : null
-    const oooFeedFormat = findFeedFormatForNativeMsg(oooNativeMsgs[0])
+    const oooFeedFormat =
+      oooNativeMsgs.length > 0
+        ? findFeedFormatForNativeMsg(oooNativeMsgs[0])
+        : null
     if (feedFormat && !feedFormat.validateBatch) {
       // prettier-ignore
       return cb(new Error('addTransaction() failed because feed format ' + feedFormat.name + ' does not support validateBatch'))
     }
-    if (!oooFeedFormat) {
-      // prettier-ignore
-      return cb(new Error('addTransaction() failed because could not find feed format for: ' + oooNativeMsgs[0]))
-    }
-    if (!oooFeedFormat.validateOOOBatch) {
+    if (oooFeedFormat && !oooFeedFormat.validateOOOBatch) {
       // prettier-ignore
       return cb(new Error('addTransaction() failed because feed format ' + oooFeedFormat.name + ' does not support validateOOOBatch'))
     }
@@ -568,7 +567,9 @@ exports.init = function (sbot, config) {
           done()(null, [])
         }
 
-        oooFeedFormat.validateOOOBatch(oooNativeMsgs, hmacKey, done())
+        if (oooNativeMsgs.length > 0) {
+          oooFeedFormat.validateOOOBatch(oooNativeMsgs, hmacKey, done())
+        }
 
         done((err) => {
           // prettier-ignore
