@@ -1,7 +1,7 @@
 {
   "name": "ssb-db2",
   "description": "A new database for SSB",
-  "version": "6.1.1",
+  "version": "6.2.0",
   "homepage": "https://github.com/ssb-ngi-pointer/ssb-db2",
   "repository": {
     "type": "git",
