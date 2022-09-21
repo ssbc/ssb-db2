@@ -7,7 +7,7 @@
 const AboutSelfIndex = require('./indexes/about-self')
 
 exports.init = function (sbot, config) {
-  console.log('ssb-db2/about-self is deprecated, please use ssb-about-self')
+  console.warn('ssb-db2/about-self is deprecated, please use ssb-about-self')
 
   sbot.db.registerIndex(AboutSelfIndex)
 }
