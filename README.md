@@ -181,30 +181,6 @@ sbot.db.query(
 )
 ```
 
-#### About-self
-
-Another extra index plugin that is commonly needed in SSB communities
-is the **about-self** index. This indexes only self-assigned about
-messages in contrast to [ssb-social-index] that indexes all about
-messages.
-
-Example usage:
-
-```js
-const SecretStack = require('secret-stack')
-const caps = require('ssb-caps')
-
-const sbot = SecretStack({ caps })
-  .use(require('ssb-db2'))
-  .use(require('ssb-db2/about-self')) // include index
-  .call(null, { path: './' })
-
-sbot.db.onDrain('aboutSelf', () => {
-  const profile = sbot.db.getIndex('aboutSelf').getProfile(alice.id)
-  console.log('Alice has name:' + profile.name)
-})
-```
-
 #### Your own leveldb index plugin
 
 It's wise to use JITDB when:
