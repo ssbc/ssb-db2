@@ -554,8 +554,14 @@ also be read using `ssb.db.onMsgAdded.value`.
 
 ### getStatus
 
-Gets the current db status, same functionality as
-[db.status](https://github.com/ssbc/ssb-db#dbstatus) in ssb-db.
+Gets the current db status, same functionality (observable) as
+[db.status](https://github.com/ssbc/ssb-db#dbstatus) in ssb-db. The
+value contains the following information:
+
+- `log`: offset in log
+- `jit`: an object with the offset of each [jitdb] index
+- `indexes`: an object with the offset of each level index
+- `progress`: a float representing the index completion from 0 to 1
 
 ### reindexEncrypted(cb)
 
