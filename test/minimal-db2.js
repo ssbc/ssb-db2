@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022 Mix Irving
+//
+// SPDX-License-Identifier: Unlicense
+
 const test = require('tape')
 const ssbKeys = require('ssb-keys')
 const rimraf = require('rimraf')
@@ -13,11 +17,6 @@ test('minimal db2 (no encryption)', t => {
   const stack = SecretStack({ appKey: caps.shs })
     .use(require('../core'))
     .use(require('ssb-classic'))
-    // .use(require('ssb-box'))
-    // .use(require('ssb-box2'))
-    // .use(require('../compat/publish'))
-    // .use(require('../compat/post'))
-    // .use(require('../migrate'))
 
   const ssb = stack({
     path: dir,
@@ -30,6 +29,13 @@ test('minimal db2 (no encryption)', t => {
   }, (err, msg) => {
     t.error(err, 'published message')
 
-    ssb.close(true, t.end)
+    ssb.db.create({
+      content: { type: 'boop', recps: [ssb.id] },
+      keys
+    }, (err) => {
+      t.match(err.message, /does not support encryption format undefined/, 'still errors on unencrypted messages')
+
+      ssb.close(true, t.end)
+    })
   })
 })
