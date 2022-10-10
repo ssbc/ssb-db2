@@ -57,6 +57,35 @@ test('create() classic', (t) => {
   )
 })
 
+test('create() classic "too big"', (t) => {
+  const content = {
+    type: 'post',
+    text: Array(10000).fill('!').join('')
+  }
+  db.create(
+    { feedFormat: 'classic', content, },
+    (err, msg) => {
+      const comment = 'should error when content > 8kb'
+      if (!err) t.fail(comment)
+      else t.match(err.message, /content must be less than 8192/, comment)
+
+      const content = {
+        type: 'post',
+        text: Array(8192 - 114).fill('!').join(''),
+        recps: [sbot.id]
+      }
+
+      db.create({ feedFormat: 'classic', content }, err => {
+        const comment = 'should error when content > 8kb'
+        if (!err) t.fail(comment)
+        else t.match(err.message, /content must be less than 8192/, comment)
+
+        t.end()
+      })
+    }
+  )
+})
+
 test('create() classic box', (t) => {
   db.create(
     {
