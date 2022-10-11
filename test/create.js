@@ -67,7 +67,7 @@ test('create() classic "too big"', (t) => {
     (err, msg) => {
       const comment = 'should error when content > 8kb'
       if (!err) t.fail(comment)
-      else t.match(err.message, /content must be less than 8192/, comment)
+      else t.match(err.message, /content must be at most 8192/, comment)
 
       const content = {
         type: 'post',
@@ -78,7 +78,7 @@ test('create() classic "too big"', (t) => {
       db.create({ feedFormat: 'classic', content }, err => {
         const comment = 'should error when content > 8kb'
         if (!err) t.fail(comment)
-        else t.match(err.message, /content must be less than 8192/, comment)
+        else t.match(err.message, /content must be at most 8192/, comment)
 
         t.end()
       })
