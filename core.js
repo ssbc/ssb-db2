@@ -663,7 +663,7 @@ exports.init = function (sbot, config) {
         keys,
       })
     } catch (err) {
-      return cb(err)
+      return cb(clarify(err, 'create() failed'))
     }
     const feedId = feedFormat.getFeedId(provisionalNativeMsg)
     const previous = state.getAsKV(feedId, feedFormat)
@@ -698,7 +698,7 @@ exports.init = function (sbot, config) {
     try {
       nativeMsg = feedFormat.newNativeMsg(fullOpts)
     } catch (err) {
-      return cb(err)
+      return cb(clarify(err, 'create() failed'))
     }
     const msgId = feedFormat.getMsgId(nativeMsg)
     const msg = feedFormat.fromNativeMsg(nativeMsg, encoding)
