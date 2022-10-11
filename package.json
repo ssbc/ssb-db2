@@ -46,7 +46,7 @@
     "ssb-about-self": "^1.0.1",
     "ssb-box": "^1.0.0",
     "ssb-box2": "^2.0.2",
-    "ssb-classic": "ssbc/ssb-classic#validate_size",
+    "ssb-classic": "^1.1.0",
     "ssb-keys": "^8.4.0",
     "ssb-ref": "^2.14.3",
     "ssb-uri2": "^2.0.0",
