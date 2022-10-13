@@ -641,8 +641,8 @@ exports.init = function (sbot, config) {
     // prettier-ignore
     if (!feedFormat.isAuthor(keys.id)) return cb(new Error(`create() failed because keys.id ${keys.id} is not a valid author for feed format ${feedFormat.name}`))
     // prettier-ignore
-    if (!encryptionFormat) {
-      if (opts.recps || opts.content.recps) {
+    if (opts.recps || opts.content.recps) {
+      if (!encryptionFormat) {
         return cb(new Error('create() does not support encryption format ' + opts.encryptionFormat))
       }
     }
