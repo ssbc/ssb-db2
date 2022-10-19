@@ -118,6 +118,7 @@ exports.init = function (sbot, config) {
     })
   })
 
+  privateIndex.latestOffset((offset) => status.updateIndex('private', offset))
   registerIndex(makeBaseIndex(privateIndex))
   registerIndex(KeysIndex)
 
@@ -802,7 +803,7 @@ exports.init = function (sbot, config) {
 
     if (indexes[index.name]) throw 'Index already exists'
 
-    index.offset((o) => status.updateIndex(index.name, o))
+    index.offset((offset) => status.updateIndex(index.name, offset))
 
     indexes[index.name] = index
   }
