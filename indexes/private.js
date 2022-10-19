@@ -45,9 +45,11 @@ module.exports = function (dir, sbot, config) {
       }
     }
 
-    decryptedIdx.loadFile(err => done()(null, err))
+    const loadedDecrypted = done()
+    decryptedIdx.loadFile(err => loadedDecrypted(null, err))
     for (const idx of encryptedIdxMap.values()) {
-      idx.loadFile(err => done()(null, err))
+      const loadedEncrypted = done()
+      idx.loadFile(err => loadedEncrypted(null, err))
     }
 
     done((criticalError, results) => {
