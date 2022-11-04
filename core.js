@@ -19,6 +19,7 @@ const Obv = require('obz')
 const bipf = require('bipf')
 const JITDB = require('jitdb')
 const jitdbOperators = require('jitdb/operators')
+const uri = require('ssb-uri2')
 
 const operators = require('./operators')
 const {
@@ -223,6 +224,8 @@ exports.init = function (sbot, config) {
   }
 
   function getHelper(id, onlyValue, cb) {
+    id = uri.isClassicMessageSSBURI(id) ? uri.toMessageSigil(id) : id
+
     if (sbot.db2migrate) {
       onceWhen(
         sbot.db2migrate.synchronized,

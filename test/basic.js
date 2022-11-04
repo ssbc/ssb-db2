@@ -12,6 +12,7 @@ const pull = require('pull-stream')
 const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const bendyButt = require('ssb-bendy-butt/format')
+const uri = require('ssb-uri2')
 
 const {
   where,
@@ -643,6 +644,21 @@ test('prepare()', (t) => {
         t.end()
       })
     }, 500)
+  })
+})
+
+test('getMsg from uri id', (t) => {
+  const post = { type: 'post', text: 'Testing!' }
+
+  db.publish(post, (err, postMsg) => {
+    t.error(err, 'no err')
+    t.equal(postMsg.value.content.text, post.text, 'text correct')
+
+    db.getMsg(uri.fromMessageSigil(postMsg.key), (err, getMsg) => {
+      t.error(err, 'no err')
+      t.deepEqual(postMsg, getMsg, 'msg value correct')
+      t.end()
+    })
   })
 })
 
