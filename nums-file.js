@@ -28,7 +28,7 @@ class NumsFile {
 
     AtomicFileRW.writeFile(this._path, b, (err) => {
       // prettier-ignore
-      if (err) console.error(clarify(err, 'NumsFile failed to save at ' + filename))
+      if (err) console.error(clarify(err, 'NumsFile failed to save at ' + this._path))
       if (cb) cb()
     })
   }
