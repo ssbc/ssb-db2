@@ -760,7 +760,7 @@ exports.init = function (sbot, config) {
         pull(
           self.query(where(author(feedId)), asOffsets(), toPullStream()),
           pull.asyncMap(log.del),
-          pull.collect((err) => {
+          pull.onEnd((err) => {
             // prettier-ignore
             if (err) return cb(clarify(err, 'deleteFeed() failed for feed ' + feedId))
 
