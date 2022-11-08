@@ -48,6 +48,7 @@ const {
   asOffsets,
   isEncrypted,
   toCallback,
+  batch,
   toPullStream,
 } = operators
 
@@ -757,24 +758,20 @@ exports.init = function (sbot, config) {
       () => {
         if (!state.has(feedId)) return cb()
 
-        self.query(
-          where(author(feedId)),
-          asOffsets(),
-          toCallback((err, offsets) => {
+        pull(
+          self.query(
+            where(author(feedId)),
+            asOffsets(),
+            batch(1000),
+            toPullStream()
+          ),
+          pull.asyncMap(log.del),
+          pull.onEnd((err) => {
             // prettier-ignore
-            if (err) return cb(clarify(err, 'deleteFeed() failed to query jitdb for ' + feedId))
+            if (err) return cb(clarify(err, 'deleteFeed() failed for feed ' + feedId))
 
-            push(
-              push.values(offsets),
-              push.asyncMap(log.del),
-              push.collect((err) => {
-                // prettier-ignore
-                if (err) return cb(clarify(err, 'deleteFeed() failed for feed ' + feedId))
-
-                state.delete(feedId)
-                indexes.base.removeFeedFromLatest(feedId, cb)
-              })
-            )
+            state.delete(feedId)
+            indexes.base.removeFeedFromLatest(feedId, cb)
           })
         )
       }
