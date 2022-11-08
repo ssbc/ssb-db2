@@ -1015,7 +1015,7 @@ exports.init = function (sbot, config) {
             })
           })
         }),
-        pull.collect((err) => {
+        pull.onEnd((err) => {
           if (err) return unlock(cb, err)
           const done = multicb({ pluck: 1 })
           for (const indexName in indexes) {
