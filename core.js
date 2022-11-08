@@ -980,7 +980,12 @@ exports.init = function (sbot, config) {
     indexingActive.set(indexingActive.value + 1)
     reindexingLock((unlock) => {
       pull(
-        self.query(where(isEncrypted('box2')), asOffsets(), toPullStream()),
+        self.query(
+          where(isEncrypted('box2')),
+          asOffsets(),
+          batch(1000),
+          toPullStream()
+        ),
         pull.asyncMap((offset, cb) => {
           log.get(offset, (err, buf) => {
             // prettier-ignore
