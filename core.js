@@ -48,6 +48,7 @@ const {
   asOffsets,
   isEncrypted,
   toCallback,
+  batch,
   toPullStream,
 } = operators
 
@@ -758,7 +759,12 @@ exports.init = function (sbot, config) {
         if (!state.has(feedId)) return cb()
 
         pull(
-          self.query(where(author(feedId)), asOffsets(), toPullStream()),
+          self.query(
+            where(author(feedId)),
+            asOffsets(),
+            batch(1000),
+            toPullStream()
+          ),
           pull.asyncMap(log.del),
           pull.onEnd((err) => {
             // prettier-ignore
