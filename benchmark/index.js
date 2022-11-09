@@ -474,7 +474,7 @@ test.skip('private box2 group keys', (t) => {
     '12345d8f9cbf37f6d7062826f6decac93e308060a8aaaa77e6a4747f40ee1a76',
     'hex'
   )
-  sbot.box2.addGroupKey(fakeCloakedId('other'), otherKey)
+  sbot.box2.addGroupInfo(fakeCloakedId('other'), { key: otherKey })
 
   for (let i = 0; i < groups; ++i) {
     const startOfKey = String(i).padStart(5, '0')
@@ -484,7 +484,7 @@ test.skip('private box2 group keys', (t) => {
         'd8f9cbf37f6d7062826f6decac93e308060a8aaaa77e6a4747f40ee1a76',
       'hex'
     )
-    sbot.box2.addGroupKey(fakeCloakedId(i), testkey)
+    sbot.box2.addGroupInfo(fakeCloakedId(i), { key: testkey })
   }
 
   t.pass(`Group keys: ${groups}, percentage for me: ${percentMe}%`)

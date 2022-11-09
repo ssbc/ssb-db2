@@ -38,8 +38,8 @@ test('box2 group reindex larger', async (t) => {
       keys: keysAlice,
       path: dirAlice,
     })
-  alice.box2.addGroupKey(groupId1, groupKey1)
-  alice.box2.addGroupKey(groupId2, groupKey2)
+  alice.box2.addGroupInfo(groupId1, { key: groupKey1 })
+  alice.box2.addGroupInfo(groupId2, { key: groupKey2 })
 
   // Setup Bob
   const dirBob = '/tmp/ssb-db2-box2-group-reindex2-bob'
@@ -122,7 +122,7 @@ test('box2 group reindex larger', async (t) => {
   t.equal(results2.length, 0, 'no (public) posts indexed')
 
   // Bob joins group 1 and is able to decrypt some messages
-  bob.box2.addGroupKey(groupId1, groupKey1)
+  bob.box2.addGroupInfo(groupId1, { key: groupKey1 })
   t.pass('bob joined group 1')
 
   await pify(bob.db.reindexEncrypted)()
@@ -143,7 +143,7 @@ test('box2 group reindex larger', async (t) => {
   t.equal(results4.length, 0, 'no results from group2 msgs')
 
   // Bob joins group 2 and is able to decrypt some messages
-  bob.box2.addGroupKey(groupId2, groupKey2)
+  bob.box2.addGroupInfo(groupId2, { key: groupKey2 })
   t.pass('bob joined group 2')
 
   await pify(bob.db.reindexEncrypted)()
