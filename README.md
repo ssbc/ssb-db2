@@ -467,7 +467,7 @@ operators:
 - The `to____()` part, determining how you want the messages delivered, e.g.
   - `toCallback((err, msgs) => { })`
   - `toPromise()`
-  - `toPullStream()`
+  - `toPullStream()` **RECOMMENDED** with a `pull.drain` because it uses less memory
   - `toAsyncIter()`
 
 See [jitdb operators] and [operators/index.js] for a complete list of supported
