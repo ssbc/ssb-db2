@@ -195,15 +195,17 @@ exports.init = function (sbot, config) {
             else cb(null, kvt)
           })
         }, 8),
-        pull.collect((err, kvts) => {
-          if (err) return console.error(clarify(err, 'loadStateFeeds failed'))
-          for (const kvt of kvts) {
+        pull.drain(
+          (kvt) => {
             state.updateFromKVT(PrivateIndex.reEncrypt(kvt))
+          },
+          (err) => {
+            if (err) return console.error(clarify(err, 'loadStateFeeds failed'))
+            debug('getAllLatest is done setting up initial validate state')
+            if (!stateFeedsReady.value) stateFeedsReady.set(true)
+            if (cb) cb()
           }
-          debug('getAllLatest is done setting up initial validate state')
-          if (!stateFeedsReady.value) stateFeedsReady.set(true)
-          if (cb) cb()
-        })
+        )
       )
     })
   }
