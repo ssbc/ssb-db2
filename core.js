@@ -978,6 +978,22 @@ exports.init = function (sbot, config) {
 
   const reindexingLock = mutexify()
 
+  function LazyPull() {
+    let onValue
+
+    return {
+      add(val) {
+        if (onValue) onValue(null, val)
+      },
+      source(abort, cb) {
+        if (abort) cb(abort)
+        else if (!onValue) onValue = cb
+      },
+    }
+  }
+
+  const decryptedValues = LazyPull()
+
   function reindexEncrypted(cb) {
     indexingActive.set(indexingActive.value + 1)
     reindexingLock((unlock) => {
@@ -1007,6 +1023,8 @@ exports.init = function (sbot, config) {
             const key = bipf.decode(buf, pKey)
 
             const pValue = bipf.seekKey2(buf, 0, BIPF_VALUE, 0)
+
+            decryptedValues.add(bipf.decode(buf, 0))
 
             onDrain('keys', () => {
               indexes['keys'].getSeq(key, (err, seq) => {
@@ -1120,6 +1138,7 @@ exports.init = function (sbot, config) {
     getMsg,
     query,
     prepare,
+    decrypted: decryptedValues.source,
     del,
     deleteFeed,
     add,

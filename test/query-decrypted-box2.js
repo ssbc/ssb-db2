@@ -7,24 +7,24 @@ const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const ssbUri = require('ssb-uri2')
 const pull = require('pull-stream')
+const cat = require('pull-cat')
 const fs = require('fs')
 const {
   where,
   type,
-  live,
   toPullStream,
   toCallback
 } = require('../operators')
 
-const dir = '/tmp/ssb-db2-query-live-handle-box2-decrypts'
+const dir = '/tmp/ssb-db2-query-decrypted-handle-box2'
 rimraf.sync(dir)
 mkdirp.sync(dir)
 
-const dir2 = '/tmp/ssb-db2-query-live-handle-box2-decrypts2'
+const dir2 = '/tmp/ssb-db2-query-decrypted-handle-box2-2'
 rimraf.sync(dir2)
 mkdirp.sync(dir2)
 
-test('live query() contains decrypted box2 messages', (t) => {
+test('decrypted api contains newly decrypted box2 messages', (t) => {
   const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
   const sbot = SecretStack({ appKey: caps.shs })
     .use(require('../'))
@@ -58,13 +58,20 @@ test('live query() contains decrypted box2 messages', (t) => {
       .use(require('../'))
       .call(null, { keys: keys2, path: dir2 })
 
-    // setup live handler
+    // setup decrypted handler
     pull(
-      sbot2.db.query(
-        where(type('post')),
-        live({ old: true }),
-        toPullStream()
-      ),
+      cat([
+        sbot2.db.query(
+          where(type('post')),
+          toPullStream()
+        ),
+        pull(
+          sbot2.db.decrypted,
+          pull.filter((msg) => {
+            return msg.value.content.type === 'post'
+          })
+        )
+      ]),
       pull.drain(
         (result) => {
           t.equal(result.value.content.text, 'Testing!')
@@ -89,7 +96,6 @@ test('live query() contains decrypted box2 messages', (t) => {
             sbot2.box2.addGroupInfo(groupId, { key: testkey })
             sbot2.db.reindexEncrypted((err) => {
               t.error(err, 'no err')
-              console.log("finished reindexing")
             })
           })
         )
