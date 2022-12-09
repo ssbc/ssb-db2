@@ -473,6 +473,40 @@ operators:
 See [jitdb operators] and [operators/index.js] for a complete list of supported
 operators.
 
+### decrypted
+
+A pull-stream source with newly decrypted values returned as full
+messages. JITDB doesn't have a concept of exactly what values are
+decrypted so a separate api is needed. This api can be combined with
+`where` to receive old values, live values or decrypted values. 
+
+Example:
+
+``` js
+    const pull = require('pull-stream')
+    const cat = require('pull-cat')
+
+    pull(
+      cat([
+        sbot2.db.query(
+          where(type('post')),
+          toPullStream()
+        ),
+        pull(
+          sbot2.db.decrypted,
+          pull.filter((msg) => {
+            return msg.value.content.type === 'post'
+          })
+        )
+      ]),
+      pull.drain(
+        (result) => {
+           console.log("got a new post", result.value)
+        }
+      )
+    )
+```
+
 ### add(nativeMsg, cb)
 
 Validate and add a message to the database. The callback will the (possible)
