@@ -602,6 +602,8 @@ at runtime and that changes what messages can be decrypted. Calling
 this function is needed after adding a new key. The function can be
 called multiple times safely.
 
+The decrypted values from this can be consumed using `reindexed`.
+
 ### logStats(cb)
 
 Use [async-append-only-log]'s `stats` method to get information on how many
