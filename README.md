@@ -473,6 +473,44 @@ operators:
 See [jitdb operators] and [operators/index.js] for a complete list of supported
 operators.
 
+### reindexed()
+
+A pull-stream source of newly decrypted reindexed values returned as
+full messages. Calling `reindexEncrypted` after adding a new box2 key
+will trigger new values in this stream.
+
+This api can be combined with `where` to receive messages of a
+particular type no matter if they are existing, newly added or
+decrypted values.
+
+Example of getting existing post messages together with newly
+decrypted ones:
+
+``` js
+    const pull = require('pull-stream')
+    const cat = require('pull-cat')
+
+    pull(
+      cat([
+        sbot2.db.query(
+          where(type('post')),
+          toPullStream()
+        ),
+        pull(
+          sbot2.db.reindexed(),
+          pull.filter((msg) => {
+            return msg.value.content.type === 'post'
+          })
+        )
+      ]),
+      pull.drain(
+        (result) => {
+           console.log("got a new post", result.value)
+        }
+      )
+    )
+```
+
 ### add(nativeMsg, cb)
 
 Validate and add a message to the database. The callback will the (possible)
@@ -563,6 +601,8 @@ This function is useful in [ssb-box2] where box2 keys can be added
 at runtime and that changes what messages can be decrypted. Calling
 this function is needed after adding a new key. The function can be
 called multiple times safely.
+
+The decrypted values from this can be consumed using `reindexed`.
 
 ### logStats(cb)
 

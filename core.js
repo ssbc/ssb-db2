@@ -977,6 +977,7 @@ exports.init = function (sbot, config) {
   }
 
   const reindexingLock = mutexify()
+  const reindexedValues = Notify()
 
   function reindexEncrypted(cb) {
     indexingActive.set(indexingActive.value + 1)
@@ -1007,6 +1008,8 @@ exports.init = function (sbot, config) {
             const key = bipf.decode(buf, pKey)
 
             const pValue = bipf.seekKey2(buf, 0, BIPF_VALUE, 0)
+
+            reindexedValues(bipf.decode(buf, 0))
 
             onDrain('keys', () => {
               indexes['keys'].getSeq(key, (err, seq) => {
@@ -1133,6 +1136,7 @@ exports.init = function (sbot, config) {
     onMsgAdded,
     compact,
     reindexEncrypted,
+    reindexed: () => reindexedValues.listen(),
     logStats: log.stats,
     indexingProgress: () => indexingProgress.listen(),
     compactionProgress: () => compactionProgress.listen(),
