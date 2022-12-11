@@ -473,14 +473,18 @@ operators:
 See [jitdb operators] and [operators/index.js] for a complete list of supported
 operators.
 
-### decrypted
+### reindexed()
 
-A pull-stream source with newly decrypted values returned as full
-messages. JITDB doesn't have a concept of exactly what values are
-decrypted so a separate api is needed. This api can be combined with
-`where` to receive old values, live values or decrypted values. 
+A pull-stream source of newly decrypted reindexed values returned as
+full messages. Calling `reindexEncrypted` after adding a new box2 key
+will trigger new values in this stream.
 
-Example:
+This api can be combined with `where` to receive messages of a
+particular type no matter if they are existing, newly added or
+decrypted values.
+
+Example of getting existing post messages together with newly
+decrypted ones:
 
 ``` js
     const pull = require('pull-stream')
@@ -493,7 +497,7 @@ Example:
           toPullStream()
         ),
         pull(
-          sbot2.db.decrypted,
+          sbot2.db.reindexed(),
           pull.filter((msg) => {
             return msg.value.content.type === 'post'
           })

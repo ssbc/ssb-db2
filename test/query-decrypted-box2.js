@@ -11,7 +11,6 @@ const SecretStack = require('secret-stack')
 const caps = require('ssb-caps')
 const ssbUri = require('ssb-uri2')
 const pull = require('pull-stream')
-const cat = require('pull-cat')
 const fs = require('fs')
 const {
   where,
@@ -64,18 +63,10 @@ test('decrypted api contains newly decrypted box2 messages', (t) => {
 
     // setup decrypted handler
     pull(
-      cat([
-        sbot2.db.query(
-          where(type('post')),
-          toPullStream()
-        ),
-        pull(
-          sbot2.db.decrypted,
-          pull.filter((msg) => {
-            return msg.value.content.type === 'post'
-          })
-        )
-      ]),
+      sbot2.db.reindexed(),
+      pull.filter((msg) => {
+        return msg.value.content.type === 'post'
+      }),
       pull.drain(
         (result) => {
           t.equal(result.value.content.text, 'Testing!')
