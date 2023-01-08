@@ -11,6 +11,7 @@ const Plugin = require('./plugin')
 const BIPF_AUTHOR = bipf.allocAndEncode('author')
 const BIPF_FEED = bipf.allocAndEncode('feed')
 const BIPF_SEQUENCE = bipf.allocAndEncode('sequence')
+const BIPF_OOO = bipf.allocAndEncode('ooo')
 
 // feedId => latestMsg { offset, sequence }
 //
@@ -41,6 +42,11 @@ module.exports = function makeBaseIndex(privateIndex) {
 
     processRecord(record, seq, pValue) {
       const buf = record.value
+
+      // skip ooo messages, doesn't make sense for this index
+      const pOOO = bipf.seekKey2(buf, 0, BIPF_OOO, 0)
+      if (pOOO >= 0) return
+
       const pValueAuthor = bipf.seekKey2(buf, pValue, BIPF_AUTHOR, 0)
       const pValueSequence = bipf.seekKey2(buf, pValue, BIPF_SEQUENCE, 0)
       const author = bipf.decode(buf, pValueAuthor)

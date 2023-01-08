@@ -26,7 +26,7 @@ module.exports = function (dir, config, privateIndex, db) {
     },
   })
 
-  log.add = function (key, value, feedId, encoding, cb) {
+  log.add = function (key, value, feedId, encoding, isOOO, cb) {
     if (encoding !== 'js' && encoding !== 'bipf') {
       // prettier-ignore
       throw new Error('Cannot add msg to the log for unsupported encoding: ' + encoding)
@@ -40,6 +40,7 @@ module.exports = function (dir, config, privateIndex, db) {
       timestamp: Date.now(),
     }
     if (feedId !== value.author) kvt.feed = feedId
+    if (isOOO) kvt.ooo = isOOO
     const recBuffer = bipf.allocAndEncode(kvt)
 
     log.append(recBuffer, (err) => {
@@ -48,15 +49,22 @@ module.exports = function (dir, config, privateIndex, db) {
     })
   }
 
-  log.addTransaction = function (keys, values, encoding, cb) {
+  log.addTransaction = function (
+    keys,
+    oooKeys,
+    values,
+    oooValues,
+    encoding,
+    cb
+  ) {
     if (encoding !== 'js' && encoding !== 'bipf') {
       // prettier-ignore
       throw new Error('Cannot addTransaction to the log for unsupported encoding: ' + encoding)
     }
+
     if (encoding === 'bipf') {
-      for (const value of values) {
-        bipf.markIdempotent(value)
-      }
+      for (const value of values) bipf.markIdempotent(values)
+      for (const value of oooValues) bipf.markIdempotent(value)
     }
 
     let recBuffers = []
@@ -67,6 +75,18 @@ module.exports = function (dir, config, privateIndex, db) {
         key: keys[i],
         value: values[i],
         timestamp: Date.now(),
+      }
+      const recBuffer = bipf.allocAndEncode(kvt)
+      recBuffers.push(recBuffer)
+      kvts.push(kvt)
+    }
+
+    for (let i = 0; i < oooKeys.length; ++i) {
+      const kvt = {
+        key: oooKeys[i],
+        value: oooValues[i],
+        timestamp: Date.now(),
+        ooo: true,
       }
       const recBuffer = bipf.allocAndEncode(kvt)
       recBuffers.push(recBuffer)
