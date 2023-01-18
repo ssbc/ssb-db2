@@ -65,7 +65,7 @@
     "ssb-buttwoo": "^0.3.1",
     "ssb-caps": "1.1.0",
     "ssb-db": "19.3.1",
-    "ssb-fixtures": "3.0.4",
+    "ssb-fixtures": "4.0.1",
     "ssb-friends": "^5.1.7",
     "ssb-threads": "9.2.0",
     "tap-arc": "^0.3.4",
