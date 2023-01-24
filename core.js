@@ -762,8 +762,6 @@ exports.init = function (sbot, config) {
       stateFeedsReady,
       (ready) => ready === true,
       () => {
-        if (!state.has(feedId)) return cb()
-
         pull(
           self.query(
             where(author(feedId)),
