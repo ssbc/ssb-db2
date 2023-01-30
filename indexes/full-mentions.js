@@ -5,7 +5,6 @@
 const bipf = require('bipf')
 const pl = require('pull-level')
 const pull = require('pull-stream')
-const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 const { or, seqs, liveSeqs } = require('../operators')
 
@@ -65,7 +64,7 @@ module.exports = class FullMentions extends Plugin {
       pl.read(this.level, opts),
       pull.collect((err, seqArr) => {
         // prettier-ignore
-        if (err) return cb(clarify(err, 'FullMentions.getMessagesByMention() failed to read leveldb'))
+        if (err) return cb(new Error('FullMentions.getMessagesByMention() failed to read leveldb', {cause: err}))
         if (live) {
           const ps = pull(
             pl.read(this.level, Object.assign({}, opts, { live, old: false })),

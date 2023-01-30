@@ -5,7 +5,6 @@
 const bipf = require('bipf')
 const pl = require('pull-level')
 const pull = require('pull-stream')
-const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 
 const BIPF_AUTHOR = bipf.allocAndEncode('author')
@@ -33,7 +32,7 @@ module.exports = function makeBaseIndex(privateIndex) {
           },
           (err) => {
             // prettier-ignore
-            if (err && err !== true) cb(clarify(err, 'BaseIndex.onLoaded() failed'))
+            if (err && err !== true) cb(new Error('BaseIndex.onLoaded() failed', {cause: err}))
             else cb()
           }
         )
@@ -98,17 +97,18 @@ module.exports = function makeBaseIndex(privateIndex) {
       this.getLatest(feedId, (err) => {
         if (err) {
           if (err.name === 'NotFoundError') cb()
-          else cb(clarify(err, 'BaseIndex.removeFeedFromLatest() failed'))
+          // prettier-ignore
+          else cb(new Error('BaseIndex.removeFeedFromLatest() failed', {cause: err}))
           return
         }
 
         this.flush((err) => {
           // prettier-ignore
-          if (err) cb(clarify(err, 'BaseIndex.removeFeedFromLatest() failed when waiting for flush'))
+          if (err) cb(new Error('BaseIndex.removeFeedFromLatest() failed when waiting for flush', {cause: err}))
           else {
             this.level.del(feedId, (err2) => {
               // prettier-ignore
-              if (err2) cb(clarify(err2, 'BaseIndex.removeFeedFromLatest() failed when deleting'))
+              if (err2) cb(new Error('BaseIndex.removeFeedFromLatest() failed when deleting', {cause: err2}))
               else cb()
             })
           }

@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 const pull = require('pull-stream')
-const clarify = require('clarify-error')
 
 // exports.name is blank to merge into global namespace
 
@@ -34,7 +33,7 @@ exports.init = function (sbot, config) {
       pull.drain(
         () => {},
         // prettier-ignore
-        cb || ((err) => console.error(clarify(err, 'ssb-db2 createWriteStream failed to add messages')))
+        cb || ((err) => console.error(new Error('ssb-db2 createWriteStream failed to add messages'), {cause: err}))
       )
     )
   }

@@ -4,7 +4,6 @@
 
 const Obv = require('obz')
 const bipf = require('bipf')
-const clarify = require('clarify-error')
 const DeferredPromise = require('p-defer')
 const path = require('path')
 const Debug = require('debug')
@@ -56,14 +55,16 @@ module.exports = function (dir, sbot, config) {
       const loadFileErrors = results.filter(Boolean)
 
       if (criticalError) {
-        return cb(clarify(criticalError, 'private plugin failed to load'))
+        // prettier-ignore
+        return cb(new Error('private plugin failed to load', {cause: criticalError}))
       }
 
       if (loadFileErrors.length > 0) {
         for (const err of loadFileErrors) {
           if (err.code === 'ENOENT') continue
           else if (err.message === 'Empty NumsFile') continue
-          else return cb(clarify(err, 'private plugin failed to load'))
+          // prettier-ignore
+          else return cb(new Error('private plugin failed to load', {cause: err}))
         }
         debug('encrypted or decrypted indexes seem to be empty')
         latestOffset.set(-1)
