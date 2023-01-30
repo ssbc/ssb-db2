@@ -6,7 +6,6 @@ const fs = require('fs')
 const pull = require('pull-stream')
 const Notify = require('pull-notify')
 const drainGently = require('pull-drain-gently')
-const clarify = require('clarify-error')
 const FlumeLog = require('flumelog-offset')
 const AsyncLog = require('async-append-only-log')
 const bipf = require('bipf')
@@ -86,7 +85,7 @@ function scanAndCount(pushstream, cb) {
     },
     end(err) {
       // prettier-ignore
-      if (err) cb(clarify(err, 'scanAndCount() failed scanning async-append-only-log'))
+      if (err) cb(new Error('scanAndCount() failed scanning async-append-only-log', {cause: err}))
       else cb(null, count)
     },
   })
@@ -125,7 +124,7 @@ function inefficientFindMigratedOffset(newLog, oldLog, cb) {
         },
         (err) => {
           // prettier-ignore
-          if (err) cb(clarify(err, 'inefficientFindMigratedOffset() failed scanning flumelog'))
+          if (err) cb(new Error('inefficientFindMigratedOffset() failed scanning flumelog', {cause: err}))
           else cb(null, result)
         }
       )
@@ -149,12 +148,12 @@ function findMigratedOffset(sbot, oldLog, newLog, cb) {
     const offsetInNewLog = newLog.since.value
     newLog.get(offsetInNewLog, (err, buf) => {
       // prettier-ignore
-      if (err) return cb(clarify(err, 'findMigratedOffset() failed to get msg in async-append-only-log'))
+      if (err) return cb(new Error('findMigratedOffset() failed to get msg in async-append-only-log', {cause: err}))
 
       const msgKey = bipf.decode(buf, seekers.seekKey(buf))
       sbot.get(msgKey, (err2, msg, offsetInOldLog) => {
         // prettier-ignore
-        if (err2) return cb(clarify(err2, 'findMigratedOffset() failed to get msg in flumelog'))
+        if (err2) return cb(new Error('findMigratedOffset() failed to get msg in flumelog', {cause: err2}))
 
         if (typeof offsetInOldLog === 'number') {
           cb(null, offsetInOldLog)

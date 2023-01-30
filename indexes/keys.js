@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 const bipf = require('bipf')
-const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 
 const BIPF_KEY = bipf.allocAndEncode('key')
@@ -42,7 +41,7 @@ module.exports = class Keys extends Plugin {
 
   delMsg(msgId) {
     this.level.del(msgId, (err) => {
-      if (err) throw clarify(err, 'Keys.delMsg() failed')
+      if (err) throw new Error('Keys.delMsg() failed', {cause: err})
     })
   }
 }

@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-only
 
-const clarify = require('clarify-error')
 const fic = require('fastintcompression')
 const bsb = require('binary-search-bounds')
 const AtomicFileRW = require('atomic-file-rw')
@@ -28,7 +27,7 @@ class NumsFile {
 
     AtomicFileRW.writeFile(this._path, b, (err) => {
       // prettier-ignore
-      if (err) console.error(clarify(err, 'NumsFile failed to save at ' + this._path))
+      if (err) console.error(new Error('NumsFile failed to save at ' + this._path, {cause: err}))
       if (cb) cb()
     })
   }

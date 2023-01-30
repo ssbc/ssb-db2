@@ -6,7 +6,6 @@ const Obv = require('obz')
 const Level = require('level')
 const debounce = require('lodash.debounce')
 const encodings = require('level-codec/lib/encodings')
-const clarify = require('clarify-error')
 const path = require('path')
 const Debug = require('debug')
 const DeferredPromise = require('p-defer')
@@ -67,7 +66,7 @@ module.exports = class Plugin {
           { keyEncoding: this.keyEncoding, valueEncoding: this.valueEncoding },
           (err2) => {
             // prettier-ignore
-            if (err2) return cb(clarify(err2, 'failed to persist operations when flushing'))
+            if (err2) return cb(new Error('failed to persist operations when flushing', {cause: err2}))
             if (this.level.isClosed()) return cb()
 
             // 2nd, persist the META because it has its own valueEncoding
@@ -81,7 +80,7 @@ module.exports = class Plugin {
               { valueEncoding: 'json' },
               (err3) => {
                 // prettier-ignore
-                if (err3) cb(clarify(err3, 'failed to persist META when flushing'))
+                if (err3) cb(new Error('failed to persist META when flushing', {cause: err3}))
                 else {
                   if (processedOffsetAtFlush === this.log.since.value) {
                     this.enableLive()

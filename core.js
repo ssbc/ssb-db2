@@ -8,10 +8,8 @@ const path = require('path')
 const rimraf = require('rimraf')
 const mkdirp = require('mkdirp')
 const Debug = require('debug')
-const clarify = require('clarify-error')
 const multicb = require('multicb')
 const mutexify = require('mutexify')
-const push = require('push-stream')
 const Notify = require('pull-notify')
 const pull = require('pull-stream')
 const paramap = require('pull-paramap')
@@ -200,7 +198,8 @@ exports.init = function (sbot, config) {
             state.updateFromKVT(PrivateIndex.reEncrypt(kvt))
           },
           (err) => {
-            if (err) return console.error(clarify(err, 'loadStateFeeds failed'))
+            // prettier-ignore
+            if (err) return console.error(new Error('loadStateFeeds failed', {cause: err}))
             debug('getAllLatest is done setting up initial validate state')
             if (!stateFeedsReady.value) stateFeedsReady.set(true)
             if (cb) cb()
@@ -241,13 +240,16 @@ exports.init = function (sbot, config) {
 
     function next() {
       indexes['keys'].getSeq(id, (err, seq) => {
-        if (err) cb(clarify(err, 'Msg ' + id + ' not found in leveldb index'))
+        // prettier-ignore
+        if (err) cb(new Error('Msg ' + id + ' not found in leveldb index', {cause: err}))
         else {
           jitdb.lookup('seq', seq, (err, offset) => {
-            if (err) cb(clarify(err, 'Msg ' + id + ' not found in jit index'))
+            // prettier-ignore
+            if (err) cb(new Error('Msg ' + id + ' not found in jit index', {cause: err}))
             else {
               getMsgByOffset(offset, (err, msg) => {
-                if (err) cb(clarify(err, 'Msg ' + id + ' not found in the log'))
+                // prettier-ignore
+                if (err) cb(new Error('Msg ' + id + ' not found in the log', {cause: err}))
                 else cb(null, onlyValue ? msg.value : msg)
               })
             }
@@ -414,7 +416,8 @@ exports.init = function (sbot, config) {
         const feedId = feedFormat.getFeedId(nativeMsgs[0])
         const prevNativeMsg = state.get(feedId)
         feedFormat.validateBatch(nativeMsgs, prevNativeMsg, hmacKey, (err) => {
-          if (err) return cb(clarify(err, 'validation in addBatch() failed'))
+          // prettier-ignore
+          if (err) return cb(new Error('validation in addBatch() failed', {cause: err}))
           const done = multicb({ pluck: 1 })
           for (var i = 0; i < nativeMsgs.length; ++i) {
             const nativeMsg = nativeMsgs[i]
@@ -425,7 +428,7 @@ exports.init = function (sbot, config) {
 
             log.add(msgId, msg, feedId, opts.encoding, false, (err, kvt) => {
               // prettier-ignore
-              if (err) return done()(clarify(err, 'addBatch() failed in the log'))
+              if (err) return done()(new Error('addBatch() failed in the log', {cause: err}))
 
               onMsgAdded.set({
                 kvt,
@@ -447,14 +450,14 @@ exports.init = function (sbot, config) {
     const prevNativeMsg = state.get(feedId)
     feedFormat.validate(nativeMsg, prevNativeMsg, hmacKey, (err) => {
       // prettier-ignore
-      if (err) return cb(clarify(err, 'addImmediately() failed validation for feed format ' + feedFormat.name))
+      if (err) return cb(new Error('addImmediately() failed validation for feed format ' + feedFormat.name, {cause: err}))
       const msgId = feedFormat.getMsgId(nativeMsg)
       const msg = feedFormat.fromNativeMsg(nativeMsg, opts.encoding)
       state.update(feedId, nativeMsg)
 
       log.add(msgId, msg, feedId, opts.encoding, false, (err, kvt) => {
         // prettier-ignore
-        if (err) return cb(clarify(err, 'addImmediately() failed in the log'))
+        if (err) return cb(new Error('addImmediately() failed in the log', {cause: err}))
 
         onMsgAdded.set({
           kvt,
@@ -485,7 +488,7 @@ exports.init = function (sbot, config) {
 
     feedFormat.validateOOO(nativeMsg, hmacKey, (err) => {
       // prettier-ignore
-      if (err) return cb(clarify(err, 'addOOO() failed validation for feed format ' + feedFormat.name))
+      if (err) return cb(new Error('addOOO() failed validation for feed format ' + feedFormat.name, {cause: err}))
       const msgId = feedFormat.getMsgId(nativeMsg)
       get(msgId, (err, data) => {
         if (data) return cb(null, data)
@@ -493,7 +496,8 @@ exports.init = function (sbot, config) {
         const feedId = feedFormat.getFeedId(nativeMsg)
 
         log.add(msgId, msg, feedId, opts.encoding, true, (err, data) => {
-          if (err) return cb(clarify(err, 'addOOO() failed in the log'))
+          // prettier-ignore
+          if (err) return cb(new Error('addOOO() failed in the log', {cause: err}))
           cb(null, data)
         })
       })
@@ -521,7 +525,8 @@ exports.init = function (sbot, config) {
     }
 
     feedFormat.validateOOOBatch(nativeMsgs, hmacKey, (err) => {
-      if (err) return cb(clarify(err, 'validation in addOOOBatch() failed'))
+      // prettier-ignore
+      if (err) return cb(new Error('validation in addOOOBatch() failed', {cause: err}))
       const done = multicb({ pluck: 1 })
       for (var i = 0; i < nativeMsgs.length; ++i) {
         const msgId = feedFormat.getMsgId(nativeMsgs[i])
@@ -580,7 +585,7 @@ exports.init = function (sbot, config) {
 
         done((err) => {
           // prettier-ignore
-          if (err) return cb(clarify(err, 'validation in addTransaction() failed'))
+          if (err) return cb(new Error('validation in addTransaction() failed', {cause: err}))
 
           const msgIds = nativeMsgs.map((m) => feedFormat.getMsgId(m))
           const oooMsgIds = oooNativeMsgs.map((m) => oooFeedFormat.getMsgId(m))
@@ -607,7 +612,8 @@ exports.init = function (sbot, config) {
             opts.encoding,
             (err, kvts) => {
               if (err)
-                return cb(clarify(err, 'addTransaction() failed in the log'))
+                // prettier-ignore
+                return cb(new Error('addTransaction() failed in the log', {cause: err}))
               if (kvts.length !== msgIds.length + oooMsgIds.length) {
                 // prettier-ignore
                 return cb(new Error('addTransaction() failed due to mismatched message count'))
@@ -674,7 +680,7 @@ exports.init = function (sbot, config) {
         keys,
       })
     } catch (err) {
-      return cb(clarify(err, 'create() failed'))
+      return cb(new Error('create() failed', { cause: err }))
     }
     const feedId = feedFormat.getFeedId(provisionalNativeMsg)
     const previous = state.getAsKV(feedId, feedFormat)
@@ -694,7 +700,9 @@ exports.init = function (sbot, config) {
       try {
         ciphertextBuf = encryptionFormat.encrypt(plaintext, encryptOpts)
       } catch (err) {
-        return cb(clarify(err, 'create() failed to encrypt content'))
+        return cb(
+          new Error('create() failed to encrypt content', { cause: err })
+        )
       }
       if (!ciphertextBuf) {
         // prettier-ignore
@@ -709,7 +717,7 @@ exports.init = function (sbot, config) {
     try {
       nativeMsg = feedFormat.newNativeMsg(fullOpts)
     } catch (err) {
-      return cb(clarify(err, 'create() failed'))
+      return cb(new Error('create() failed', { cause: err }))
     }
     const msgId = feedFormat.getMsgId(nativeMsg)
     const msg = feedFormat.fromNativeMsg(nativeMsg, encoding)
@@ -717,7 +725,8 @@ exports.init = function (sbot, config) {
 
     // Encode the native message and append it to the log:
     log.add(msgId, msg, feedId, encoding, false, (err, kvt) => {
-      if (err) return cb(clarify(err, 'create() failed in the log'))
+      if (err)
+        return cb(new Error('create() failed in the log', { cause: err }))
       onMsgAdded.set({
         kvt,
         nativeMsg: nativeMsg,
@@ -744,10 +753,10 @@ exports.init = function (sbot, config) {
     function next() {
       indexes['keys'].getSeq(msgId, (err, seq) => {
         // prettier-ignore
-        if (err) return cb(clarify(err, 'del() failed to find msgId from index'))
+        if (err) return cb(new Error('del() failed to find msgId from index', {cause: err}))
         jitdb.lookup('seq', seq, (err, offset) => {
           // prettier-ignore
-          if (err) return cb(clarify(err, 'del() failed to find seq from jitdb'))
+          if (err) return cb(new Error('del() failed to find seq from jitdb', {cause: err}))
           log.del(offset, cb)
         })
       })
@@ -772,7 +781,7 @@ exports.init = function (sbot, config) {
           pull.asyncMap(log.del),
           pull.onEnd((err) => {
             // prettier-ignore
-            if (err) return cb(clarify(err, 'deleteFeed() failed for feed ' + feedId))
+            if (err) return cb(new Error('deleteFeed() failed for feed ' + feedId, {cause: err}))
 
             state.delete(feedId)
             indexes.base.removeFeedFromLatest(feedId, cb)
@@ -846,7 +855,7 @@ exports.init = function (sbot, config) {
         for (const idx of indexesArr) idx.flush(doneFlushing())
         doneFlushing((err) => {
           // prettier-ignore
-          if (err) console.error(clarify(err, 'updateIndexes() failed to flush indexes'))
+          if (err) console.error(new Error('updateIndexes() failed to flush indexes', {cause: err}))
           indexingActive.set(indexingActive.value - 1)
           debug('updateIndexes() live streaming')
           const gt = indexes['base'].offset.value
@@ -967,7 +976,7 @@ exports.init = function (sbot, config) {
 
   function reindexOffset(record, seq, pValue, cb) {
     jitdb.reindex(record.offset, (err) => {
-      if (err) return cb(clarify(err, 'reindexOffset() failed'))
+      if (err) return cb(new Error('reindexOffset() failed', { cause: err }))
 
       for (const indexName in indexes) {
         const idx = indexes[indexName]
@@ -994,7 +1003,7 @@ exports.init = function (sbot, config) {
         pull.asyncMap((offset, cb) => {
           log.get(offset, (err, buf) => {
             // prettier-ignore
-            if (err) return cb(clarify(err, 'reindexEncrypted() failed when getting messages'))
+            if (err) return cb(new Error('reindexEncrypted() failed when getting messages', {cause: err}))
             const record = { offset, value: buf }
 
             const pMeta = bipf.seekKey2(buf, 0, BIPF_META, 0)
@@ -1016,7 +1025,7 @@ exports.init = function (sbot, config) {
             onDrain('keys', () => {
               indexes['keys'].getSeq(key, (err, seq) => {
                 // prettier-ignore
-                if (err) return cb(clarify(err, 'reindexEncrypted() failed when getting seq'))
+                if (err) return cb(new Error('reindexEncrypted() failed when getting seq', {cause: err}))
                 reindexOffset(record, seq, pValue, cb)
               })
             })
@@ -1031,7 +1040,7 @@ exports.init = function (sbot, config) {
           }
           done((err) => {
             // prettier-ignore
-            if (err) return unlock(cb, clarify(err, 'reindexEncrypted() failed to force-flush indexes'))
+            if (err) return unlock(cb, new Error('reindexEncrypted() failed to force-flush indexes', {cause: err}))
             indexingActive.set(indexingActive.value - 1)
             unlock(cb)
           })
@@ -1058,7 +1067,8 @@ exports.init = function (sbot, config) {
     fs.closeSync(fs.openSync(resetLevelPath(dir), 'w'))
     fs.closeSync(fs.openSync(resetPrivatePath(dir), 'w'))
     log.compact(function onLogCompacted(err) {
-      if (err) cb(clarify(err, 'ssb-db2 compact() failed with the log'))
+      // prettier-ignore
+      if (err) cb(new Error('ssb-db2 compact() failed with the log', {cause: err}))
       else cb()
     })
   }

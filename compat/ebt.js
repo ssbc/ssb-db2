@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 const pull = require('pull-stream')
-const clarify = require('clarify-error')
 const EBTIndex = require('../indexes/ebt')
 const { onceWhen } = require('../utils')
 
@@ -39,7 +38,7 @@ exports.init = function (sbot, config) {
             }),
             pull.onEnd((err) => {
               // prettier-ignore
-              if (err) return cb(clarify(err, 'ssb-db2 getVectorClock failed'))
+              if (err) return cb(new Error('ssb-db2 getVectorClock failed', {cause: err}))
               cb(null, clock)
             })
           )

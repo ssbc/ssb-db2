@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 const bipf = require('bipf')
-const clarify = require('clarify-error')
 const Plugin = require('./plugin')
 
 const BIPF_AUTHOR = bipf.allocAndEncode('author')
@@ -39,11 +38,11 @@ module.exports = class EBT extends Plugin {
     const levelKey = JSON.stringify(key)
     this.level.get(levelKey, (err, offset) => {
       // prettier-ignore
-      if (err) return cb(clarify(err, 'EBT.levelKeyToRecord() failed when getting leveldb item'))
+      if (err) return cb(new Error('EBT.levelKeyToRecord() failed when getting leveldb item', {cause: err}))
       else
         this.log.getRaw(parseInt(offset, 10), (err, buffer) => {
           // prettier-ignore
-          if (err) return cb(clarify(err, 'EBT.levelKeyToRecord() failed when getting log record'))
+          if (err) return cb(new Error('EBT.levelKeyToRecord() failed when getting log record', {cause: err}))
           cb(null, buffer)
         })
     })
@@ -53,13 +52,13 @@ module.exports = class EBT extends Plugin {
     const levelKey = JSON.stringify(key)
     this.level.get(levelKey, (err, offsetStr) => {
       // prettier-ignore
-      if (err) return cb(clarify(err, 'EBT.levelKeyToNativeMsg() failed when getting leveldb item'))
+      if (err) return cb(new Error('EBT.levelKeyToNativeMsg() failed when getting leveldb item', {cause: err}))
       else {
 
         const offset = parseInt(offsetStr, 10)
         this.log.getNativeMsg(offset, feedFormat, (err, nativeMsg) => {
           // prettier-ignore
-          if (err) return cb(clarify(err, 'EBT.levelKeyToNativeMsg() failed when getting log record'))
+          if (err) return cb(new Error('EBT.levelKeyToNativeMsg() failed when getting log record', {cause: err}))
           cb(null, nativeMsg)
         })
       }
@@ -69,7 +68,8 @@ module.exports = class EBT extends Plugin {
   // this is for EBT so must be careful to not leak decrypted messages
   getMessageFromAuthorSequence(key, cb) {
     this.levelKeyToRecord(key, (err, buffer) => {
-      if (err) cb(clarify(err, 'EBT.getMessageFromAuthorSequence() failed'))
+      // prettier-ignore
+      if (err) cb(new Error('EBT.getMessageFromAuthorSequence() failed', {cause: err}))
       else cb(null, bipf.decode(buffer, 0))
     })
   }
@@ -77,7 +77,8 @@ module.exports = class EBT extends Plugin {
   // this is for EBT so must be careful to not leak decrypted messages
   getNativeMsgFromAuthorSequence(key, feedFormat, cb) {
     this.levelKeyToNativeMsg(key, feedFormat, (err, nativeMsg) => {
-      if (err) cb(clarify(err, 'EBT.getNativeMsgFromAuthorSequence() failed'))
+      // prettier-ignore
+      if (err) cb(new Error('EBT.getNativeMsgFromAuthorSequence() failed', {cause: err}))
       else cb(null, nativeMsg)
     })
   }
