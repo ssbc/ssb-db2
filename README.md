@@ -42,7 +42,7 @@ are stored in `ssb/db2/indexes/`, and jitdb indexes in `ssb/db2/jit`.
 
 ## Installation
 
-- Requires **Node.js 12** or higher
+- Requires **Node.js 16** or higher
 - Requires `secret-stack@^6.2.0`
 
 ```diff
