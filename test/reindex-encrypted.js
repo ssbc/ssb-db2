@@ -287,7 +287,7 @@ test('reindexEncrypted is crash resistant', async (t) => {
   t.pass('bob joined the group')
 
   // Wait for private indexes to be saved to disk
-  await pify(setTimeout)(2000)
+  await pify(setTimeout)(4000)
 
   // Hack log.get to make it crash on the 2nd box2 msg
   const originalGet = bobLog.get
@@ -325,7 +325,7 @@ test('reindexEncrypted is crash resistant', async (t) => {
     })
   )
 
-  await pify(setTimeout)(4000)
+  await pify(setTimeout)(5000)
 
   const results2 = await bob.db.query(
     where(and(author(alice.id), fullMentions(bob.id))),
