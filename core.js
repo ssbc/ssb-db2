@@ -24,6 +24,7 @@ const {
   jitIndexesPath,
   resetLevelPath,
   resetPrivatePath,
+  reindexEncryptedInProgressPath,
 } = require('./defaults')
 const { onceWhen, ReadyGate, onceWhenPromise } = require('./utils')
 const ThrottleBatchAdd = require('./throttle-batch')
@@ -45,10 +46,10 @@ const {
   deferred,
   asOffsets,
   isEncrypted,
-  toCallback,
   batch,
   toPullStream,
 } = operators
+const isBrowser = typeof window !== 'undefined'
 
 exports.name = 'db'
 
@@ -111,6 +112,8 @@ exports.init = function (sbot, config) {
   const stateFeedsReady = Obv().set(false)
   const secretStackLoaded = new ReadyGate()
   const indexesStateLoaded = new ReadyGate()
+  const reindexingLock = mutexify()
+  const reindexedValues = Notify()
 
   sbot.close.hook(function (fn, args) {
     close((err) => {
@@ -136,6 +139,11 @@ exports.init = function (sbot, config) {
       stateLoadedPromises.push(indexes[indexName].stateLoaded)
     }
     Promise.all(stateLoadedPromises).then(() => {
+      if (!isBrowser && fs.existsSync(reindexEncryptedInProgressPath(dir))) {
+        reindexEncrypted(() => {
+          debug('done reindexing encrypted from a previous session')
+        })
+      }
       indexesStateLoaded.setReady()
     })
   })
@@ -987,10 +995,10 @@ exports.init = function (sbot, config) {
     })
   }
 
-  const reindexingLock = mutexify()
-  const reindexedValues = Notify()
-
   function reindexEncrypted(cb) {
+    if (!isBrowser) {
+      fs.closeSync(fs.openSync(reindexEncryptedInProgressPath(dir), 'w'))
+    }
     indexingActive.set(indexingActive.value + 1)
     reindexingLock((unlock) => {
       pull(
@@ -1042,6 +1050,9 @@ exports.init = function (sbot, config) {
             // prettier-ignore
             if (err) return unlock(cb, new Error('reindexEncrypted() failed to force-flush indexes', {cause: err}))
             indexingActive.set(indexingActive.value - 1)
+            if (!isBrowser) {
+              rimraf.sync(reindexEncryptedInProgressPath(dir))
+            }
             unlock(cb)
           })
         })
