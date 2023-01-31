@@ -4,6 +4,12 @@ SPDX-FileCopyrightText: 2022 Andre 'Staltz' Medeiros
 SPDX-License-Identifier: CC0-1.0
 -->
 
+## 7.0.0
+
+### Breaking changes
+
+- Node.js 16 or higher required, lower versions will not work
+
 ## 6.0.0
 
 ### Breaking changes
