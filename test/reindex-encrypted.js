@@ -176,7 +176,7 @@ test('box2 group reindex larger', async (t) => {
   t.end()
 })
 
-test.only('reindexEncrypted is crash resistant', async (t) => {
+test('reindexEncrypted is crash resistant', async (t) => {
   // Create group keys
   const groupKey1 = Buffer.from(
     '30720d8f9cbf37f6d7062826f6decac93e308060a8aaaa77e6a4747f40ee1a76',
