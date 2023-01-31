@@ -178,14 +178,14 @@ test('box2 group reindex larger', async (t) => {
 
 test('reindexEncrypted is crash resistant', async (t) => {
   // Create group keys
-  const groupKey1 = Buffer.from(
+  const groupKey = Buffer.from(
     '30720d8f9cbf37f6d7062826f6decac93e308060a8aaaa77e6a4747f40ee1a76',
     'hex'
   )
-  const groupId1 = '%Aihvp+fMdt5CihjbOY6eZc0qCe0eKsrN2wfgXV2E3PM=.cloaked'
+  const groupId = '%Aihvp+fMdt5CihjbOY6eZc0qCe0eKsrN2wfgXV2E3PM=.cloaked'
 
   // Setup Alice
-  const dirAlice = '/tmp/ssb-db2-box2-group-reindex2-alice'
+  const dirAlice = '/tmp/ssb-db2-box2-group-reindex3-alice'
   rimraf.sync(dirAlice)
   mkdirp.sync(dirAlice)
   const keysAlice = ssbKeys.generate(null, 'alice')
@@ -195,10 +195,10 @@ test('reindexEncrypted is crash resistant', async (t) => {
       keys: keysAlice,
       path: dirAlice,
     })
-  alice.box2.addGroupInfo(groupId1, { key: groupKey1 })
+  alice.box2.addGroupInfo(groupId, { key: groupKey })
 
   // Setup Bob
-  const dirBob = '/tmp/ssb-db2-box2-group-reindex2-bob'
+  const dirBob = '/tmp/ssb-db2-box2-group-reindex3-bob'
   rimraf.sync(dirBob)
   mkdirp.sync(dirBob)
   const keysBob = ssbKeys.generate(null, 'bob')
@@ -222,7 +222,7 @@ test('reindexEncrypted is crash resistant', async (t) => {
       text: 'super secret2',
       mentions: [{ link: bob.id }],
     },
-    recps: [groupId1],
+    recps: [groupId],
     encryptionFormat: 'box2',
   }
   let opts3 = {
@@ -230,7 +230,7 @@ test('reindexEncrypted is crash resistant', async (t) => {
     keys: keysAlice,
   }
   let opts4 = {
-    content: { type: 'about', text: 'super secret4', recps: [groupId1] },
+    content: { type: 'about', text: 'super secret4', recps: [groupId] },
     keys: keysAlice,
     encryptionFormat: 'box2',
   }
@@ -239,7 +239,7 @@ test('reindexEncrypted is crash resistant', async (t) => {
       type: 'post',
       text: 'super secret5',
       mentions: [{ link: bob.id }],
-      recps: [groupId1],
+      recps: [groupId],
     },
     keys: keysAlice,
     encryptionFormat: 'box2',
@@ -253,12 +253,11 @@ test('reindexEncrypted is crash resistant', async (t) => {
   t.pass('alice published 5 messages')
 
   t.notEqual(typeof msg1.value.content, 'string', 'msg1 is public about')
-  t.true(msg2.value.content.endsWith('.box2'), 'msg2 is group1-box2 post')
+  t.true(msg2.value.content.endsWith('.box2'), 'msg2 is group box2 post')
   t.notEqual(typeof msg3.value.content, 'string', 'msg3 is public weird')
-  t.true(msg4.value.content.endsWith('.box2'), 'msg4 is group1-box2 about')
-  t.true(msg5.value.content.endsWith('.box2'), 'msg5 is group1-box2 post')
+  t.true(msg4.value.content.endsWith('.box2'), 'msg4 is group box2 about')
+  t.true(msg5.value.content.endsWith('.box2'), 'msg5 is group box2 post')
 
-  // First, Bob gets 2 messages and indexes those
   await pify(bob.db.add)(msg1.value)
   await pify(bob.db.add)(msg2.value)
   await pify(bob.db.add)(msg3.value)
@@ -283,9 +282,9 @@ test('reindexEncrypted is crash resistant', async (t) => {
   )
   t.equal(results1.length, 0, 'bob has no box2 mentions from alice')
 
-  // Bob joins group 1 and is able to decrypt some messages
-  bob.box2.addGroupInfo(groupId1, { key: groupKey1 })
-  t.pass('bob joined group 1')
+  // Bob joins group and is able to decrypt some messages
+  bob.box2.addGroupInfo(groupId, { key: groupKey })
+  t.pass('bob joined the group')
 
   // Wait for private indexes to be saved to disk
   await pify(setTimeout)(2000)
