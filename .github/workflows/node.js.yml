@@ -41,28 +41,26 @@ jobs:
 
   benchmark:
     needs: test
-
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
-      - name: Use Node.js 16.x
+      - name: Use Node.js 18.x
         uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
       - run: npm install
       - name: Benchmark
         run: npm run benchmark
       - id: get-comment-body
         name: Gather results
         run: |
-          body=$(cat /tmp/ssb-db2-benchmark/benchmark.md)
-          body="${body//'%'/'%25'}"
-          body="${body//$'\n'/'%0A'}"
-          body="${body//$'\r'/'%0D'}"
-          echo ::set-output name=body::$body
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "BENCHMARK_OUTPUT<<$EOF" >> $GITHUB_OUTPUT
+          cat /tmp/ssb-db2-benchmark/benchmark.md >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
       - name: Publish comment
-        uses: mshick/add-pr-comment@v1
+        uses: mshick/add-pr-comment@v2
         with:
-          message: ${{ steps.get-comment-body.outputs.body }}
+          message: ${{ steps.get-comment-body.outputs.BENCHMARK_OUTPUT }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
