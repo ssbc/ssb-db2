@@ -66,7 +66,7 @@ test('migrate moves msgs from old log to new log', (t) => {
           toCallback((err1, msgs) => {
             t.error(err1, 'no err')
             t.equal(msgs.length, M)
-            sbot.close(t.end)
+            sbot.close(true, () => t.end())
           })
         )
       })
@@ -103,7 +103,7 @@ test('migrate moves msgs from ssb-db to new log', (t) => {
           toCallback((err1, msgs) => {
             t.error(err1, 'no err')
             t.equal(msgs.length, M)
-            sbot.close(t.end)
+            sbot.close(true, () => t.end())
           })
         )
       })
@@ -142,7 +142,7 @@ test('migrate keeps new log synced with ssb-db being updated', (t) => {
                 t.error(err3, '2nd query suceeded')
                 t.equal(msgs2.length, M + 1, `${M + 1} msgs`)
                 t.equal(msgs2[M].value.content.text, 'Extra post')
-                sbot.close(t.end)
+                sbot.close(true, () => t.end())
               })
             )
           }, 200)
@@ -184,7 +184,7 @@ test('test migrate with encrypted messages', (t) => {
         t.error(err, 'no err')
         t.equal(msgs.length, 2)
         t.equal(msgs[1].value.content.text, 'super secret')
-        sbot.close(t.end)
+        sbot.close(true, () => t.end())
       })
     )
   })
@@ -211,7 +211,7 @@ test('refuses to db2.add() while old log exists', (t) => {
           err.message.includes('refusing to create() because the old log'),
           'error message is about the old log'
         )
-        sbot.close(t.end)
+        sbot.close(true, () => t.end())
       })
     })
   )
@@ -273,7 +273,7 @@ test('dangerouslyKillFlumeWhenMigrated and refusing db2.publish()', (t) => {
           toCallback((err1, msgs) => {
             t.error(err1, 'no err when querying')
             t.equal(msgs.length, M, `there are ${M} msgs`)
-            sbot.close(t.end)
+            sbot.close(true, () => t.end())
           })
         )
       }, 300)
@@ -294,7 +294,7 @@ test('migrate does nothing when there is no old log', (t) => {
 
   setTimeout(() => {
     t.pass('did nothing')
-    sbot.close(t.end)
+    sbot.close(true, () => t.end())
   }, 1000)
 
   pull(
@@ -373,13 +373,13 @@ test('migrate fixes buffers in msg.value.content.nonce', (t) => {
                   if (msg.value.content.nonce) {
                     if (!Buffer.isBuffer(msg.value.content.nonce)) {
                       t.fail('one of the nonces is not a Buffer')
-                      sbot.close(t.end)
+                      sbot.close(true, () => t.end())
                       return
                     }
                   }
                 }
                 t.pass('all Buffers in bendy butt were treated correctly')
-                sbot.close(t.end)
+                sbot.close(true, () => t.end())
               })
             )
           })

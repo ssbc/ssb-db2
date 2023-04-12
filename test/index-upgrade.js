@@ -84,7 +84,7 @@ test('1 index first', (t) => {
       sbot.db.getIndex('indextest').getValue(msgKey, (err, value) => {
         t.error(err, 'no err')
         t.equal(value, '1', 'correct initial value')
-        sbot.close(t.end)
+        sbot.close(true, () => t.end())
       })
     })
   })

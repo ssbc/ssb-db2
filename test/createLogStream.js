@@ -164,5 +164,5 @@ test.skip('createLogStream (gt)', (t) => {
 })
 
 test('teardown sbot', (t) => {
-  sbot.close(() => t.end())
+  sbot.close(true, () => t.end())
 })

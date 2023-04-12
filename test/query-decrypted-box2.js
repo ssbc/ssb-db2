@@ -70,8 +70,8 @@ test('decrypted api contains newly decrypted box2 messages', (t) => {
       pull.drain(
         (result) => {
           t.equal(result.value.content.text, 'Testing!')
-          sbot.close(() => {
-            sbot2.close(t.end)
+          sbot.close(true, () => {
+            sbot2.close(true, () => t.end())
           })
         }
       )

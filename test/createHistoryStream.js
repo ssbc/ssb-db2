@@ -212,7 +212,7 @@ test('Encrypted', (t) => {
       pull.collect((err, results) => {
         t.equal(results.length, 4)
         t.equal(typeof results[3].content, 'string')
-        sbot.close(t.end)
+        sbot.close(true, () => t.end())
       })
     )
   })

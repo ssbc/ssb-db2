@@ -36,7 +36,7 @@ test('1 index first', (t) => {
     t.error(err, 'no err')
 
     db.onDrain('fullMentions', () => {
-      sbot.close(t.end)
+      sbot.close(true, () => t.end())
     })
   })
 })
@@ -68,7 +68,7 @@ test('second index', (t) => {
         t.error(err, 'no err')
         t.equal(results.length, 1)
         t.equal(results[0].value.content.text, mentionFeed.text)
-        sbot.close(t.end)
+        sbot.close(true, () => t.end())
       })
     )
   })

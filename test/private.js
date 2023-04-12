@@ -102,5 +102,5 @@ test('encrypted index can handle deleted records', (t) => {
 })
 
 test('teardown', (t) => {
-  sbot.close(t.end)
+  sbot.close(true, () => t.end())
 })

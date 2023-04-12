@@ -36,7 +36,7 @@ test('Base', (t) => {
       t.error(err)
       t.equal(state.id, postMsg.key)
       t.equal(state.sequence, postMsg.value.sequence)
-      sbot.close(t.end)
+      sbot.close(true, () => t.end())
     })
   })
 })

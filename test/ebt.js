@@ -169,5 +169,5 @@ test('buttwoo-v1 sequenceNativeMsg', (t) => {
 })
 
 test('teardown sbot', (t) => {
-  sbot.close(true, t.end)
+  sbot.close(true, () => t.end())
 })
