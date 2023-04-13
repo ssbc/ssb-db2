@@ -64,3 +64,4 @@ jobs:
         with:
           message: ${{ steps.get-comment-body.outputs.BENCHMARK_OUTPUT }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
