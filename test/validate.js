@@ -214,7 +214,7 @@ test('add fail case', (t) => {
     db.add(msg3, (err) => {
       t.ok(err, 'Should fail to add')
 
-      sbot.close(t.end)
+      sbot.close(true, () => t.end())
     })
   })
 })

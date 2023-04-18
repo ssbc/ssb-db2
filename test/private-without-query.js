@@ -17,10 +17,12 @@ mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
-let sbot = SecretStack({ appKey: caps.shs }).use(require('../')).call(null, {
-  keys,
-  path: dir,
-})
+const sbot = SecretStack({ appKey: caps.shs })
+  .use(require('../'))
+  .call(null, {
+    keys,
+    path: dir,
+  })
 const db = sbot.db
 
 test('private index shows in status', (t) => {
@@ -38,5 +40,5 @@ test('private index shows in status', (t) => {
 })
 
 test('teardown', (t) => {
-  sbot.close(t.end)
+  sbot.close(true, () => t.end())
 })

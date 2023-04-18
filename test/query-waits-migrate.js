@@ -59,9 +59,7 @@ test('query() waits for migrate to sync old and new logs', (t) => {
       t.true(response.total > 0, 'total > 0')
       t.ok(response.results[0])
       t.true(response.results[0].value.content.text.includes('LATESTMSG'))
-      sbot.close(() => {
-        t.end()
-      })
+      sbot.close(true, () => t.end()) 
     })
   )
 })

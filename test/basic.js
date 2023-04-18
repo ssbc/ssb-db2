@@ -663,5 +663,5 @@ test('getMsg from uri id', (t) => {
 })
 
 test('teardown', (t) => {
-  sbot.close(t.end)
+  sbot.close(true, () => t.end())
 })

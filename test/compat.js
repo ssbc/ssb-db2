@@ -18,7 +18,7 @@ mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
-let sbot = SecretStack({ appKey: caps.shs })
+const sbot = SecretStack({ appKey: caps.shs })
   .use(require('../'))
   .use(require('../compat/db'))
   .call(null, {
@@ -58,5 +58,5 @@ test('keys', (t) => {
 })
 
 test('teardown sbot', (t) => {
-  sbot.close(() => t.end())
+  sbot.close(true, () => t.end())
 })

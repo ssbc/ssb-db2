@@ -596,5 +596,5 @@ test('addTransaction classic and buttwoo', (t) => {
 })
 
 test('teardown', (t) => {
-  sbot.close(t.end)
+  sbot.close(true, () => t.end())
 })
