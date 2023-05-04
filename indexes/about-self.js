@@ -5,3 +5,5 @@
 // DEPRECATED
 // please use https://github.com/ssbc/ssb-about-self
 module.exports = require('ssb-about-self/plugin.js')
+
+// TODO patch this module to also take configDb2

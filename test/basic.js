@@ -29,14 +29,19 @@ rimraf.sync(dir)
 mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
+const config = {
+  keys,
+  path: dir,
+  db2: {
+    flushDebounce: 10,
+    writeTimeout: 10
+  }
+}
 
 let sbot = SecretStack({ appKey: caps.shs })
   .use(require('../'))
   .use(require('../compat/ebt'))
-  .call(null, {
-    keys,
-    path: dir,
-  })
+  .call(null, config)
 let db = sbot.db
 
 test('onDrain not called after db closed', (t) => {
@@ -52,10 +57,7 @@ test('onDrain not called after db closed', (t) => {
         .use(require('../'))
         .use(require('../compat/ebt'))
         .use(require('ssb-bendy-butt'))
-        .call(null, {
-          keys,
-          path: dir,
-        })
+        .call(null, config)
       db = sbot.db
       t.pass('restarted sbot')
       t.end()
@@ -534,10 +536,7 @@ test('validate needs to load', (t) => {
       sbot = SecretStack({ appKey: caps.shs })
         .use(require('../'))
         .use(require('../compat/ebt'))
-        .call(null, {
-          keys,
-          path: dir,
-        })
+        .call(null, config)
       db = sbot.db
 
       // make sure we can post from cold boot
@@ -552,10 +551,7 @@ test('validate needs to load', (t) => {
             sbot = SecretStack({ appKey: caps.shs })
               .use(require('../'))
               .use(require('../compat/ebt'))
-              .call(null, {
-                keys,
-                path: dir,
-              })
+              .call(null, config)
             db = sbot.db
 
             // make sure we have the correct previous
@@ -584,10 +580,7 @@ test('validate when latest loaded was private message', (t) => {
         sbot = SecretStack({ appKey: caps.shs })
           .use(require('../'))
           .use(require('../compat/ebt'))
-          .call(null, {
-            keys,
-            path: dir,
-          })
+          .call(null, config)
         db = sbot.db
 
         let normalPost = { type: 'post', text: 'Public stuff' }

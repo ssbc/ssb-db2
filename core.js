@@ -45,7 +45,6 @@ const {
   deferred,
   asOffsets,
   isEncrypted,
-  toCallback,
   batch,
   toPullStream,
 } = operators
@@ -812,7 +811,7 @@ exports.init = function (sbot, config) {
   }
 
   function registerIndex(Index) {
-    const index = new Index(log, dir)
+    const index = new Index(log, dir, config.db2)
 
     if (indexes[index.name]) throw 'Index already exists'
 

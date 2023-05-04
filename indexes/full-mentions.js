@@ -18,8 +18,8 @@ function parseInt10(x) {
 
 // [destMsgId, origShortMsgId] => seq
 module.exports = class FullMentions extends Plugin {
-  constructor(log, dir) {
-    super(log, dir, 'fullMentions', 1, 'json')
+  constructor(log, dir, configDb2) {
+    super(log, dir, 'fullMentions', 1, 'json', null, configDb2)
   }
 
   processRecord(record, seq, pValue) {

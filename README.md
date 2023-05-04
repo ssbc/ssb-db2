@@ -205,9 +205,9 @@ const Plugin = require('ssb-db2/indexes/plugin')
 // This is a secret-stack plugin
 exports.init = function (sbot, config) {
   class MyIndex extends Plugin {
-    constructor(log, dir) {
-      //    log, dir, name, version, keyEncoding, valueEncoding
-      super(log, dir, 'myindex', 1, 'utf8', 'json')
+    constructor(log, dir, configDb2) {
+      //    log, dir, name, version, keyEncoding, valueEncoding, configDb2
+      super(log, dir, 'myindex', 1, 'utf8', 'json', configDb2)
     }
 
     processRecord(record, seq) {
@@ -242,6 +242,7 @@ There are three parts you'll always need:
   - `version`, upon changing, will cause a full rebuild of this index
   - `keyEncoding` and `valueEncoding` must be strings from
     [level-codec]
+  - `configDb2` is the db2 part of the config - `config.db2`
 - `processRecord`: here you handle a msg (in [bipf]) and potentially
   write something to the index using
   `this.batch.push(leveldbOperation)`
@@ -704,6 +705,11 @@ const config = {
      * Default: 90
      */
     maxCpuWait: 90,
+
+
+    flushDebounce: 250,
+
+    writeTimeout: 250,
   },
 }
 ```

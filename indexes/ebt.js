@@ -11,8 +11,8 @@ const BIPF_SEQUENCE = bipf.allocAndEncode('sequence')
 
 // [feedId, sequence] => offset
 module.exports = class EBT extends Plugin {
-  constructor(log, dir) {
-    super(log, dir, 'ebt', 1, 'json')
+  constructor(log, dir, configDb2) {
+    super(log, dir, 'ebt', 1, 'json', null, configDb2)
   }
 
   processRecord(record, seq, pValue) {
