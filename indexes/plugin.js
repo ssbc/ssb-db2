@@ -24,7 +24,7 @@ function thenMaybeReportError(err) {
 }
 
 module.exports = class Plugin {
-  constructor(log, dir, name, version, keyEncoding, valueEncoding) {
+  constructor(log, dir, name, version, keyEncoding, valueEncoding, configDb2) {
     this.log = log
     this.name = name
     this.levelPutListeners = []
@@ -108,7 +108,8 @@ module.exports = class Plugin {
      */
     this.forcedFlush = this._flush.bind(this, true)
 
-    const liveFlush = debounce(this.flush, 250)
+    const flushDebounce = (configDb2 && configDb2.flushDebounce) || 250
+    const liveFlush = debounce(this.flush, flushDebounce)
 
     this.onRecord = function onRecord(record, isLive, pValue) {
       let changes = 0

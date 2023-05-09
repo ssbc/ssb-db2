@@ -17,8 +17,8 @@ const BIPF_OOO = bipf.allocAndEncode('ooo')
 // Necessary for feed validation and for EBT
 module.exports = function makeBaseIndex(privateIndex) {
   return class BaseIndex extends Plugin {
-    constructor(log, dir) {
-      super(log, dir, 'base', 2, undefined, 'json')
+    constructor(log, dir, configDb2) {
+      super(log, dir, 'base', 2, undefined, 'json', configDb2)
       this.privateIndex = privateIndex
       this.feedLatest = new Map()
     }

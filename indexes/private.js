@@ -11,6 +11,10 @@ const multicb = require('multicb')
 const NumsFile = require('../nums-file')
 const { indexesPath } = require('../defaults')
 
+// NOTE this index is not based on indexes/plugin.js - it sits lower in the
+// stack so has a different signature and is not registered with
+// ssb.db.registerPlugin
+
 module.exports = function (dir, sbot, config) {
   const latestOffset = Obv()
   const stateLoaded = DeferredPromise()

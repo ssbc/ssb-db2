@@ -9,8 +9,8 @@ const BIPF_KEY = bipf.allocAndEncode('key')
 
 // msgId => seq
 module.exports = class Keys extends Plugin {
-  constructor(log, dir) {
-    super(log, dir, 'keys', 1)
+  constructor(log, dir, configDb2) {
+    super(log, dir, 'keys', 1, null, null, configDb2)
   }
 
   processRecord(record, seq, pValue) {

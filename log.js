@@ -24,6 +24,7 @@ module.exports = function (dir, config, privateIndex, db) {
         return false
       }
     },
+    writeTimeout: config.db2.writeTimeout,
   })
 
   log.add = function (key, value, feedId, encoding, isOOO, cb) {
