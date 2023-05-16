@@ -5,7 +5,7 @@
 const pull = require('pull-stream')
 const ref = require('ssb-ref')
 const Hookable = require('hoox')
-const { author, and, gte, where, batch, toPullStream } = require('../operators')
+const { author, and, gte, where, batch, live, toPullStream } = require('../operators')
 const { reEncrypt } = require('../indexes/private')
 
 // exports.name is blank to merge into global namespace
@@ -42,25 +42,16 @@ exports.init = function (sbot, config) {
       else return msg
     }
 
-    if (limit) {
-      return pull(
-        sbot.db.query(
-          where(query),
-          batch(limit),
-          toPullStream()
-        ),
-        pull.take(limit),
-        pull.map(formatMsg)
-      )
-    } else {
-      return pull(
-        sbot.db.query(
-          where(query),
-          toPullStream()
-        ),
-        pull.map(formatMsg)
-      )
-    }
+    return pull(
+      sbot.db.query(
+        where(query),
+        limit ? batch(limit) : null,
+        opts.live ? live({ old: true }) : null,
+        toPullStream()
+      ),
+      limit ? pull.take(limit) : null,
+      pull.map(formatMsg)
+    )
   })
 
   return {}
