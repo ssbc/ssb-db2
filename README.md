@@ -568,7 +568,7 @@ unsubscribe() // unsubscribes the listener from status updates
 [db.status](https://github.com/ssbc/ssb-db#dbstatus) in ssb-db. The
 value contains the following information:
 
-- `log`: offset in log
+- `log`: current byte offset of the head of the log in bytes (the log is the primary source of truth where raw messages are stored)
 - `jit`: an object with the offset of each [jitdb] index
 - `indexes`: an object with the offset of each level index
 - `progress`: a float representing the index completion from 0 to 1
