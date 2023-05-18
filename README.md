@@ -593,8 +593,30 @@ also be read using `ssb.db.onMsgAdded.value`.
 
 ### getStatus
 
-Gets the current db status, same functionality as
-[db.status](https://github.com/ssbc/ssb-db#dbstatus) in ssb-db.
+Gets the current db status, either as a synchronous function or
+observeable. This is similar to
+[db.status](https://github.com/ssbc/ssb-db#dbstatus) in ssb-db. The
+value contains the following information:
+
+- `log`: current byte offset of the head of the log in bytes (the log
+  is the primary source of truth where raw messages are stored)
+- `jit`: an object with the offset of each [jitdb] index
+- `indexes`: an object with the offset of each level index
+- `progress`: a float representing the index completion from 0 to 1
+
+Example:
+
+```js
+// synchronous
+const status = ssb.db2.getStatus()
+
+// observeable
+const listener = (status) => console.log(status.progress)
+const unsubscribe = ssb.db2.getStatus(listener) 
+
+// later
+unsubscribe() // unsubscribes the listener from status updates
+```
 
 ### reindexEncrypted(cb)
 
