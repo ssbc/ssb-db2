@@ -554,7 +554,17 @@ also be read using `ssb.db.onMsgAdded.value`.
 
 ### getStatus
 
-Gets the current db status, same functionality (observable) as
+Gets the current db status, either as a synchronous function or observeable
+```js
+// synchronous
+const status = ssb.db2.getStatus()
+
+// observeable
+const listener = (status) => console.log(status.progress)
+const unsubscribe = ssb.db2.getStatus(listener) 
+
+// later
+unsubscribe() // unsubscribes the listener from status updates
 [db.status](https://github.com/ssbc/ssb-db#dbstatus) in ssb-db. The
 value contains the following information:
 
