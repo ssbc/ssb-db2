@@ -11,13 +11,9 @@ const Debug = require('debug')
 const DeferredPromise = require('p-defer')
 const { indexesPath } = require('../defaults')
 
-const notInABrowser = typeof window === 'undefined'
+let hasDiskAccess
 let rimraf
 let mkdirp
-if (notInABrowser) {
-  rimraf = require('rimraf')
-  mkdirp = require('mkdirp')
-}
 
 function thenMaybeReportError(err) {
   if (err) console.error(err)
@@ -25,6 +21,11 @@ function thenMaybeReportError(err) {
 
 module.exports = class Plugin {
   constructor(log, dir, name, version, keyEncoding, valueEncoding, configDb2) {
+    hasDiskAccess = (configDb2 && configDb2.hasDiskAccess) || typeof window === 'undefined'
+    if (hasDiskAccess) {
+      rimraf = require('rimraf')
+      mkdirp = require('mkdirp')
+    }
     this.log = log
     this.name = name
     this.levelPutListeners = []
@@ -35,7 +36,7 @@ module.exports = class Plugin {
     this._indexPath = path.join(indexesPath(dir), name)
     const debug = Debug('ssb:db2:' + name)
 
-    if (notInABrowser) mkdirp.sync(this._indexPath)
+    if (hasDiskAccess) mkdirp.sync(this._indexPath)
     this.level = Level(this._indexPath)
 
     const META = '\x00'
@@ -173,7 +174,7 @@ module.exports = class Plugin {
    * and recreate level.
    */
   clear(cb) {
-    if (notInABrowser) {
+    if (hasDiskAccess) {
       this.level.close(() => {
         rimraf.sync(this._indexPath)
         mkdirp.sync(this._indexPath)

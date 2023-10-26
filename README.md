@@ -21,8 +21,8 @@ Over time, this database received more features than ssb-db, and now supports:
 - Deletion and compaction
 - Customizable feed formats and encryption formats
   - You are not tied to classic SSB messages and the classic mode of encryption,
-  you can use any format you want, or build one yourself, with [ssb-feed-format]
-  and [ssb-encryption-format]
+    you can use any format you want, or build one yourself, with [ssb-feed-format]
+    and [ssb-encryption-format]
   - By default supports [ssb-classic]
 - Query language (as composable JS functions)
 
@@ -487,29 +487,24 @@ decrypted values.
 Example of getting existing post messages together with newly
 decrypted ones:
 
-``` js
-    const pull = require('pull-stream')
-    const cat = require('pull-cat')
+```js
+const pull = require('pull-stream')
+const cat = require('pull-cat')
 
+pull(
+  cat([
+    sbot2.db.query(where(type('post')), toPullStream()),
     pull(
-      cat([
-        sbot2.db.query(
-          where(type('post')),
-          toPullStream()
-        ),
-        pull(
-          sbot2.db.reindexed(),
-          pull.filter((msg) => {
-            return msg.value.content.type === 'post'
-          })
-        )
-      ]),
-      pull.drain(
-        (result) => {
-           console.log("got a new post", result.value)
-        }
-      )
-    )
+      sbot2.db.reindexed(),
+      pull.filter((msg) => {
+        return msg.value.content.type === 'post'
+      })
+    ),
+  ]),
+  pull.drain((result) => {
+    console.log('got a new post', result.value)
+  })
+)
 ```
 
 ### add(nativeMsg, cb)
@@ -612,7 +607,7 @@ const status = ssb.db2.getStatus()
 
 // observeable
 const listener = (status) => console.log(status.progress)
-const unsubscribe = ssb.db2.getStatus(listener) 
+const unsubscribe = ssb.db2.getStatus(listener)
 
 // later
 unsubscribe() // unsubscribes the listener from status updates
@@ -694,6 +689,12 @@ const config = {
      * Default: false
      */
     dangerouslyKillFlumeWhenMigrated: false,
+
+    /**
+     * If the environment that db2 runs in has access to a regular disk to write to. Normally detected automatically but in environments like electron you might have to set this manually.
+     * Default in node: true, default in a browser: false
+     */
+    hasDiskAccess: true
 
     /**
      * Only try to decrypt box1 messages created after this date
