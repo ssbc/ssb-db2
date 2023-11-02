@@ -7,6 +7,7 @@ const Obv = require('obz')
 exports.init = function (sbot) {
   const post = Obv()
   sbot.db.post = post
+  sbot.post = post
   sbot.db.onMsgAdded((ev) => {
     post.set(ev.kvt)
   })

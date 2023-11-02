@@ -109,6 +109,18 @@ test('keys', (t) => {
   t.end()
 })
 
+test('post', t=> {
+  sbot.post((msg)=> {
+    if (msg.value.content.text === 'post test') {
+      t.end()
+    }
+  })
+
+  sbot.publish({ type: 'test', text: 'post test'}, (err) => {
+    if (err) t.fail(err, 'failed publish for post')
+  })
+})
+
 test('teardown sbot', (t) => {
   sbot.close(true, () => t.end())
 })
