@@ -18,7 +18,7 @@ mkdirp.sync(dir)
 
 const keys = ssbKeys.loadOrCreateSync(path.join(dir, 'secret'))
 
-const sbot = SecretStack({ appKey: caps.shs }).use(require('../')).call(null, {
+const sbot = SecretStack({ appKey: caps.shs }).use(require('../')).use(require('../compat/post')).call(null, {
   keys,
   path: dir,
 })
