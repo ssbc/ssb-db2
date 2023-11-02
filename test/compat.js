@@ -23,6 +23,7 @@ const sbot = SecretStack({ appKey: caps.shs })
   .use(require('../'))
   .use(require('../compat/db'))
   .use(require('../compat/history-stream'))
+  .use(require('../compat/post'))
   .call(null, {
     keys,
     path: dir,
