@@ -23,6 +23,7 @@ const sbot = SecretStack({ appKey: caps.shs })
   .use(require('../'))
   .use(require('../compat/db'))
   .use(require('../compat/history-stream'))
+  .use(require('../compat/post'))
   .call(null, {
     keys,
     path: dir,
@@ -107,6 +108,18 @@ test('ready', (t) => {
 test('keys', (t) => {
   t.deepEqual(sbot.keys, keys)
   t.end()
+})
+
+test('post', t=> {
+  sbot.post((msg)=> {
+    if (msg.value.content.text === 'post test') {
+      t.end()
+    }
+  })
+
+  sbot.publish({ type: 'test', text: 'post test'}, (err) => {
+    if (err) t.fail(err, 'failed publish for post')
+  })
 })
 
 test('teardown sbot', (t) => {

@@ -8,6 +8,5 @@ module.exports = [
   require('ssb-box'),
   require('ssb-box2'),
   require('./compat/publish'),
-  require('./compat/post'),
   require('./migrate'),
 ]
