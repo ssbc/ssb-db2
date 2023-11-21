@@ -4,6 +4,7 @@
 
 const pull = require('pull-stream')
 const cat = require('pull-cat')
+const Hookable = require('hoox')
 const { descending, live, toPullStream } = require('../operators')
 
 // exports.name is blank to merge into global namespace
@@ -13,7 +14,7 @@ exports.manifest = {
 }
 
 exports.init = function (sbot) {
-  sbot.createLogStream = function createLogStream(opts) {
+  sbot.createLogStream = Hookable(function createLogStream(opts) {
     // Apply default values
     opts = opts || {}
     const optsKeys = opts.keys === false ? false : true
@@ -48,5 +49,5 @@ exports.init = function (sbot) {
     if (optsOld && !optsSync) return applyLimit(cat([old$, live$]))
     if (!optsOld && optsSync) return applyLimit(cat([sync$, live$]))
     if (!optsOld && !optsSync) return applyLimit(live$)
-  }
+  })
 }

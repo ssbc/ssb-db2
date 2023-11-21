@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-only
 
+const Hookable = require('hoox')
+
 exports.init = function (sbot, config) {
   function publish(content, cb) {
     publishAs(config.keys, content, cb)
@@ -19,6 +21,6 @@ exports.init = function (sbot, config) {
     )
   }
 
-  sbot.db.publish = publish
-  sbot.db.publishAs = publishAs
+  sbot.db.publish = Hookable(publish)
+  sbot.db.publishAs = Hookable(publishAs)
 }

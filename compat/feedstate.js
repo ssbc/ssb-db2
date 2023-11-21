@@ -2,10 +2,11 @@
 //
 // SPDX-License-Identifier: LGPL-3.0-only
 
+const Hookable = require('hoox')
 const { onceWhen } = require('../utils')
 
 exports.init = function (sbot, config) {
-  sbot.getFeedState = function (feedId, cb) {
+  sbot.getFeedState = Hookable(function (feedId, cb) {
     onceWhen(
       sbot.db.stateFeedsReady,
       (ready) => ready === true,
@@ -21,5 +22,5 @@ exports.init = function (sbot, config) {
         })
       }
     )
-  }
+  })
 }
