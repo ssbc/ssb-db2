@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 const pull = require('pull-stream')
+const Hookable = require('hoox')
 
 // exports.name is blank to merge into global namespace
 
@@ -13,8 +14,8 @@ exports.manifest = {
 }
 
 exports.init = function (sbot, config) {
-  sbot.add = sbot.db.add
-  sbot.get = function get(idOrObject, cb) {
+  sbot.add = Hookable(sbot.db.add)
+  sbot.get = Hookable(function get(idOrObject, cb) {
     if (typeof idOrObject === 'object' && idOrObject.meta) {
       sbot.db.getMsg(idOrObject.id, cb)
     } else if (typeof idOrObject === 'object') {
@@ -22,12 +23,13 @@ exports.init = function (sbot, config) {
     } else {
       sbot.db.get(idOrObject, cb)
     }
-  }
+  })
+  // already hooked in the publish compat plugin (if loaded)
   sbot.publish = sbot.db.publish
-  sbot.whoami = () => ({ id: sbot.id })
-  sbot.ready = () => true
+  sbot.whoami = Hookable(() => ({ id: sbot.id }))
+  sbot.ready = Hookable(() => true)
   sbot.keys = config.keys
-  sbot.createWriteStream = function createWriteStream(cb) {
+  sbot.createWriteStream = Hookable(function createWriteStream(cb) {
     return pull(
       pull.asyncMap(sbot.db.add),
       pull.drain(
@@ -36,5 +38,5 @@ exports.init = function (sbot, config) {
         cb || ((err) => console.error(new Error('ssb-db2 createWriteStream failed to add messages'), {cause: err}))
       )
     )
-  }
+  })
 }
